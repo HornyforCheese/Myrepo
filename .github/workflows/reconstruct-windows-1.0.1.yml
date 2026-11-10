@@ -1,0 +1,120 @@
+name: Reconstruct and build Mutiny Media Windows 1.0.1
+on:
+  push:
+    branches:
+      - mutiny-media-windows-1.0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reconstruct-and-build:
+    runs-on: windows-2022
+    timeout-minutes: 110
+    steps:
+      - name: Checkout isolated Mutiny Media Windows workbench
+        uses: actions/checkout@v4
+
+      - name: Checkout exact upstream 1.0.1 baseline
+        uses: actions/checkout@v4
+        with:
+          repository: Harborofficial/Harbor
+          ref: v1.0.1-beta
+          path: windows-src
+
+      - name: Assemble and verify archived user source overlay
+        shell: pwsh
+        run: |
+          $manifest = Get-Content 'third_party/v4-overlay/manifest.json' -Raw | ConvertFrom-Json
+          $parts = @(Get-ChildItem 'third_party/v4-overlay/overlay.part*' -File | Sort-Object Name)
+          if ($parts.Count -ne $manifest.parts.Count) { throw "Overlay parts missing: $($parts.Count) found, expected $($manifest.parts.Count)" }
+          $zip = Join-Path $env:RUNNER_TEMP 'mutiny-v4-overlay.zip'
+          $out = [System.IO.File]::Create($zip)
+          try {
+            foreach ($part in $parts) {
+              $bytes = [System.IO.File]::ReadAllBytes($part.FullName)
+              $out.Write($bytes,0,$bytes.Length)
+            }
+          } finally { $out.Dispose() }
+          $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $manifest.source_sha256) { throw "Archived 1.0.1 overlay checksum failed: $actual" }
+          Expand-Archive -LiteralPath $zip -DestinationPath 'v4-kit' -Force
+          if (!(Test-Path 'v4-kit/MutinyMedia_v4_DirectSource_Update/tools/apply-update.mjs')) { throw 'Archived source-update scripts were not found' }
+          "Validated source overlay: $($parts.Count) chunks, $((Get-Item $zip).Length) bytes"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Apply archived Mutiny Media v4 source updates
+        shell: pwsh
+        run: |
+          node 'v4-kit/MutinyMedia_v4_DirectSource_Update/tools/apply-update.mjs' 'windows-src'
+          if ($LASTEXITCODE -ne 0) { throw 'v4 source-update integration failed' }
+
+      - name: Verify customized Windows 1.0.1 version
+        shell: pwsh
+        run: node tools/check-project.mjs windows-src
+
+      - name: Install frontend dependencies
+        working-directory: windows-src
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+
+      - name: Integrate approved player and branding migration
+        shell: pwsh
+        run: |
+          node tools/apply-player-deck.mjs --target windows-src
+          if ($LASTEXITCODE -ne 0) { throw 'Player integration failed' }
+          node tools/brand-windows-1.0.1.mjs windows-src --apply
+          if ($LASTEXITCODE -ne 0) { throw 'Branding update failed' }
+          node tools/apply-player-deck.mjs --target windows-src --verify
+          if ($LASTEXITCODE -ne 0) { throw 'Player verification failed' }
+
+      - name: Typecheck combined Windows source
+        working-directory: windows-src
+        shell: pwsh
+        run: pnpm run typecheck
+
+      - name: Stage Windows binaries and runtime dependencies
+        working-directory: windows-src
+        shell: pwsh
+        run: pnpm run setup
+
+      - name: Build Windows 1.0.1 NSIS installer
+        working-directory: windows-src
+        shell: pwsh
+        run: |
+          if (Test-Path 'src-tauri/tauri.windows.conf.json') {
+            pnpm tauri build --config src-tauri/tauri.windows.conf.json --bundles nsis
+          } else {
+            pnpm tauri build --bundles nsis
+          }
+
+      - name: Upload rebuilt Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutiny-media-windows-1.0.1-reconstructed-installer
+          path: windows-src/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+      - name: Preserve source-stage logs on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          Write-Host 'Reconstruction did not produce a verified installer; inspect the failing step in GitHub Actions.'
+          Write-Host 'The 570 live streaming tests remain pending even if this workflow compiles.'
