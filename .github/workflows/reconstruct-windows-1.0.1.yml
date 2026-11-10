@@ -63,8 +63,12 @@ jobs:
       - name: Apply archived Mutiny Media v4 source updates
         shell: pwsh
         run: |
+          node tools/repair-v4-translation.mjs --pre 'v4-kit/MutinyMedia_v4_DirectSource_Update'
+          if ($LASTEXITCODE -ne 0) { throw 'Legacy translation patch preflight failed' }
           node 'v4-kit/MutinyMedia_v4_DirectSource_Update/tools/apply-update.mjs' 'windows-src'
           if ($LASTEXITCODE -ne 0) { throw 'v4 source-update integration failed' }
+          node tools/repair-v4-translation.mjs --post 'windows-src'
+          if ($LASTEXITCODE -ne 0) { throw 'Legacy translation compatibility update failed' }
 
       - name: Verify customized Windows 1.0.1 version
         shell: pwsh
