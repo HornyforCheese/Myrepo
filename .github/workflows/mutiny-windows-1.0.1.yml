@@ -1,0 +1,108 @@
+name: Mutiny Media Windows 1.0.1
+on:
+  push:
+    branches:
+      - mutiny-media-windows-1.0.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-patch-tests:
+    name: Static patch validation (not a playback test)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test-only TypeScript
+        shell: pwsh
+        run: npm install --no-save typescript@5
+      - name: Source deck, URL template and rollback tests
+        shell: pwsh
+        run: node tests/run-tests.mjs
+      - name: Three branding validation passes
+        shell: pwsh
+        run: node tests/three-pass-validation.mjs
+      - name: Verify 570 live test cases are present and NOT_RUN
+        shell: pwsh
+        run: |
+          $rows = Import-Csv 'qa/web_sources_10x57_cases.csv'
+          if ($rows.Count -ne 570) { throw "Expected 570 checks but found $($rows.Count)" }
+          Write-Host "Prepared $($rows.Count) live checks. This does NOT verify streaming."
+      - name: Publish QA plan and source-kit snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutiny-media-windows-1.0.1-source-kit
+          path: |
+            src/lib/mutiny/**
+            tools/**
+            tests/**
+            qa/**
+            public/mutiny-mark.png
+            README.md
+
+  build-installer:
+    name: Installer (only when customized Windows source is present)
+    runs-on: windows-2022
+    needs: source-patch-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Windows 1.0.1 source availability
+        id: source_gate
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'windows-src/package.json') -or !(Test-Path 'windows-src/src-tauri/tauri.conf.json') -or !(Test-Path 'windows-src/src/views/play-picker.tsx')) {
+            Write-Host '::warning::BLOCKED: Complete customized Windows 1.0.1 source is not in windows-src/. No installer can be built.'
+            'ready=false' >> $env:GITHUB_OUTPUT
+          } else {
+            $p = Get-Content 'windows-src/package.json' -Raw | ConvertFrom-Json
+            $t = Get-Content 'windows-src/src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json
+            if ($p.name -ne 'mutiny-media' -or $p.version -ne '1.0.1' -or $t.productName -ne 'Mutiny Media' -or $t.version -ne '1.0.1') {
+              throw 'The provided source is NOT the customized Mutiny Media Windows 1.0.1 project. Refusing to build.'
+            }
+            'ready=true' >> $env:GITHUB_OUTPUT
+          }
+      - uses: actions/setup-node@v4
+        if: steps.source_gate.outputs.ready == 'true'
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.source_gate.outputs.ready == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.source_gate.outputs.ready == 'true'
+        with:
+          version: 11.9.0
+      - name: Install frontend dependencies
+        if: steps.source_gate.outputs.ready == 'true'
+        working-directory: windows-src
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+      - name: Apply source deck and branding with version guards
+        if: steps.source_gate.outputs.ready == 'true'
+        shell: pwsh
+        run: |
+          node tools/apply-player-deck.mjs --target windows-src
+          node tools/brand-windows-1.0.1.mjs windows-src --apply
+          node tools/apply-player-deck.mjs --target windows-src --verify
+      - name: Typecheck Windows app
+        if: steps.source_gate.outputs.ready == 'true'
+        working-directory: windows-src
+        shell: pwsh
+        run: pnpm run typecheck
+      - name: Build Windows NSIS installer
+        if: steps.source_gate.outputs.ready == 'true'
+        working-directory: windows-src
+        shell: pwsh
+        run: |
+          pnpm run setup
+          pnpm tauri build --bundles nsis
+      - name: Upload installer if compile succeeds
+        if: steps.source_gate.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutiny-media-windows-1.0.1-nsis-installer
+          path: windows-src/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

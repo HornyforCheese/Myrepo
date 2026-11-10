@@ -1,58 +1,43 @@
-**⚠️ This is currently under development, dont use it yet if you're not comfortable with constantly merging new changes**
+# Mutiny Media: Windows 1.0.1 integration workbench
 
-# `Cloudstream3 Plugin Repo Template`
+**Windows only. This branch deliberately contains no Android app.**
 
-Template for a [Cloudstream3](https://github.com/recloudstream) plugin repo
+This is the source patch/workflow workbench for the existing **Mutiny Media 1.0.1** Windows React/Tauri installation. The user's installed executable and source-updates were not a complete editable source checkout. This is **not** a finished 1.0.1 installer or a proof that any of the 57 web hosts can play the correct media.
 
-**⚠️ Make sure you check "Include all branches" when using this template**
+## Contents
 
- 
-## Getting started with writing your first plugin
+* A two-tab, web-first playback source selector with the existing add-on picker preserved.
+* A catalog of 57 source names, 14 documentation-based URL adapters, and safe placeholder states for unconfigured sources. None is verified as streaming correctly.
+* A cautious branding migration with compatibility-key preservation and rollback.
+* Local static tests and a 570-case (10 titles × 57 providers) live Windows QA checklist.
+* A GitHub Actions workflow that runs source-level checks and builds **only if** the complete, customized Windows source tree is available as `windows-src/`.
 
-This template includes 1 example plugin.
+## Prerequisite for real Windows installer
 
-1. Open the root build.gradle.kts, read the comments and replace all the placeholders
-2. Familiarize yourself with the project structure. Most files are commented
-3. Build or deploy your first plugin using:
-   - Windows: `.\gradlew.bat ExampleProvider:make` or `.\gradlew.bat ExampleProvider:deployWithAdb`
-   - Linux & Mac: `./gradlew ExampleProvider:make` or `./gradlew ExampleProvider:deployWithAdb`
+The complete **Mutiny Media Windows 1.0.1 checkout** is needed. It must include `windows-src/package.json`, `windows-src/src-tauri/tauri.conf.json`, `windows-src/src/views/play-picker.tsx`, all existing modifications to settings/providers/themes and the Tauri/Rust tree. An installed `.exe`, a source overlay ZIP, or upstream Harbor 1.0.1 alone is not equivalent to the customized Windows source.
 
+Place the complete Windows source under `windows-src/` (do not include `node_modules` or `src-tauri/target`). The workflow validates the version, applies the source-deck and branding patches, typechecks, builds via Tauri on `windows-2022`, and uploads the installer artifact if successful.
 
-## Granting All Files Access on Newer Android Devices
+```powershell
+corepack pnpm install --frozen-lockfile
+node ..\tools\apply-player-deck.mjs --target .
+node ..\tools\brand-windows-1.0.1.mjs . --apply
+corepack pnpm run typecheck
+corepack pnpm tauri build --bundles nsis
+```
 
-For local plugin testing, you need to grant the app "All Files Access" on newer Android devices (Android 11 and above). Here’s how to do it:
+## QA and version gate
 
-### Using ADB
+Run `npm install --no-save typescript` and `node tests/run-tests.mjs` and `node tests/three-pass-validation.mjs` to test patch mechanics and rollback. They **do not** test real playback.
 
-* `adb shell appops set --uid PACKAGE_NAME MANAGE_EXTERNAL_STORAGE allow`
-* Replace `PACKAGE_NAME` with the name of the package for the Cloudstream3 version you are using:
-   - debug: `com.lagradost.cloudstream3.prerelease.debug`
-   - prerelease: `com.lagradost.cloudstream3.prerelease`
-   - stable: `com.lagradost.cloudstream3`
+`qa/web_sources_10x57_cases.csv` contains 570 **NOT_RUN** checks. Each needs a human or approved automated browser verifying the correct title or episode and 30 seconds of playback. An iframe loading alone does not count.
 
-### Manually
+Do not rename legacy protocol, cache keys or third-party licence attribution without a compatibility migration. The displayed product name is Mutiny Media, but internal identifiers can remain for compatibility.
 
-1. **Open Settings**: Go to your device’s Settings menu.
+## Status
 
-2. **Navigate to Special Access**:
-   - Tap on "Apps & notifications" or "Apps".
-   - Select "Special app access" or "Special access".
-
-3. **Select All Files Access**:
-   - Tap on "All files access".
-   - It may be under the three vertical dots menu towards the top of the screen.
-
-4. **Grant Access to the App**: Find the app in the list and tap on it to toggle it, if it is not already enabled.
-
-6. **Restart the App**: Close and reopen the app to apply the changes.
-
-
-## License
-
-Everything in this repo is released into the public domain. You may use it however you want with no conditions whatsoever
-
-
-## Attribution
-
-This template as well as the gradle plugin and the whole plugin system is **heavily** based on [Aliucord](https://github.com/Aliucord).
-*Go use it, it's a great mobile discord client mod!*
+- Static source-deck tests: passed locally.
+- Three branding validation passes: passed locally.
+- Full Windows compile: not performed; complete source checkout absent.
+- 570 real web-provider checks: not performed.
+- Installer / GitHub Release: not published.

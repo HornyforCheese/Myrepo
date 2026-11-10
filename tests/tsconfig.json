@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target":"ES2022",
+    "module":"ESNext",
+    "moduleResolution":"bundler",
+    "jsx":"react-jsx",
+    "strict":true,
+    "noImplicitAny":false,
+    "skipLibCheck":true,
+    "noEmit":true,
+    "allowJs":false,
+    "lib":["ES2022","DOM"]
+  },
+  "include":["../src/lib/mutiny/source-deck-catalog.ts","../src/lib/mutiny/source-deck.tsx","types/shims.d.ts"]
+}
