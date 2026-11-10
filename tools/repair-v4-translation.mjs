@@ -43,6 +43,14 @@ if (stage==='--pre') {
   if ((source.match(/^diff --git /gm)||[]).length!==7 || (next.match(/^diff --git /gm)||[]).length!==5) throw Error('Audit patch isolation changed unexpected files.');
   fs.writeFileSync(auditPath,next,'utf8');
   console.log('Isolated two 1.0.1 audit-fix mismatches for guarded post-integration (5 other patch sections retained).');
+  const lowScript=path.join(root,'tools','apply-low-bandwidth.mjs');
+  const low=fs.readFileSync(lowScript,'utf8');
+  const newer='lines.push(...bufferMpvLines(bufferSizeFor(s), opts?.totalPhysBytes));';
+  const tagged='lines.push(...bufferMpvLines(bufferSizeFor(s)));';
+  if (low.split(newer).length!==3) throw Error('Expected two 1.0.1 mpv buffer anchors in low-bandwidth patch');
+  fs.writeFileSync(lowScript,low.split(newer).join(tagged),'utf8');
+  console.log('Adapted low-bandwidth MPV patch to verified v1.0.1 buffer signature.');
+
 } else {
   const manifest=JSON.parse(fs.readFileSync(path.join(root,'src-tauri','tauri.conf.json'),'utf8'));
   const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
