@@ -25,7 +25,9 @@ jobs:
         run: node tests/run-tests.mjs
       - name: Three branding validation passes
         shell: pwsh
-        run: node tests/three-pass-validation.mjs
+        run: |
+          $env:MUTINY_TYPESCRIPT_PATH = (Resolve-Path 'node_modules/typescript').Path
+          node tests/three-pass-validation.mjs
       - name: Verify 570 live test cases are present and NOT_RUN
         shell: pwsh
         run: |
