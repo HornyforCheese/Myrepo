@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
+
 jobs:
   source-patch-tests:
     name: Static patch validation (not a playback test)

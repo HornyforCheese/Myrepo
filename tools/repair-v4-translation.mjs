@@ -10,6 +10,7 @@ import path from 'node:path';
 
 const [stage, rootArg] = process.argv.slice(2);
 const root = path.resolve(rootArg ?? '.');
+const readText = file => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 if (!['--pre','--post'].includes(stage)) throw Error('Usage: node repair-v4-translation.mjs --pre <v4-kit-root> | --post <Windows-1.0.1-source-root>');
 function oneReplace(input, find, replacement, label) {
   const start=input.indexOf(find);
@@ -18,7 +19,7 @@ function oneReplace(input, find, replacement, label) {
 }
 if (stage==='--pre') {
   const file=path.join(root,'legacy','mutiny-complete-update','mutiny-complete.patch');
-  const original=fs.readFileSync(file,'utf8');
+  const original=readText(file);
   const begin='diff --git a/src/lib/i18n/translate.ts b/src/lib/i18n/translate.ts\n';
   const pos=original.indexOf(begin);
   if(pos<0){if(!original.includes('diff --git a/src/lib/i18n/translate.ts')) { console.log('Translation hunk already isolated.');process.exit(0);}throw Error('Unrecognised translation patch header.');}
@@ -30,7 +31,7 @@ if (stage==='--pre') {
   fs.writeFileSync(file,result,'utf8');
   console.log(`Isolated one incompatible 1.0.1 translation hunk (${original.length-result.length} bytes).`);
   const auditPath=path.join(root,'legacy','mutiny-complete-update','audit-fixes.patch');
-  const source=fs.readFileSync(auditPath,'utf8');
+  const source=readText(auditPath);
   let next=source;
   for(const rel of ['scripts/capstan-stage.mjs','src/components/search/ai-search/use-ai-suggest.ts']) {
     const begin=`diff --git a/${rel} b/${rel}\n`;
@@ -44,7 +45,7 @@ if (stage==='--pre') {
   fs.writeFileSync(auditPath,next,'utf8');
   console.log('Isolated two 1.0.1 audit-fix mismatches for guarded post-integration (5 other patch sections retained).');
   const lowScript=path.join(root,'tools','apply-low-bandwidth.mjs');
-  const low=fs.readFileSync(lowScript,'utf8');
+  const low=readText(lowScript);
   const newer='lines.push(...bufferMpvLines(bufferSizeFor(s), opts?.totalPhysBytes));';
   const tagged='lines.push(...bufferMpvLines(bufferSizeFor(s)));';
   if (low.split(newer).length!==3) throw Error('Expected two 1.0.1 mpv buffer anchors in low-bandwidth patch');
@@ -52,7 +53,7 @@ if (stage==='--pre') {
   console.log('Adapted low-bandwidth MPV patch to verified v1.0.1 buffer signature.');
 
   const wiringPath = path.join(root, 'tools', 'apply-v4.mjs');
-  const wiring = fs.readFileSync(wiringPath, 'utf8');
+  const wiring = readText(wiringPath);
   const wiringStart = wiring.indexOf("patch('src/views/settings/account/nuvio-synced-addons-card.tsx'");
   const wiringEnd = wiring.indexOf("\npatch('src/views/play-picker.tsx'", wiringStart);
   if (wiringStart < 0 || wiringEnd < 0 || (wiring.indexOf("'Nuvio duplicate hook'", wiringStart) < wiringStart || wiring.indexOf("'Nuvio duplicate hook'", wiringStart) >= wiringEnd)) {
@@ -80,12 +81,12 @@ if (stage==='--pre') {
   fs.writeFileSync(wiringPath, oneReplace(updated, "import fs from 'node:fs';",
     "import { repairNuvioHookOrder } from './nuvio-hook-compat.mjs';\nimport { repairStartupArt } from './startup-art-compat.mjs';\nimport fs from 'node:fs';", 'v4 import declaration'), 'utf8');
   console.log('Adapted Nuvio hook repair to the pinned 1.0.1 connected-state card.');
-  const scoringScript = fs.readFileSync(lowScript, 'utf8');
+  const scoringScript = readText(lowScript);
   fs.writeFileSync(lowScript, oneReplace(scoringScript,
     "patch('src/lib/streams/scoring/scoring-stream.ts','mutiny-resolution-above-target',",
     "patch('src/lib/streams/scoring/scoring-stream.ts','const lowBandwidthPreference = codecResolutionDelta(',", 'scoring idempotency marker'), 'utf8');
   const verifyPath = path.join(root, 'tools', 'verify-kit.mjs');
-  let verify = fs.readFileSync(verifyPath, 'utf8');
+  let verify = readText(verifyPath);
   verify = oneReplace(verify,
     "['src/views/settings/player-panel/bandwidth-section.tsx','Ultra Low Bandwidth Mode']",
     "['src/views/settings/player-panel/bandwidth-section.tsx','import { UltraLowBandwidthCard }']", 'current bandwidth UI import check');
@@ -103,7 +104,7 @@ if (stage==='--pre') {
   const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
   if(pkg.name!=='mutiny-media'||pkg.version!=='1.0.1'||manifest.productName!=='Mutiny Media'||manifest.version!=='1.0.1')throw Error('Expected customized Mutiny Media Windows 1.0.1, refusing modification.');
   const file=path.join(root,'src','lib','i18n','translate.ts');
-  const old=fs.readFileSync(file,'utf8');
+  const old=readText(file);
   if(old.includes('function displayBrand(value: string, key: string)')){ console.log('Visible translation branding already patched.'); }
   else {
   const fn=`function displayBrand(value: string, key: string): string {\n  if (key === "by Harbor contributors") return value;\n  return value.replace(/\\bHarbor\\b/g, "Mutiny Media");\n}\n\n`;
@@ -118,7 +119,7 @@ if (stage==='--pre') {
   }
 
   const capstanFile=path.join(root,'scripts','capstan-stage.mjs');
-  const capstanOriginal=fs.readFileSync(capstanFile,'utf8');
+  const capstanOriginal=readText(capstanFile);
   const helper=`function dexToolsReady() {
   if (!existsSync(dexLib)) return false;
   const names = jarsIn(dexLib).filter((name) => statSync(join(dexLib, name)).size > 0);
@@ -150,7 +151,7 @@ if (stage==='--pre') {
   }
 
   const suggestFile=path.join(root,'src','components','search','ai-search','use-ai-suggest.ts');
-  const suggestOriginal=fs.readFileSync(suggestFile,'utf8');
+  const suggestOriginal=readText(suggestFile);
   if (!suggestOriginal.includes('useFreeOpenRouterModels')) {
     let next=oneReplace(suggestOriginal,
       'import { aiIsGroq, aiKey } from "@/lib/ai-models";',
