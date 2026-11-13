@@ -13,6 +13,15 @@ This is the source patch/workflow workbench for the existing **Mutiny Media 1.0.
 * Local static tests and a 570-case (10 titles × 57 providers) live Windows QA checklist.
 * A Windows reconstruction workflow that restores the full customized source, checks it, stages runtime dependencies, and builds an NSIS installer. It uploads the complete source separately from the installer.
 
+## New desktop changes awaiting the combined installer
+
+* [Local video and magnet streaming buttons](qa/windows-media-buttons.md).
+* [Groq and Gemini free-tier choices and separate API keys](qa/windows-ai-providers.md).
+* Silent “Ahoy, mateys!” welcome screen.
+* [Community theme text and CSS wordmark branding](qa/windows-community-theme-branding.md).
+
+These source changes are separate commits. The download links below currently refer to the previous automatic-sources build until the new installer is verified and published.
+
 ## Reproduce the Windows installer
 
 Run `.github/workflows/reconstruct-windows-1.0.1.yml` using Actions → **Reconstruct and build Mutiny Media Windows 1.0.1** → **Run workflow** on this branch. It also runs on branch pushes.

@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { integrateThemeBranding } from './integrate-theme-branding.mjs';
 import { integrateAiServices } from './integrate-ai-services.mjs';
 import { brandBigPictureIntro, brandBigPictureBoot } from './big-picture-branding-compat.mjs';
 const root = path.resolve(process.argv[2] ?? 'windows-src');
@@ -79,7 +80,7 @@ patch('src/lib/addons.ts', 'const combined = await combinedAccountAddons();', [
   ['export async function gatherCatalogAddons(authKey: string | null): Promise<Addon[]> {', 'export async function gatherCatalogAddons(authKey: string | null): Promise<Addon[]> {\n  const { combinedAccountAddons } = await import("@/lib/mutiny/combined-addons");\n  const combined = await combinedAccountAddons();'],
   ['return [...stremio, ...localFull.filter((a): a is Addon => a != null)];', 'return [...stremio, ...localFull.filter((a): a is Addon => a != null), ...combined]\n    .filter((addon, index, all) => all.findIndex(other => other.transportUrl === addon.transportUrl) === index);'],
 ]);
-for (const relative of ['src/lib/mutiny/live-web.ts', 'src/lib/mutiny/combined-addons.ts', 'src/themes/midnight/midnight-preset.ts', 'src/assets/ai-logos/keenable.png', 'src/lib/mutiny/openrouter-error.ts', 'src/lib/mutiny/ai-services.ts', 'src/lib/mutiny/use-ai-models.ts', 'src/lib/mutiny/ai-provider-settings.tsx', 'src/lib/mutiny/local-video.ts', 'src/lib/mutiny/desktop-media-actions.tsx']) {
+for (const relative of ['src/lib/mutiny/live-web.ts', 'src/lib/mutiny/combined-addons.ts', 'src/themes/midnight/midnight-preset.ts', 'src/assets/ai-logos/keenable.png', 'src/lib/mutiny/openrouter-error.ts', 'src/lib/mutiny/theme-branding.ts', 'src/lib/mutiny/ai-services.ts', 'src/lib/mutiny/use-ai-models.ts', 'src/lib/mutiny/ai-provider-settings.tsx', 'src/lib/mutiny/local-video.ts', 'src/lib/mutiny/desktop-media-actions.tsx']) {
   const file = path.join(root, relative);
   const data = fs.readFileSync(path.join(kit, relative));
   if (fs.existsSync(file) && !fs.readFileSync(file).equals(data)) throw Error(`Refusing to overwrite customized module: ${relative}`);
@@ -102,3 +103,5 @@ integrateAiServices(root);
 
 // The welcome is silent; do not bundle the unused voice clip.
 fs.rmSync(path.join(root, "public/mutiny-ahoy.mp3"), { force: true });
+
+integrateThemeBranding(root);
