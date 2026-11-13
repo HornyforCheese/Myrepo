@@ -26,6 +26,12 @@ The user requested all 57 entries. This implementation preconfigures the 42 supp
 
 21 compatibility tests pass, including actual URL selection, exact-ID resolution, request coalescing, recovery, and consent isolation across hosts/titles. Source-deck, episode URL, Instant Play routing, rollback/idempotency tests and three static branding validation passes pass. Live HTTP metadata checks returned tt1254207 → TMDB 10378 and tt1727587 → TMDB 45745. These checks establish metadata identity only, not stream availability.
 
-The native boundary has two standalone Rust tests which the Windows workflow compiles and runs before packaging. Combined Windows build and publication: pending.
+The native boundary has two standalone Rust tests which the Windows workflow compiles and runs before packaging. Both native Rust tests passed in Windows CI. Full TypeScript checking, 21 compatibility tests, optimized native compilation and NSIS packaging passed. Native compilation took 15m 31s; the complete build took 32m 42s.
+
+Source commit: `20b3a48881681f74df9dcf6dec1d615cd2e40f27`.
+
+[Successful build](https://github.com/HornyforCheese/Myrepo/actions/runs/43453557318) · [Published release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1-automatic-sources) · [Complete source](https://github.com/HornyforCheese/Myrepo/actions/runs/43453557318/artifacts/14053806584).
+
+Installer: 370,103,208 bytes. The downloaded ZIP extracted successfully and the executable has a Windows MZ header. SHA-256: `37dd54ce70d501aa54546e44f4eb7f33ccf503b0b2021f270561c81c15641710`. The publishing workflow independently verified this checksum and the exact successful source build/tag before uploading.
 
 Primary platform references: [Tauri plugin navigation callback](https://docs.rs/tauri/latest/tauri/plugin/struct.Builder.html#method.on_navigation), [Windows Wry backend navigation/new-window handling](https://github.com/tauri-apps/wry/blob/dev/src/webview2/mod.rs).

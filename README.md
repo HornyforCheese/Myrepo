@@ -7,7 +7,8 @@ This is the source patch/workflow workbench for the existing **Mutiny Media 1.0.
 ## Contents
 
 * A two-tab, web-first playback source selector with the existing add-on picker preserved.
-* A catalog of 57 source names, 14 documentation-based URL adapters, and safe placeholder states for unconfigured sources. None is verified as streaming correctly.
+* A catalog of 57 source names, 42 preconfigured URL adapters, and safe placeholder states for unconfigured sources. None is verified as streaming correctly.
+* Automatic source selection, exact IMDb-to-TMDB lookup without an API key, user-triggered next-source/browser options, and per-provider normal-frame compatibility. Fifteen unverified names are retained in the advanced list.
 * A cautious branding migration with compatibility-key preservation and rollback.
 * Local static tests and a 570-case (10 titles × 57 providers) live Windows QA checklist.
 * A Windows reconstruction workflow that restores the full customized source, checks it, stages runtime dependencies, and builds an NSIS installer. It uploads the complete source separately from the installer.
@@ -40,10 +41,12 @@ Do not rename legacy protocol, cache keys or third-party licence attribution wit
 - Static source-deck tests: passed locally.
 - Three branding validation passes: passed locally.
 - Exact 1.0.1 reconstruction and guarded player/branding integration: passed locally.
-- Full Windows release compile and NSIS packaging: [passed](https://github.com/HornyforCheese/Myrepo/actions/runs/43438862359) for source commit `67f84bf2ecd834da2ea438a18b18c845ce36b703`.
+- Full Windows release compile and NSIS packaging: [passed](https://github.com/HornyforCheese/Myrepo/actions/runs/43453557318) for source commit `20b3a48881681f74df9dcf6dec1d615cd2e40f27`.
 - 570 real web-provider checks: not performed.
-- [Download Windows installer artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43438862359/artifacts/14045703902): extract the ZIP, then run `Mutiny Media_1.0.1_x64-setup.exe`.
-- [Complete customized source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43438862359/artifacts/14045856274).
-- [GitHub testing release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1-player-fix): includes the direct `.exe` download and SHA256SUMS.txt. Windows GUI and live playback remain for user testing.
+- [Download Windows installer artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43453557318/artifacts/14055830787): extract the ZIP, then run `Mutiny Media_1.0.1_x64-setup.exe`.
+- [Complete customized source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43453557318/artifacts/14053806584).
+- [GitHub testing release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1-automatic-sources): includes the direct `.exe` download and SHA256SUMS.txt. Windows GUI and live playback remain for user testing.
 - [Native build verification report](qa/windows-native-build-report.md).
 - [Player tab visibility fix and regression evidence](qa/windows-player-tabs-fix.md): fresh title playback shows the source deck even with Instant Play enabled.
+
+Latest changes and verification: [automatic source setup and iframe compatibility](qa/windows-automatic-web-sources.md), [provider audit](qa/web-source-provider-audit.json), [Big Picture startup branding](qa/windows-big-picture-branding-fix.md).

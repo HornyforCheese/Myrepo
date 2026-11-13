@@ -20,6 +20,6 @@ The existing poster mosaic, entry/exit transition, spinner, reduced-motion handl
 - Source-deck and Instant Play routing regression tests passed.
 - Full TypeScript checking passed locally.
 - The actual reconstructed intro no longer references `harbor-lottie.json`, `BpIntroStaticMark` or `CustomArtwork` and uses the Mutiny asset.
-- The initial branding-only Windows build passed: https://github.com/HornyforCheese/Myrepo/actions/runs/43444498385. Publication is being combined with the automatic web-source and scoped iframe fixes.
+- The initial branding-only Windows build passed: https://github.com/HornyforCheese/Myrepo/actions/runs/43444498385. The combined automatic web-source and scoped iframe release is published at https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1-automatic-sources. The combined build also passed: https://github.com/HornyforCheese/Myrepo/actions/runs/43453557318.
 
 No Windows GUI or emulated app was run. The user will verify the appearance after installation. Big Picture's source picker remains separate from the desktop two-tab source deck; this patch changes startup branding.
