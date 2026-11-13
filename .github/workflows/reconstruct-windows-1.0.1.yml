@@ -4,6 +4,11 @@ on:
     branches:
       - mutiny-media-windows-1.0.1
   workflow_dispatch:
+    inputs:
+      publish_existing:
+        description: Publish the verified Windows installer from run 43424519242 without rebuilding
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -13,6 +18,7 @@ env:
 
 jobs:
   reconstruct-and-build:
+    if: ${{ !inputs.publish_existing }}
     runs-on: windows-2022
     timeout-minutes: 110
     steps:
@@ -148,3 +154,53 @@ jobs:
         run: |
           Write-Host 'Reconstruction did not produce a verified installer; inspect the failing step in GitHub Actions.'
           Write-Host 'The 570 live streaming tests remain pending even if this workflow compiles.'
+
+  publish-verified-installer:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_existing }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: HornyforCheese/Myrepo
+    steps:
+      - name: Verify successful source build
+        shell: bash
+        run: |
+          gh api repos/HornyforCheese/Myrepo/actions/runs/43424519242 > build.json
+          python - <<'PYVERIFY'
+          import json
+          r=json.load(open('build.json'))
+          assert r['conclusion']=='success'
+          assert r['head_sha']=='ab184a73ceebfc063c5d6aedc0fbaff0111907f1'
+          PYVERIFY
+      - name: Download verified installer
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: HornyforCheese/Myrepo
+          run-id: 43424519242
+          name: mutiny-media-windows-1.0.1-reconstructed-installer
+          path: installer
+      - name: Verify executable and publish release
+        shell: bash
+        run: |
+          mv 'installer/Mutiny Media_1.0.1_x64-setup.exe' installer/MutinyMedia-1.0.1-windows-x64-setup.exe
+          cd installer
+          echo '10bce43800690d18340e55b433b0821b934b8f71d1187acc79821491028c8ada  MutinyMedia-1.0.1-windows-x64-setup.exe' > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+          cat > release-notes.md <<'NOTES'
+          Mutiny Media 1.0.1 for Windows x64. Download and run the setup executable below.
+
+          Windows optimized release compilation, NSIS packaging, TypeScript checking, source-deck tests and 11 compatibility tests passed. This is a testing release: Windows installation, account connections and live playback remain for user testing. The 570 web-provider playback cases are not run.
+
+          Source commit: ab184a73ceebfc063c5d6aedc0fbaff0111907f1
+          Build and complete customized source: https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242
+          NOTES
+          if gh release view windows-v1.0.1 >/dev/null 2>&1; then
+            gh release upload windows-v1.0.1 MutinyMedia-1.0.1-windows-x64-setup.exe SHA256SUMS.txt
+            gh release edit windows-v1.0.1 --draft=false --prerelease --title 'Mutiny Media 1.0.1 — Windows x64' --notes-file release-notes.md
+          else
+            gh release create windows-v1.0.1 MutinyMedia-1.0.1-windows-x64-setup.exe SHA256SUMS.txt --target ab184a73ceebfc063c5d6aedc0fbaff0111907f1 --title 'Mutiny Media 1.0.1 — Windows x64' --notes-file release-notes.md --prerelease
+          fi
