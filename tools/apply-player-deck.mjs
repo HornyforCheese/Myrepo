@@ -133,7 +133,7 @@ const addonDropdown = `
             </select>
           </div>
         )}`;
-const wrapper = `\n${kitMarker}\n// Keep downloads and changes to an already-running player on their original path.\nexport function PlayPicker(props: Parameters<typeof AddonPlayPicker>[0]) {\n  if (props.intent === "download" || props.playerActive || props.autoPlay) return <AddonPlayPicker {...props} />;\n  return <MutinySourceDeck meta={props.meta} episode={props.episode} addonPicker={<AddonPlayPicker {...props} />} />;\n}\n`;
+const wrapper = `\n${kitMarker}\n// Keep downloads and changes to an already-running player on their original path.\nexport function PlayPicker(props: Parameters<typeof AddonPlayPicker>[0]) {\n  if (props.intent === "download" || props.playerActive) return <AddonPlayPicker {...props} />;\n  return <MutinySourceDeck meta={props.meta} episode={props.episode} addonPicker={<AddonPlayPicker {...props} autoPlay={false} />} />;\n}\n`;
 const eol = old.includes("\r\n") ? "\r\n" : "\n";
 const normalized = old.replace(/\r\n/g, "\n");
 const headerMatches = [...normalized.matchAll(pickerHeader)];

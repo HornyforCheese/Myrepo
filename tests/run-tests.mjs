@@ -91,6 +91,38 @@ assert.match(fs.readFileSync(picker,'utf8'),/export function PlayPicker\(props/)
 assert.match(fs.readFileSync(picker,'utf8'),/mutiny-addon-stream-select/);
 const integrated = ts.transpileModule(fs.readFileSync(picker,'utf8'), {fileName:'play-picker.tsx',compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS},reportDiagnostics:true});
 assert.equal((integrated.diagnostics??[]).filter(d=>d.category===ts.DiagnosticCategory.Error).length,0);
+// Exercise the generated component itself. Instant Play defaults to true in the
+// desktop app; it must not route fresh title playback around the two-tab deck.
+const wrapperSource = fs.readFileSync(picker, 'utf8').split('// MUTINY_SOURCE_DECK_V2')[1];
+const wrapperJs = ts.transpileModule(wrapperSource, {
+  fileName:'picker-routing.tsx',
+  compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},
+}).outputText;
+const routed = {exports:{}};
+const addonComponent = () => {};
+const deckComponent = () => {};
+new Function('require','module','exports','AddonPlayPicker','MutinySourceDeck',wrapperJs)(
+  name => {
+    assert.equal(name,'react/jsx-runtime');
+    return {jsx:(type,props)=>({type,props})};
+  }, routed, routed.exports, addonComponent, deckComponent,
+);
+for (const autoPlay of [true,false,undefined]) {
+  const props = {meta:{id:'tt1254207'},episode:{season:1,episode:2},autoPlay};
+  const screen = routed.exports.PlayPicker(props);
+  assert.equal(screen.type,deckComponent,'Fresh title playback must show Web Sources and Addon Providers');
+  assert.equal(screen.props.meta,props.meta);
+  assert.equal(screen.props.episode,props.episode);
+  assert.equal(screen.props.addonPicker.type,addonComponent);
+  assert.equal(screen.props.addonPicker.props.autoPlay,false,'Opening the addon tab must allow manual stream selection');
+  assert.equal(props.autoPlay,autoPlay,'Do not mutate the playback request');
+}
+for (const props of [{intent:'download',autoPlay:true},{playerActive:true,autoPlay:true}]) {
+  const screen = routed.exports.PlayPicker(props);
+  assert.equal(screen.type,addonComponent,'Downloads and active-player source changes keep their existing route');
+  assert.equal(screen.props.autoPlay,true);
+}
+
 run('--rollback');
 assert.equal(fs.readFileSync(picker,'utf8'),before);
 for(const f of assets)assert.equal(fs.existsSync(path.join(target,f)),false);
@@ -103,4 +135,4 @@ fs.writeFileSync(path.join(target,"package.json"), JSON.stringify({name:"harbor"
 assert.throws(()=>run());
 assert.equal(fs.readFileSync(picker,'utf8'),before);
 fs.rmSync(temp,{recursive:true,force:true});
-console.log('PASS: TypeScript syntax, 57 hosts, 14 documented URL adapters, anime dub/sub, PrimeSrc TMDB fallback, apply/verify/idempotence/rollback, safe failure.');
+console.log('PASS: TypeScript syntax, 57 hosts, 14 documented URL adapters, anime dub/sub, PrimeSrc TMDB fallback, Instant Play routing and manual addon selection, apply/verify/idempotence/rollback, safe failure.');

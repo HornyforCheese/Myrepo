@@ -6,9 +6,25 @@ on:
   workflow_dispatch:
     inputs:
       publish_existing:
-        description: Publish the verified Windows installer from run 43424519242 without rebuilding
+        description: Publish a verified existing Windows installer without rebuilding
         type: boolean
         default: false
+      release_run:
+        description: Successful build run containing the installer
+        type: string
+        default: '43424519242'
+      release_tag:
+        description: Existing tag for the exact source commit
+        type: string
+        default: windows-v1.0.1
+      release_commit:
+        description: Exact source commit used by the build
+        type: string
+        default: ab184a73ceebfc063c5d6aedc0fbaff0111907f1
+      release_sha256:
+        description: Expected installer SHA-256
+        type: string
+        default: 10bce43800690d18340e55b433b0821b934b8f71d1187acc79821491028c8ada
 
 permissions:
   contents: read
@@ -97,6 +113,15 @@ jobs:
         shell: pwsh
         run: pnpm install --frozen-lockfile
 
+      - name: Test player routing and source compatibility
+        shell: pwsh
+        run: |
+          $env:TYPESCRIPT_LIB = (Resolve-Path 'windows-src/node_modules/typescript').Path
+          node tests/run-tests.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Player routing regression tests failed' }
+          node --test tests/*-compat.test.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Source compatibility tests failed' }
+
       - name: Integrate approved player and branding migration
         shell: pwsh
         run: |
@@ -164,23 +189,30 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: HornyforCheese/Myrepo
+      RELEASE_RUN: ${{ inputs.release_run }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      RELEASE_COMMIT: ${{ inputs.release_commit }}
+      RELEASE_SHA256: ${{ inputs.release_sha256 }}
     steps:
       - name: Verify successful source build
         shell: bash
         run: |
-          gh api repos/HornyforCheese/Myrepo/actions/runs/43424519242 > build.json
+          gh api "repos/HornyforCheese/Myrepo/actions/runs/$RELEASE_RUN" > build.json
           python - <<'PYVERIFY'
-          import json
+          import json, os
           r=json.load(open('build.json'))
           assert r['conclusion']=='success'
-          assert r['head_sha']=='ab184a73ceebfc063c5d6aedc0fbaff0111907f1'
+          assert r['head_sha']==os.environ['RELEASE_COMMIT']
+          assert len(os.environ['RELEASE_SHA256'])==64
+          assert all(c in '0123456789abcdef' for c in os.environ['RELEASE_SHA256'])
           PYVERIFY
+          test "$(gh api "repos/HornyforCheese/Myrepo/commits/$RELEASE_TAG" --jq .sha)" = "$RELEASE_COMMIT"
       - name: Download verified installer
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           repository: HornyforCheese/Myrepo
-          run-id: 43424519242
+          run-id: ${{ inputs.release_run }}
           name: mutiny-media-windows-1.0.1-reconstructed-installer
           path: installer
       - name: Verify executable and publish release
@@ -188,19 +220,19 @@ jobs:
         run: |
           mv 'installer/Mutiny Media_1.0.1_x64-setup.exe' installer/MutinyMedia-1.0.1-windows-x64-setup.exe
           cd installer
-          echo '10bce43800690d18340e55b433b0821b934b8f71d1187acc79821491028c8ada  MutinyMedia-1.0.1-windows-x64-setup.exe' > SHA256SUMS.txt
+          printf '%s  MutinyMedia-1.0.1-windows-x64-setup.exe\n' "$RELEASE_SHA256" > SHA256SUMS.txt
           sha256sum --check SHA256SUMS.txt
-          cat > release-notes.md <<'NOTES'
+          cat > release-notes.md <<NOTES
           Mutiny Media 1.0.1 for Windows x64. Download and run the setup executable below.
 
           Windows optimized release compilation, NSIS packaging, TypeScript checking, source-deck tests and 11 compatibility tests passed. This is a testing release: Windows installation, account connections and live playback remain for user testing. The 570 web-provider playback cases are not run.
 
-          Source commit: ab184a73ceebfc063c5d6aedc0fbaff0111907f1
-          Build and complete customized source: https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242
+          Source commit: $RELEASE_COMMIT
+          Build and complete customized source: https://github.com/HornyforCheese/Myrepo/actions/runs/$RELEASE_RUN
           NOTES
-          if gh release view windows-v1.0.1 >/dev/null 2>&1; then
-            gh release upload windows-v1.0.1 MutinyMedia-1.0.1-windows-x64-setup.exe SHA256SUMS.txt
-            gh release edit windows-v1.0.1 --draft=false --prerelease --title 'Mutiny Media 1.0.1 — Windows x64' --notes-file release-notes.md
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" MutinyMedia-1.0.1-windows-x64-setup.exe SHA256SUMS.txt
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease --title "Mutiny Media 1.0.1 — Windows x64 ($RELEASE_TAG)" --notes-file release-notes.md
           else
-            gh release create windows-v1.0.1 MutinyMedia-1.0.1-windows-x64-setup.exe SHA256SUMS.txt --verify-tag --title 'Mutiny Media 1.0.1 — Windows x64' --notes-file release-notes.md --prerelease
+            gh release create "$RELEASE_TAG" MutinyMedia-1.0.1-windows-x64-setup.exe SHA256SUMS.txt --verify-tag --title "Mutiny Media 1.0.1 — Windows x64 ($RELEASE_TAG)" --notes-file release-notes.md --prerelease
           fi
