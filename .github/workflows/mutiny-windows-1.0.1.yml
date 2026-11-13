@@ -45,6 +45,8 @@ jobs:
           name: mutiny-media-windows-1.0.1-source-kit
           path: |
             src/lib/mutiny/**
+            src/themes/midnight/**
+            src/assets/ai-logos/keenable.png
             tools/**
             tests/**
             qa/**

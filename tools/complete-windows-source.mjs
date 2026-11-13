@@ -43,6 +43,10 @@ patch('src/components/search/ai-search/use-ai-suggest.ts', 'from "@/lib/mutiny/l
   ['import { enrichWithContent } from "@/lib/jina-search";', 'import { liveWebContext } from "@/lib/mutiny/live-web";'],
   ['await enrichWithContent(query, settings.jinaKey)', 'await liveWebContext(query, settings)'],
 ]);
+// Official upstream release moved the identical DLL; retain the original SHA-256 pin.
+patch('scripts/fetch-libmpv.mjs', '"libmpv-windows-x64"', [[
+  '"community-build-dependencies-0.9.132"', '"libmpv-windows-x64"',
+]]);
 patch('src/views/settings/player-panel/bandwidth-section.tsx', '// Mutiny: bandwidth controls are owned by UltraLowBandwidthCard.', [[
   'import { targetKbps } from "@/lib/mutiny/low-bandwidth";', '// Mutiny: bandwidth controls are owned by UltraLowBandwidthCard.',
 ]]);
@@ -57,10 +61,10 @@ patch('src/lib/addons.ts', 'const combined = await combinedAccountAddons();', [
   ['export async function gatherCatalogAddons(authKey: string | null): Promise<Addon[]> {', 'export async function gatherCatalogAddons(authKey: string | null): Promise<Addon[]> {\n  const { combinedAccountAddons } = await import("@/lib/mutiny/combined-addons");\n  const combined = await combinedAccountAddons();'],
   ['return [...stremio, ...localFull.filter((a): a is Addon => a != null)];', 'return [...stremio, ...localFull.filter((a): a is Addon => a != null), ...combined]\n    .filter((addon, index, all) => all.findIndex(other => other.transportUrl === addon.transportUrl) === index);'],
 ]);
-for (const relative of ['src/lib/mutiny/live-web.ts', 'src/lib/mutiny/combined-addons.ts', 'src/themes/midnight/midnight-preset.ts']) {
+for (const relative of ['src/lib/mutiny/live-web.ts', 'src/lib/mutiny/combined-addons.ts', 'src/themes/midnight/midnight-preset.ts', 'src/assets/ai-logos/keenable.png']) {
   const file = path.join(root, relative);
-  const data = fs.readFileSync(path.join(kit, relative), 'utf8');
-  if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') !== data) throw Error(`Refusing to overwrite customized module: ${relative}`);
+  const data = fs.readFileSync(path.join(kit, relative));
+  if (fs.existsSync(file) && !fs.readFileSync(file).equals(data)) throw Error(`Refusing to overwrite customized module: ${relative}`);
   writes.set(file, data);
 }
 // Every anchor is checked before writing. Retain originals for exact recovery.

@@ -99,6 +99,20 @@ jobs:
         shell: pwsh
         run: pnpm run typecheck
 
+      - name: Archive complete customized Windows source
+        shell: pwsh
+        run: |
+          @{ upstream = 'd862943d27ca10beca26d0d53e7bf6be66688968'; customization = '${{ github.sha }}'; version = '1.0.1' } | ConvertTo-Json | Set-Content 'windows-src/BUILD_SOURCE.json'
+          tar -czf "$env:RUNNER_TEMP/mutiny-media-windows-1.0.1-source.tar.gz" --exclude=.git --exclude=node_modules --exclude=target --exclude=.mutiny-1.0.1-contract-backup --exclude='*.tsbuildinfo' -C windows-src .
+          if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
+
+      - name: Upload complete customized source
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutiny-media-windows-1.0.1-complete-source
+          path: ${{ runner.temp }}/mutiny-media-windows-1.0.1-source.tar.gz
+          if-no-files-found: error
+
       - name: Stage Windows binaries and runtime dependencies
         working-directory: windows-src
         shell: pwsh
