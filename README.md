@@ -40,9 +40,10 @@ Do not rename legacy protocol, cache keys or third-party licence attribution wit
 - Static source-deck tests: passed locally.
 - Three branding validation passes: passed locally.
 - Exact 1.0.1 reconstruction and guarded player/branding integration: passed locally.
-- Full Windows release compile and NSIS packaging: [passed](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242) for source commit `ab184a73ceebfc063c5d6aedc0fbaff0111907f1`.
+- Full Windows release compile and NSIS packaging: [passed](https://github.com/HornyforCheese/Myrepo/actions/runs/43438862359) for source commit `67f84bf2ecd834da2ea438a18b18c845ce36b703`.
 - 570 real web-provider checks: not performed.
-- [Download Windows installer artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242/artifacts/14039866472): extract the ZIP, then run `Mutiny Media_1.0.1_x64-setup.exe`.
-- [Complete customized source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242/artifacts/14036445755).
-- [GitHub testing release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1): includes the direct `.exe` download and SHA256SUMS.txt. Windows GUI and live playback remain for user testing.
+- [Download Windows installer artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43438862359/artifacts/14045703902): extract the ZIP, then run `Mutiny Media_1.0.1_x64-setup.exe`.
+- [Complete customized source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43438862359/artifacts/14045856274).
+- [GitHub testing release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1-player-fix): includes the direct `.exe` download and SHA256SUMS.txt. Windows GUI and live playback remain for user testing.
 - [Native build verification report](qa/windows-native-build-report.md).
+- [Player tab visibility fix and regression evidence](qa/windows-player-tabs-fix.md): fresh title playback shows the source deck even with Instant Play enabled.
