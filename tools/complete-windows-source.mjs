@@ -3,12 +3,23 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { brandBigPictureIntro, brandBigPictureBoot } from './big-picture-branding-compat.mjs';
 const root = path.resolve(process.argv[2] ?? 'windows-src');
 const kit = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const config = JSON.parse(fs.readFileSync(path.join(root, 'src-tauri/tauri.conf.json'), 'utf8'));
 if (pkg.name !== 'mutiny-media' || pkg.version !== '1.0.1' || config.identifier !== 'app.mutiny.media') throw Error('Expected customized Windows 1.0.1');
 const writes = new Map();
+for (const [relative, rewrite] of [
+  ['src/views/big-picture/bp-intro.tsx', brandBigPictureIntro],
+  ['index-tv.html', brandBigPictureBoot],
+]) {
+  const file = path.join(root, relative);
+  const before = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+  const after = rewrite(before);
+  if (after !== before) writes.set(file, after);
+}
+
 function patch(relative, marker, edits) {
   const file = path.join(root, relative);
   const text = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
