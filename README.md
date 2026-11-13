@@ -44,5 +44,5 @@ Do not rename legacy protocol, cache keys or third-party licence attribution wit
 - 570 real web-provider checks: not performed.
 - [Download Windows installer artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242/artifacts/14039866472): extract the ZIP, then run `Mutiny Media_1.0.1_x64-setup.exe`.
 - [Complete customized source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242/artifacts/14036445755).
-- GitHub Release: not published. Windows GUI and live playback remain for user testing.
+- [GitHub testing release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1): includes the direct `.exe` download and SHA256SUMS.txt. Windows GUI and live playback remain for user testing.
 - [Native build verification report](qa/windows-native-build-report.md).

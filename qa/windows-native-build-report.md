@@ -25,6 +25,10 @@ The reconstruction now restores `lib.rs` from the exact pinned upstream commit `
 - [Installer artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242/artifacts/14039866472).
 - [Complete source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242/artifacts/14036445755).
 
+## GitHub release
+
+The checksum-verified installer and SHA256SUMS.txt are published at https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1 as a testing prerelease. The tag points to the exact source commit used by the successful build. Publication used the existing artifact; it did not rebuild or alter the executable.
+
 ## Runtime limits
 
 No Windows GUI, installation, account login or live playback testing was performed. The user will test the executable. The 570 web-provider playback cases remain `NOT_RUN`; 43 of the 57 named sources require configuration. A generated embed URL or successful installer build does not establish provider availability or playback success.
