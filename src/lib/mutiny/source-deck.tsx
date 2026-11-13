@@ -115,7 +115,7 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
         </div>
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-[.2em] text-ink-subtle">NOW PLAYING</div>
+            <div className="text-xs font-semibold uppercase tracking-[.2em] text-ink-subtle">SELECTED TITLE</div>
             <h1 className="mt-1 truncate font-display text-2xl font-bold sm:text-3xl">{meta.name}</h1>
             <p className="mt-1 text-xs text-ink-muted">
               {isSeries ? (episode ? `Season ${episode.season ?? "?"} · Episode ${episode.episode ?? "?"}` : "Choose an episode before streaming") : "Movie"}

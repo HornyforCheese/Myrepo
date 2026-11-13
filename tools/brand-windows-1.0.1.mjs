@@ -20,6 +20,10 @@ if (!["1.0.1", "1.0.1.0"].includes(manifest.version)
     || (packageJson.version && packageJson.version !== "1.0.1")) {
   throw new Error("Expected an editable Mutiny Media 1.0.1 checkout.");
 }
+const brandRuntimePath = path.join(root, "src", "lib", "mutiny", "brand-runtime.ts");
+if (!fs.existsSync(brandRuntimePath)) {
+  throw new Error("Expected the Windows runtime branding hook; cannot ensure the native window title is branded.");
+}
 const require = createRequire(packageFile);
 const hash = value => createHash("sha256").update(value).digest("hex");
 let ts;
@@ -202,6 +206,24 @@ function rewriteNative(original) {
     .replace(/(\.(?:title|tooltip)\(\s*")([^"\r\n]*)(")/g, (_, left, value, right) => left + brand(value) + right);
 }
 
+function repairBrandRuntimeTitle(original) {
+  const marker = "  // Tauri follows document.title from the document head.";
+  if (original.includes(marker)) return original;
+  if (original.includes("obs.observe(document.head")) {
+    throw new Error("Partial runtime title branding patch found; refusing to guess.");
+  }
+  const bodyObserver = '  obs.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["title","aria-label","placeholder"]});';
+  if (original.split(bodyObserver).length !== 2) {
+    throw new Error("Unexpected runtime branding observer; refusing to guess.");
+  }
+  return original.replace(bodyObserver, `${bodyObserver}
+${marker}
+  if (document.head) {
+    normalize(document.head);
+    obs.observe(document.head,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["title","aria-label","placeholder"]});
+  }`);
+}
+
 // Branding-only run: do not patch unrelated AI, video, or bandwidth behavior.
 function applyKnownFixes(_file, original) { return original; }
 
@@ -216,7 +238,10 @@ function plan(file, transform) {
 
 for (const directory of ["src", "installer/ui"]) {
   for (const file of walk(path.join(root, directory))) {
-    if (/\.(?:tsx?|jsx)$/.test(file)) plan(file, original => rewriteUi(file, original));
+    if (/\.(?:tsx?|jsx)$/.test(file)) plan(file, original => {
+      const updated = rewriteUi(file, original);
+      return path.resolve(file) === brandRuntimePath ? repairBrandRuntimeTitle(updated) : updated;
+    });
     if (/\.html?$/i.test(file)) plan(file, rewriteMarkup);
     if (/\.css$/i.test(file)) plan(file, original => original.replace(
       /(\bcontent\s*:\s*)(["'])([^"'\r\n]*)\2/g,

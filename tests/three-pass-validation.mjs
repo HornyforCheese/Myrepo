@@ -23,11 +23,21 @@ const keep = { tab:'harbor',storage:'harbor.settings',event:'harbor:nuvio-state-
 export const nav = [{label:'Harbor account',anchorTitle:'Harbor Relay',blurb:"Classic. Was Harbor's original pair.",keywords:['harbor account']}];
 export function Settings(){return <div><button aria-label="Harbor home">{t('Harbor Relay')}</button><p>Open Harbor on other devices</p></div>;}
 `;
+const runtime = `export function startMutinyBranding(): () => void {
+  const brand = (value: string) => value.replace(/\\bHarbor\\b/g, "Mutiny Media");
+  const normalize = (_node: Node) => {};
+  normalize(document.body);
+  const obs = new MutationObserver(() => {});
+  obs.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["title","aria-label","placeholder"]});
+  return () => obs.disconnect();
+}
+`;
 const packager = `const FILES = [ [join(APP, "target", "release", "harbor.exe"), "harbor.exe"] ];`;
 const manifest={name:'Harbor Stream Blocker',short_name:'Harbor Blocker',description:'Blocks ads in Harbor',manifest_version:3,permissions:['declarativeNetRequest']};
 save('package.json',JSON.stringify({name:'mutiny-media',version:'1.0.1'}));
 save('src-tauri/tauri.conf.json',JSON.stringify({productName:'Mutiny Media',mainBinaryName:'MutinyMedia',version:'1.0.1',identifier:'app.mutiny.media'}));
 save('src/views/settings/nav.tsx',code);
+save('src/lib/mutiny/brand-runtime.ts',runtime);
 save('src-tauri/src/lib.rs',`pub fn id() -> &'static str { "harbor://window-activity" }\nfn html() { let _ = b"<title>Harbor</title>"; }\n`);
 save('src-tauri/resources/harbor-stream-blocker/manifest.json',JSON.stringify(manifest));
 save('installer/scripts/make-payload.mjs',packager);
@@ -55,9 +65,13 @@ assert.match(read('src/index.css'),/Mutiny Media home/);
 assert.match(read('src/index.css'),/Harbor home/);
 assert.match(afterCode,/Open Mutiny Media on other devices/);
 assert.match(afterCode,/\.replace\(/); // Retains old translation key and converts final display string
+const brandedRuntime = read('src/lib/mutiny/brand-runtime.ts');
+assert.match(brandedRuntime,/normalize\(document\.head\)/);
+assert.match(brandedRuntime,/obs\.observe\(document\.head/);
+assert.equal(ts.createSourceFile('brand-runtime.ts',brandedRuntime,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS).parseDiagnostics.length,0);
 assert.match(read('src-tauri/src/lib.rs'),/<title>Mutiny Media<\/title>/);
 assert.equal(JSON.parse(read('src-tauri/tauri.conf.json')).version,'1.0.1');
-console.log('PASS 1: TypeScript TSX parsed, app version pinned, Rust window title updated.');
+console.log('PASS 1: TypeScript parsed, app version pinned, Rust and runtime window titles branded.');
 
 console.log('PASS 2: Settings / provider / playback / extension compatibility guards');
 for(const p of nonBrand)assert.equal(read(p),before[p],`${p} must not change`);
@@ -83,6 +97,7 @@ run('rollback-branding.mjs',backup);
 assert.equal(read('src/views/settings/nav.tsx'),code);
 assert.equal(read('installer/scripts/make-payload.mjs'),packager);
 assert.equal(read('src/index.css'),css);
+assert.equal(read('src/lib/mutiny/brand-runtime.ts'),runtime);
 assert.deepEqual(JSON.parse(read('src-tauri/resources/harbor-stream-blocker/manifest.json')),manifest);
 assert.match(read('src-tauri/src/lib.rs'),/<title>Harbor<\/title>/);
 console.log('PASS 3: Visible branding removed from fixture; idempotent and exact rollback.');
