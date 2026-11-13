@@ -2,7 +2,7 @@
 
 **Windows only. This branch deliberately contains no Android app.**
 
-This is the source patch/workflow workbench for the existing **Mutiny Media 1.0.1** Windows React/Tauri installation. The user's installed executable and source-updates were not a complete editable source checkout. This is **not** a finished 1.0.1 installer or a proof that any of the 57 web hosts can play the correct media.
+This is the source patch/workflow workbench for the existing **Mutiny Media 1.0.1** Windows React/Tauri installation. The reconstruction workflow now produces a complete editable checkout from a pinned upstream revision and the checksum-verified archived customization overlay. A successful installer build is **not** proof that any of the 57 web hosts can play the correct media.
 
 ## Contents
 
@@ -10,21 +10,22 @@ This is the source patch/workflow workbench for the existing **Mutiny Media 1.0.
 * A catalog of 57 source names, 14 documentation-based URL adapters, and safe placeholder states for unconfigured sources. None is verified as streaming correctly.
 * A cautious branding migration with compatibility-key preservation and rollback.
 * Local static tests and a 570-case (10 titles × 57 providers) live Windows QA checklist.
-* A GitHub Actions workflow that runs source-level checks and builds **only if** the complete, customized Windows source tree is available as `windows-src/`.
+* A Windows reconstruction workflow that restores the full customized source, checks it, stages runtime dependencies, and builds an NSIS installer. It uploads the complete source separately from the installer.
 
-## Prerequisite for real Windows installer
+## Reproduce the Windows installer
 
-The complete **Mutiny Media Windows 1.0.1 checkout** is needed. It must include `windows-src/package.json`, `windows-src/src-tauri/tauri.conf.json`, `windows-src/src/views/play-picker.tsx`, all existing modifications to settings/providers/themes and the Tauri/Rust tree. An installed `.exe`, a source overlay ZIP, or upstream Harbor 1.0.1 alone is not equivalent to the customized Windows source.
+Run `.github/workflows/reconstruct-windows-1.0.1.yml` using Actions → **Reconstruct and build Mutiny Media Windows 1.0.1** → **Run workflow** on this branch. It also runs on branch pushes.
 
-Place the complete Windows source under `windows-src/` (do not include `node_modules` or `src-tauri/target`). The workflow validates the version, applies the source-deck and branding patches, typechecks, builds via Tauri on `windows-2022`, and uploads the installer artifact if successful.
+The workflow checks out `Harborofficial/Harbor` at `d862943d27ca10beca26d0d53e7bf6be66688968`, verifies the archived overlay, repairs revision mismatches, applies the source deck and branding, runs full TypeScript checking, stages playback dependencies, and builds on `windows-2022`.
 
-```powershell
-corepack pnpm install --frozen-lockfile
-node ..\tools\apply-player-deck.mjs --target .
-node ..\tools\brand-windows-1.0.1.mjs . --apply
-corepack pnpm run typecheck
-corepack pnpm tauri build --bundles nsis
-```
+`tools/repair-windows-native.mjs` keeps the entry point consistent with the pinned Cargo/native implementation. The archived entry point referenced unavailable newer modules, removed working Capstan commands, and gated music/games against undeclared features. The repair uses the actual upstream 1.0.1 entry point and retains the overlay's Lite Browser command; it does not replace functionality with stubs.
+
+Successful runs upload:
+
+- `mutiny-media-windows-1.0.1-complete-source`: complete customized source tarball.
+- `mutiny-media-windows-1.0.1-reconstructed-installer`: Windows NSIS `.exe`.
+
+Download and extract the installer artifact ZIP to obtain the `.exe`. GitHub may require sign-in.
 
 ## QA and version gate
 
@@ -39,6 +40,9 @@ Do not rename legacy protocol, cache keys or third-party licence attribution wit
 - Static source-deck tests: passed locally.
 - Three branding validation passes: passed locally.
 - Exact 1.0.1 reconstruction and guarded player/branding integration: passed locally.
-- Full Windows compile: pending Windows CI; no installer is claimed until it passes.
+- Full Windows release compile and NSIS packaging: [passed](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242) for source commit `ab184a73ceebfc063c5d6aedc0fbaff0111907f1`.
 - 570 real web-provider checks: not performed.
-- Installer / GitHub Release: not published.
+- [Download Windows installer artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242/artifacts/14039866472): extract the ZIP, then run `Mutiny Media_1.0.1_x64-setup.exe`.
+- [Complete customized source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43424519242/artifacts/14036445755).
+- GitHub Release: not published. Windows GUI and live playback remain for user testing.
+- [Native build verification report](qa/windows-native-build-report.md).
