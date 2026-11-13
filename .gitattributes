@@ -1,0 +1,5 @@
+# Source overlays must be reproducible on the Windows runner and Linux workbench.
+*.ts text eol=lf
+*.tsx text eol=lf
+*.mjs text eol=lf
+*.rs text eol=lf

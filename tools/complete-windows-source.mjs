@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Complete missing 1.0.1 overlay contracts using existing stores and public API adapters. */
 import fs from 'node:fs';
+import { sameSourceContent } from './source-content-compat.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { integrateThemeBranding } from './integrate-theme-branding.mjs';
@@ -83,7 +84,7 @@ patch('src/lib/addons.ts', 'const combined = await combinedAccountAddons();', [
 for (const relative of ['src/lib/mutiny/live-web.ts', 'src/lib/mutiny/combined-addons.ts', 'src/themes/midnight/midnight-preset.ts', 'src/assets/ai-logos/keenable.png', 'src/lib/mutiny/openrouter-error.ts', 'src/lib/mutiny/theme-branding.ts', 'src/lib/mutiny/ai-services.ts', 'src/lib/mutiny/use-ai-models.ts', 'src/lib/mutiny/ai-provider-settings.tsx', 'src/lib/mutiny/local-video.ts', 'src/lib/mutiny/desktop-media-actions.tsx']) {
   const file = path.join(root, relative);
   const data = fs.readFileSync(path.join(kit, relative));
-  if (fs.existsSync(file) && !fs.readFileSync(file).equals(data)) throw Error(`Refusing to overwrite customized module: ${relative}`);
+  if (fs.existsSync(file) && !sameSourceContent(relative, fs.readFileSync(file), data)) throw Error(`Refusing to overwrite customized module: ${relative}`);
   writes.set(file, data);
 }
 // Every anchor is checked before writing. Retain originals for exact recovery.
