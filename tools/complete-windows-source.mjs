@@ -99,3 +99,6 @@ for (const [file, text] of writes) {
 console.log(`Completed Windows 1.0.1 source contracts (${writes.size} files).`);
 
 integrateAiServices(root);
+
+// The welcome is silent; do not bundle the unused voice clip.
+fs.rmSync(path.join(root, "public/mutiny-ahoy.mp3"), { force: true });

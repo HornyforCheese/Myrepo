@@ -431,7 +431,6 @@ let welcomed = false;
 
 function FirstLaunchWelcome({ available }: { available: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const audio = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     if (!available || welcomed) return;
@@ -451,7 +450,6 @@ function FirstLaunchWelcome({ available }: { available: boolean }) {
       } catch {
         /* Shown for this session. */
       }
-      void audio.current?.play().catch(() => undefined);
     };
     const observer = new MutationObserver(show);
     if (root)
@@ -471,15 +469,7 @@ function FirstLaunchWelcome({ available }: { available: boolean }) {
         Ahoy, mateys!
       </h2>
       <p className="mt-2 text-ink-muted">Welcome aboard Mutiny Media.</p>
-      <audio ref={audio} src="/mutiny-ahoy.mp3" preload="auto" />
-      <form
-        method="dialog"
-        className="mt-5"
-        onSubmit={() => {
-          const voice = audio.current;
-          if (voice?.paused && voice.currentTime === 0) void voice.play().catch(() => undefined);
-        }}
-      >
+      <form method="dialog" className="mt-5">
         <button type="submit" className={actionStyle}>
           Come aboard
         </button>
