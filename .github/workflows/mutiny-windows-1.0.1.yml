@@ -48,6 +48,7 @@ jobs:
             src/themes/midnight/**
             src/assets/ai-logos/keenable.png
             tools/**
+            native/**
             tests/**
             qa/**
             public/mutiny-mark.png

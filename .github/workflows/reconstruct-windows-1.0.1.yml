@@ -122,6 +122,14 @@ jobs:
           node --test tests/*-compat.test.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Source compatibility tests failed' }
 
+      - name: Test main-window navigation boundary
+        shell: pwsh
+        run: |
+          rustc --edition 2021 --test windows-src/src-tauri/src/mutiny_web_policy.rs -o "$env:RUNNER_TEMP/mutiny-web-policy-tests.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Navigation policy tests did not compile' }
+          & "$env:RUNNER_TEMP/mutiny-web-policy-tests.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Navigation policy tests failed' }
+
       - name: Integrate approved player and branding migration
         shell: pwsh
         run: |

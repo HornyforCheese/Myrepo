@@ -8,19 +8,30 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 const root = path.resolve(process.argv[2] ?? 'windows-src');
 const revision = 'd862943d27ca10beca26d0d53e7bf6be66688968';
 const head = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], {encoding:'utf8'}).trim();
 if (head !== revision) throw Error('Native repair requires the exact pinned Windows 1.0.1 checkout');
 let source = execFileSync('git', ['-C', root, 'show', `${revision}:src-tauri/src/lib.rs`], {encoding:'utf8',maxBuffer:4*1024*1024}).replace(/\r\n/g,'\n');
 for (const [before, after] of [
- ['mod browser_args;', '#[cfg(any(target_os = "windows", test))]\nmod lite_browser_policy;\nmod browser_args;'],
+ ['mod browser_args;', '#[cfg(any(target_os = "windows", test))]\nmod lite_browser_policy;\nmod mutiny_web_policy;\nmod browser_args;'],
  ['            browser::browser_open,', '            browser::browser_open,\n            browser::lite_browser_open,'],
  ['<title>Harbor</title>', '<title>Mutiny Media</title>'],
+ ['        .plugin(privacy::init())', `        .plugin(tauri::plugin::Builder::<tauri::Wry>::new("mutiny-web-boundary")
+            .on_navigation(|webview, url| {
+                webview.label() != "main" || (url.username().is_empty() && url.password().is_none()
+                    && mutiny_web_policy::allowed_main_navigation(url.scheme(), url.host_str(), url.port(), cfg!(debug_assertions)))
+            })
+            .build())
+        .plugin(privacy::init())`],
+
 ]) {
  if (source.split(before).length !== 2) throw Error(`Pinned native anchor changed: ${before}`);
  source = source.replace(before, after);
 }
+const policy = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'native/mutiny_web_policy.rs');
+fs.copyFileSync(policy, path.join(root, 'src-tauri/src/mutiny_web_policy.rs'));
 const file = path.join(root,'src-tauri/src/lib.rs');
 const backup=path.join(root,'.mutiny-1.0.1-contract-backup/src-tauri/src/lib.rs');
 if(!fs.existsSync(backup)){fs.mkdirSync(path.dirname(backup),{recursive:true});fs.copyFileSync(file,backup)}

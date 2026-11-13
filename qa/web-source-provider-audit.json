@@ -1,0 +1,220 @@
+{
+  "checked": "2026-11-13",
+  "note": "Published URL formats and provider embed generators, not live playback verification. Numbered VidSrc entries are official mirror choices; DuaFile numbering is not established. Unknown entries are retained only in the advanced list. Cinemeta mappings verify exact IMDb identities; no provider playback has been verified.",
+  "new_mappings": [
+    {
+      "name": "NonTonGo",
+      "movie": "https://www.nontongo.win/embed/movie/{id}",
+      "series": "https://www.nontongo.win/embed/tv/{id}/{season}/{episode}",
+      "identifiers": "imdb-or-tmdb",
+      "source": "https://www.nontongo.win/"
+    },
+    {
+      "name": "VidRock 1",
+      "movie": "https://vidrock.to/movie/{tmdb}",
+      "series": "https://vidrock.to/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://vidrock.to/"
+    },
+    {
+      "name": "VidRock 2",
+      "movie": "https://vidrock.net/movie/{tmdb}",
+      "series": "https://vidrock.net/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://vidrock.net/"
+    },
+    {
+      "name": "VidZee",
+      "movie": "https://player.vidzee.wtf/embed/movie/{tmdb}",
+      "series": "https://player.vidzee.wtf/embed/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://player.vidzee.wtf/"
+    },
+    {
+      "name": "VidUp",
+      "movie": "https://vidup.to/movie/{id}",
+      "series": "https://vidup.to/tv/{id}/{season}/{episode}",
+      "identifiers": "imdb-or-tmdb",
+      "source": "https://vidup.to/"
+    },
+    {
+      "name": "MultiEmbed",
+      "movie": "https://multiembed.mov/?video_id={tmdb}&tmdb=1",
+      "series": "https://multiembed.mov/?video_id={tmdb}&tmdb=1&s={season}&e={episode}",
+      "identifiers": "tmdb",
+      "source": "https://www.superembed.stream/"
+    },
+    {
+      "name": "Frembed",
+      "movie": "https://frembed.uno/embed/movie/{id}",
+      "series": "https://frembed.uno/embed/serie/{id}?sa={season}&epi={episode}",
+      "identifiers": "imdb-or-tmdb",
+      "source": "https://frembed.uno/api-docs"
+    },
+    {
+      "name": "Fmov",
+      "movie": "https://fmov.my/embed/movie/{tmdb}",
+      "series": "https://fmov.my/embed/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://fmov.my/docs"
+    },
+    {
+      "name": "Vidy",
+      "movie": "https://vidy.st/movie/{tmdb}",
+      "series": "https://vidy.st/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://www.vidy.st/"
+    },
+    {
+      "name": "FrameXTV",
+      "movie": "https://framextv.cc/embed/{tmdb}",
+      "series": "https://framextv.cc/embed/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://framextv.cc/api"
+    },
+    {
+      "name": "Stellar",
+      "movie": "https://stellar.rip/en/watch/embed/movie/{tmdb}",
+      "series": "https://stellar.rip/en/watch/embed/tv/{tmdb}-{season}-{episode}",
+      "identifiers": "tmdb",
+      "source": "https://stellar.rip/en/api"
+    },
+    {
+      "name": "Ovidads",
+      "movie": "https://0vidads.top/embed/movie/{tmdb}",
+      "series": "https://0vidads.top/embed/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://0vidads.top/"
+    },
+    {
+      "name": "VidStuck",
+      "movie": "https://vidstuck.cc/embed/movie/{tmdb}",
+      "series": "https://vidstuck.cc/embed/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://vidstuck.cc/"
+    },
+    {
+      "name": "VidRift",
+      "movie": "https://embed.vidrift.net/embed/movie/{tmdb}",
+      "series": "https://embed.vidrift.net/embed/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://vidrift.net/docs/"
+    },
+    {
+      "name": "Cinezo",
+      "movie": "https://player.cinezo.live/embed/movie/{tmdb}",
+      "series": "https://player.cinezo.live/embed/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://cinezo.live/"
+    },
+    {
+      "name": "CineXtream",
+      "movie": "https://cinextream.net/api/embed/movie/{tmdb}",
+      "series": "https://cinextream.net/api/embed/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://cinextream.cc/"
+    },
+    {
+      "name": "StreamVault",
+      "movie": "https://streamvaultsrc.click/embed/movie/{tmdb}",
+      "series": "https://streamvaultsrc.click/embed/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://streamvaultsrc.click/docs"
+    },
+    {
+      "name": "VidCore 2",
+      "movie": "https://vidcore.io/movie/{tmdb}",
+      "series": "https://vidcore.io/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://vidcore.io/"
+    },
+    {
+      "name": "XPass",
+      "movie": "https://play.xpass.top/e/movie/{id}",
+      "series": "https://play.xpass.top/e/tv/{id}/{season}/{episode}",
+      "identifiers": "imdb-or-tmdb",
+      "source": "https://play.xpass.top/"
+    },
+    {
+      "name": "Embos",
+      "movie": "https://embos.top/movie/?mid={tmdb}",
+      "series": "https://embos.top/tv/?mid={tmdb}&s={season}&e={episode}",
+      "identifiers": "tmdb",
+      "source": "https://embos.top/"
+    },
+    {
+      "name": "VidLux",
+      "movie": "https://vidlux.xyz/embed/movie/{tmdb}",
+      "series": "https://vidlux.xyz/embed/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://vidlux.site/docs"
+    },
+    {
+      "name": "VidNest",
+      "movie": "https://vidnest.fun/movie/{tmdb}",
+      "series": "https://vidnest.fun/tv/{tmdb}/{season}/{episode}",
+      "identifiers": "tmdb",
+      "source": "https://vidnest.fun/"
+    },
+    {
+      "name": "CineSrc",
+      "movie": "https://cinesrc.st/embed/movie/{tmdb}",
+      "series": "https://cinesrc.st/embed/tv/{tmdb}?s={season}&e={episode}",
+      "identifiers": "tmdb",
+      "source": "https://cinesrc.st/docs"
+    },
+    {
+      "name": "Mapple",
+      "movie": "https://mapple.fun/watch/movie/{tmdb}?autoPlay=true",
+      "series": "https://mapple.fun/watch/tv/{tmdb}-{season}-{episode}?autoPlay=true",
+      "identifiers": "tmdb",
+      "source": "https://mappletv.uk/docs/getting-started/endpoints"
+    },
+    {
+      "name": "VidSrc 4",
+      "movie": "https://vidsrc.me/embed/movie/{id}",
+      "series": "https://vidsrc.me/embed/tv/{id}/{season}/{episode}",
+      "identifiers": "imdb-or-tmdb",
+      "source": "https://vidsrc.domains/"
+    },
+    {
+      "name": "VidSrc 5",
+      "movie": "https://vidsrc.io/embed/movie/{id}",
+      "series": "https://vidsrc.io/embed/tv/{id}/{season}/{episode}",
+      "identifiers": "imdb-or-tmdb",
+      "source": "https://vidsrc.domains/"
+    },
+    {
+      "name": "VidSrc 6",
+      "movie": "https://vidsrc.gd/embed/movie/{id}",
+      "series": "https://vidsrc.gd/embed/tv/{id}/{season}/{episode}",
+      "identifiers": "imdb-or-tmdb",
+      "source": "https://vidsrc.domains/"
+    },
+    {
+      "name": "VidSrc 7",
+      "movie": "https://vidsrc.bz/embed/movie/{id}",
+      "series": "https://vidsrc.bz/embed/tv/{id}/{season}/{episode}",
+      "identifiers": "imdb-or-tmdb",
+      "source": "https://vidsrc.domains/"
+    }
+  ],
+  "unconfigured": [
+    "VidStorm",
+    "MoviesAPI",
+    "2Embed",
+    "ZxcStream",
+    "Atlantic",
+    "Vidmario",
+    "Velarium",
+    "VidFlix",
+    "Nxsha 2",
+    "ModiPlay",
+    "MoviePire",
+    "VaPlayer",
+    "Cineby",
+    "AnyEmbed",
+    "CinemaOS"
+  ],
+  "preconfigured_count": 42
+}

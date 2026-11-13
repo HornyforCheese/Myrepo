@@ -41,6 +41,7 @@ const original = path.join(source, "src", "views", "play-picker.tsx");
 const modulePaths = [
   "src/lib/mutiny/source-deck-catalog.ts",
   "src/lib/mutiny/source-deck.tsx",
+  "src/lib/mutiny/web-media-ids.ts",
 ];
 const logoPath = "public/mutiny-mark.png";
 const backupRoot = path.join(path.dirname(source), "MutinyMedia-player-backups");

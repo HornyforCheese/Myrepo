@@ -26,6 +26,7 @@ const kit = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const assets = [
   'src/lib/mutiny/source-deck-catalog.ts',
   'src/lib/mutiny/source-deck.tsx',
+  'src/lib/mutiny/web-media-ids.ts',
 ];
 for (const asset of assets) {
   const raw = fs.readFileSync(path.join(kit, asset),'utf8');
@@ -40,8 +41,8 @@ new Function('module','exports',js)(catalog,catalog.exports);
 const { WEB_SOURCE_NAMES, DOCUMENTED_WEB_SOURCE_NAMES, mediaIdentifiers, validEmbedTemplate, embedFor } = catalog.exports;
 assert.equal(WEB_SOURCE_NAMES.length,57);
 assert.equal(new Set(WEB_SOURCE_NAMES).size,57);
-assert.equal(DOCUMENTED_WEB_SOURCE_NAMES.length,14);
-assert.equal(new Set(DOCUMENTED_WEB_SOURCE_NAMES).size,14);
+assert.equal(DOCUMENTED_WEB_SOURCE_NAMES.length,42);
+assert.equal(new Set(DOCUMENTED_WEB_SOURCE_NAMES).size,42);
 assert.ok(DOCUMENTED_WEB_SOURCE_NAMES.every((name)=>WEB_SOURCE_NAMES.includes(name)));
 for(const name of DOCUMENTED_WEB_SOURCE_NAMES) {
   const film = embedFor(name,{id:'tmdb:movie:533535',tmdb:'533535',imdb:'tt12345678',type:'movie'});
@@ -66,7 +67,7 @@ assert.equal(embedFor('EmbedMaster',{id:'tt12345678',type:'movie'}).url,'https:/
 assert.equal(embedFor('PrimeSrc',{id:'tt12345678',type:'series',season:2,episode:4}).url,'https://primesrc.me/embed/tv?imdb=tt12345678&season=2&episode=4');
 assert.equal(embedFor('VidCore 1',{id:'tt12345678',type:'movie'}).url,null);
 assert.equal(embedFor('VidSrc 1',{id:'tt12345678',type:'series',season:1}).url,null);
-assert.equal(embedFor('Mapple',{id:'tt12345678',type:'movie'}).configured,false);
+assert.equal(embedFor('Atlantic',{id:'tt12345678',type:'movie'}).configured,false);
 assert.equal(embedFor('Mapple',{id:'tt12345678',type:'movie'},{Mapple:'https://example.test/embed/{imdb}'}).url,'https://example.test/embed/tt12345678');
 
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'mutiny-deck-test-'));
@@ -135,4 +136,4 @@ fs.writeFileSync(path.join(target,"package.json"), JSON.stringify({name:"harbor"
 assert.throws(()=>run());
 assert.equal(fs.readFileSync(picker,'utf8'),before);
 fs.rmSync(temp,{recursive:true,force:true});
-console.log('PASS: TypeScript syntax, 57 hosts, 14 documented URL adapters, anime dub/sub, PrimeSrc TMDB fallback, Instant Play routing and manual addon selection, apply/verify/idempotence/rollback, safe failure.');
+console.log('PASS: TypeScript syntax, 57 hosts, 42 preconfigured URL adapters, anime dub/sub, PrimeSrc TMDB fallback, Instant Play routing and manual addon selection, apply/verify/idempotence/rollback, safe failure.');
