@@ -22,7 +22,7 @@ for (const [relative, rewrite] of [
 
 function patch(relative, marker, edits) {
   const file = path.join(root, relative);
-  const text = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+  const text = (writes.get(file) ?? fs.readFileSync(file, 'utf8')).toString().replace(/\r\n/g, '\n');
   if (text.includes(marker)) return;
   let next = text;
   for (const [before, after] of edits) {
@@ -50,6 +50,12 @@ patch('src/lib/auth.tsx', 'export function readPrimaryStremioSession()', [[
 export function readActiveStremioAuthKey()`,
 ]]);
 patch('src/lib/mutiny/desktop-actions.tsx', 'from "@/lib/mutiny/live-web"', [['from "@/lib/live-web"', 'from "@/lib/mutiny/live-web"']]);
+patch('src/lib/mutiny/desktop-actions.tsx', 'import { DesktopMediaActions }', [
+  ['import { WebSources } from "./web-sources";', 'import { WebSources } from "./web-sources";\nimport { DesktopMediaActions } from "./desktop-media-actions";'],
+  ['          <WebSources />', '          <WebSources />\n          <DesktopMediaActions />'],
+  ['fixed bottom-4 end-4 z-50 flex flex-wrap', 'fixed bottom-4 end-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap'],
+]);
+
 patch('src/components/search/ai-search/use-ai-suggest.ts', 'from "@/lib/mutiny/live-web"', [
   ['import { enrichWithContent } from "@/lib/jina-search";', 'import { liveWebContext } from "@/lib/mutiny/live-web";'],
   ['await enrichWithContent(query, settings.jinaKey)', 'await liveWebContext(query, settings)'],
@@ -72,7 +78,7 @@ patch('src/lib/addons.ts', 'const combined = await combinedAccountAddons();', [
   ['export async function gatherCatalogAddons(authKey: string | null): Promise<Addon[]> {', 'export async function gatherCatalogAddons(authKey: string | null): Promise<Addon[]> {\n  const { combinedAccountAddons } = await import("@/lib/mutiny/combined-addons");\n  const combined = await combinedAccountAddons();'],
   ['return [...stremio, ...localFull.filter((a): a is Addon => a != null)];', 'return [...stremio, ...localFull.filter((a): a is Addon => a != null), ...combined]\n    .filter((addon, index, all) => all.findIndex(other => other.transportUrl === addon.transportUrl) === index);'],
 ]);
-for (const relative of ['src/lib/mutiny/live-web.ts', 'src/lib/mutiny/combined-addons.ts', 'src/themes/midnight/midnight-preset.ts', 'src/assets/ai-logos/keenable.png']) {
+for (const relative of ['src/lib/mutiny/live-web.ts', 'src/lib/mutiny/combined-addons.ts', 'src/themes/midnight/midnight-preset.ts', 'src/assets/ai-logos/keenable.png', 'src/lib/mutiny/local-video.ts', 'src/lib/mutiny/desktop-media-actions.tsx']) {
   const file = path.join(root, relative);
   const data = fs.readFileSync(path.join(kit, relative));
   if (fs.existsSync(file) && !fs.readFileSync(file).equals(data)) throw Error(`Refusing to overwrite customized module: ${relative}`);
