@@ -72,6 +72,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'v4 source-update integration failed' }
           node tools/repair-v4-translation.mjs --post 'windows-src'
           if ($LASTEXITCODE -ne 0) { throw 'Legacy translation compatibility update failed' }
+          node tools/complete-windows-source.mjs 'windows-src'
+          if ($LASTEXITCODE -ne 0) { throw 'Windows 1.0.1 source contract completion failed' }
 
       - name: Verify customized Windows 1.0.1 version
         shell: pwsh
