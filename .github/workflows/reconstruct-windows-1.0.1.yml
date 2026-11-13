@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Harborofficial/Harbor
-          ref: v1.0.1-beta
+          ref: d862943d27ca10beca26d0d53e7bf6be66688968 # v1.0.1-beta
           path: windows-src
 
       - name: Assemble and verify archived user source overlay

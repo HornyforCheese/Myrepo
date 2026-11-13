@@ -8,7 +8,7 @@
 - 10 verified titles: 6 films (including one anime film), 2 live-action series episodes and 2 anime episodes.
 - 57 × 10 = **570 distinct provider/media checks**. Preserve same media selection while switching source.
 - Test on **Windows Mutiny Media v1.0.1**, using the actual release candidate executable (not the standalone HTML design demo and not Android).
-- The archived current source deck exposes only **six documentation-based URL builders**, with **51 providers needing configuration**. No actual playback is presently verified.
+- The current source deck exposes **14 documentation-based URL builders**, with **43 providers needing configuration**. The CSV remains an unexecuted live-test plan. No actual playback is presently verified.
 
 ## Required verification per case
 

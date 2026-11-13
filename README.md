@@ -38,6 +38,7 @@ Do not rename legacy protocol, cache keys or third-party licence attribution wit
 
 - Static source-deck tests: passed locally.
 - Three branding validation passes: passed locally.
-- Full Windows compile: not performed; complete source checkout absent.
+- Exact 1.0.1 reconstruction and guarded player/branding integration: passed locally.
+- Full Windows compile: pending Windows CI; no installer is claimed until it passes.
 - 570 real web-provider checks: not performed.
 - Installer / GitHub Release: not published.

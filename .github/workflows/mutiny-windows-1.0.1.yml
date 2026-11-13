@@ -22,7 +22,9 @@ jobs:
         run: npm install --no-save typescript@5
       - name: Source deck, URL template and rollback tests
         shell: pwsh
-        run: node tests/run-tests.mjs
+        run: |
+          node tests/run-tests.mjs
+          node --test tests/*-compat.test.mjs
       - name: Three branding validation passes
         shell: pwsh
         run: |

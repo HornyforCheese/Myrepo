@@ -51,6 +51,53 @@ if (stage==='--pre') {
   fs.writeFileSync(lowScript,low.split(newer).join(tagged),'utf8');
   console.log('Adapted low-bandwidth MPV patch to verified v1.0.1 buffer signature.');
 
+  const wiringPath = path.join(root, 'tools', 'apply-v4.mjs');
+  const wiring = fs.readFileSync(wiringPath, 'utf8');
+  const wiringStart = wiring.indexOf("patch('src/views/settings/account/nuvio-synced-addons-card.tsx'");
+  const wiringEnd = wiring.indexOf("\npatch('src/views/play-picker.tsx'", wiringStart);
+  if (wiringStart < 0 || wiringEnd < 0 || (wiring.indexOf("'Nuvio duplicate hook'", wiringStart) < wiringStart || wiring.indexOf("'Nuvio duplicate hook'", wiringStart) >= wiringEnd)) {
+    throw Error('Unexpected archived Nuvio hook patch; refusing to guess.');
+  }
+  let updated = wiring.slice(0, wiringStart) +
+    "patch('src/views/settings/account/nuvio-synced-addons-card.tsx','// Mutiny hooks order fix',repairNuvioHookOrder);" +
+    wiring.slice(wiringEnd);
+  // The base customization adds an exact-resolution guard before v4 runs.
+  // Preserve that guard while also preventing strict anime filters from falling back.
+  updated = oneReplace(updated,
+    "'if (all.length === 0 && candidatePool.length > 0) {'",
+    "'if (!mutinyExact && all.length === 0 && candidatePool.length > 0) {'", 'anime fallback input');
+  updated = oneReplace(updated,
+    "'if (all.length === 0 && candidatePool.length > 0 && !(isAnimeRequest && animeMode !== \"all\")) {'",
+    "'if (!mutinyExact && all.length === 0 && candidatePool.length > 0 && !(isAnimeRequest && animeMode !== \"all\")) {'", 'anime fallback output');
+  const startupStart = updated.indexOf("patch('index.html'");
+  const startupEnd = updated.indexOf("\nconsole.log('v4 source wiring complete.", startupStart);
+  if (startupStart < 0 || startupEnd < 0 || !updated.slice(startupStart, startupEnd).includes('Could not identify legacy startup SVG')) {
+    throw Error('Unexpected archived startup patch; refusing to guess.');
+  }
+  updated = updated.slice(0, startupStart) + "patch('index.html','Mutiny Media startup art',repairStartupArt);" + updated.slice(startupEnd);
+  fs.copyFileSync(new URL('./startup-art-compat.mjs', import.meta.url), path.join(root, 'tools', 'startup-art-compat.mjs'));
+  fs.copyFileSync(new URL('./nuvio-hook-compat.mjs', import.meta.url), path.join(root, 'tools', 'nuvio-hook-compat.mjs'));
+  fs.writeFileSync(wiringPath, oneReplace(updated, "import fs from 'node:fs';",
+    "import { repairNuvioHookOrder } from './nuvio-hook-compat.mjs';\nimport { repairStartupArt } from './startup-art-compat.mjs';\nimport fs from 'node:fs';", 'v4 import declaration'), 'utf8');
+  console.log('Adapted Nuvio hook repair to the pinned 1.0.1 connected-state card.');
+  const scoringScript = fs.readFileSync(lowScript, 'utf8');
+  fs.writeFileSync(lowScript, oneReplace(scoringScript,
+    "patch('src/lib/streams/scoring/scoring-stream.ts','mutiny-resolution-above-target',",
+    "patch('src/lib/streams/scoring/scoring-stream.ts','const lowBandwidthPreference = codecResolutionDelta(',", 'scoring idempotency marker'), 'utf8');
+  const verifyPath = path.join(root, 'tools', 'verify-kit.mjs');
+  let verify = fs.readFileSync(verifyPath, 'utf8');
+  verify = oneReplace(verify,
+    "['src/views/settings/player-panel/bandwidth-section.tsx','Ultra Low Bandwidth Mode']",
+    "['src/views/settings/player-panel/bandwidth-section.tsx','import { UltraLowBandwidthCard }']", 'current bandwidth UI import check');
+  verify = oneReplace(verify,
+    "['src/lib/streams/scoring/scoring-stream.ts','mutiny-resolution-above-target']",
+    "['src/lib/streams/scoring/scoring-stream.ts','const lowBandwidthPreference = codecResolutionDelta(']", 'current scoring integration check');
+  fs.writeFileSync(verifyPath, oneReplace(verify,
+    '  const ready = v3.filter(([name, marker]) => txt(name).includes(marker));',
+    '  for (const [name, marker] of v3) if (!txt(name).includes(marker)) console.error(`Missing integration: ${name}: ${marker}`);\n  const ready = v3.filter(([name, marker]) => txt(name).includes(marker));', 'integration diagnostics'), 'utf8');
+
+
+
 } else {
   const manifest=JSON.parse(fs.readFileSync(path.join(root,'src-tauri','tauri.conf.json'),'utf8'));
   const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
