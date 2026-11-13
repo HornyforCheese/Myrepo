@@ -202,5 +202,5 @@ jobs:
             gh release upload windows-v1.0.1 MutinyMedia-1.0.1-windows-x64-setup.exe SHA256SUMS.txt
             gh release edit windows-v1.0.1 --draft=false --prerelease --title 'Mutiny Media 1.0.1 — Windows x64' --notes-file release-notes.md
           else
-            gh release create windows-v1.0.1 MutinyMedia-1.0.1-windows-x64-setup.exe SHA256SUMS.txt --target ab184a73ceebfc063c5d6aedc0fbaff0111907f1 --title 'Mutiny Media 1.0.1 — Windows x64' --notes-file release-notes.md --prerelease
+            gh release create windows-v1.0.1 MutinyMedia-1.0.1-windows-x64-setup.exe SHA256SUMS.txt --verify-tag --title 'Mutiny Media 1.0.1 — Windows x64' --notes-file release-notes.md --prerelease
           fi
