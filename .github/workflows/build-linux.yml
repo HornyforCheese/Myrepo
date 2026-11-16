@@ -1,0 +1,182 @@
+name: Build Mutiny Media 1.0.1 for Linux
+
+on:
+  push:
+    branches:
+      - mutiny-media-linux
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
+  CARGO_BUILD_JOBS: "2"
+
+jobs:
+  linux-x64:
+    name: Native Linux x64 (DEB and AppImage)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout the Mutiny customization workbench
+        uses: actions/checkout@v4
+
+      - name: Checkout exact upstream desktop source
+        uses: actions/checkout@v4
+        with:
+          repository: Harborofficial/Harbor
+          ref: d862943d27ca10beca26d0d53e7bf6be66688968
+          path: linux-src
+
+      - name: Reconstruct verified Mutiny Media 1.0.1 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob, hashlib, json, os
+          manifest=json.load(open('third_party/v4-overlay/manifest.json'))
+          parts=sorted(glob.glob('third_party/v4-overlay/overlay.part*'))
+          if len(parts)!=len(manifest['parts']):
+              raise SystemExit(f"Expected {len(manifest['parts'])} overlay parts, found {len(parts)}")
+          sha=hashlib.sha256()
+          with open('/tmp/mutiny-overlay.zip','wb') as dest:
+              for part in parts:
+                  with open(part,'rb') as src:
+                      for chunk in iter(lambda:src.read(1024*1024),b''):
+                          sha.update(chunk); dest.write(chunk)
+          actual=sha.hexdigest()
+          if actual!=manifest['source_sha256']:
+              raise SystemExit(f"Overlay checksum mismatch: {actual}")
+          print(f"Verified archived customization overlay: {len(parts)} parts, sha256={actual}")
+          PY
+          mkdir -p v4-kit
+          unzip -q /tmp/mutiny-overlay.zip -d v4-kit
+          test -f v4-kit/MutinyMedia_v4_DirectSource_Update/tools/apply-update.mjs
+
+      - name: Install native Linux build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential pkg-config curl wget file unzip xz-utils patchelf \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev libmpv-dev libasound2-dev libudev-dev \
+            libdbus-1-dev libxdo-dev libclang-dev libgl1-mesa-dev \
+            libegl1-mesa-dev libvulkan-dev libfuse2t64
+          pkg-config --modversion webkit2gtk-4.1
+          pkg-config --modversion mpv
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: linux-src/src-tauri -> target
+          cache-on-failure: true
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Apply exactly the Windows 1.0.1 customization source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/repair-v4-translation.mjs --pre v4-kit/MutinyMedia_v4_DirectSource_Update
+          node v4-kit/MutinyMedia_v4_DirectSource_Update/tools/apply-update.mjs linux-src
+          node tools/repair-v4-translation.mjs --post linux-src
+          node tools/repair-windows-native.mjs linux-src
+          node tools/complete-windows-source.mjs linux-src
+          node tools/check-project.mjs linux-src
+
+      - name: Install frontend dependencies
+        working-directory: linux-src
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply source deck and branding, preserving legacy APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/apply-player-deck.mjs --target linux-src
+          node tools/brand-windows-1.0.1.mjs linux-src --apply
+          node tools/apply-player-deck.mjs --target linux-src --verify
+          node tools/check-project.mjs linux-src
+
+      - name: Run frontend and source compatibility checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd linux-src && pnpm run typecheck)
+          export TYPESCRIPT_LIB="$PWD/linux-src/node_modules/typescript"
+          node tests/run-tests.mjs
+          node --test tests/*-compat.test.mjs
+
+      - name: Verify native application metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'JS'
+          const fs=require('fs');
+          const c=JSON.parse(fs.readFileSync('linux-src/src-tauri/tauri.conf.json','utf8'));
+          const p=JSON.parse(fs.readFileSync('linux-src/package.json','utf8'));
+          if(p.name!=='mutiny-media'||p.version!=='1.0.1'||c.productName!=='Mutiny Media'||c.identifier!=='app.mutiny.media') throw Error('Wrong source');
+          if(!c.bundle?.linux?.deb) throw Error('Linux bundle configuration missing');
+          console.log('Confirmed Mutiny Media 1.0.1 native Linux packaging.');
+          JS
+
+      - name: Stage application resources and runtime sidecars for Linux
+        working-directory: linux-src
+        run: pnpm run setup
+
+      - name: Build native Ubuntu DEB package
+        working-directory: linux-src
+        run: pnpm tauri build --bundles deb
+
+      - name: Upload native Linux DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutiny-media-1.0.1-linux-x64-deb
+          path: linux-src/src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Build Linux AppImage
+        id: appimage
+        continue-on-error: true
+        working-directory: linux-src
+        run: pnpm tauri build --bundles appimage
+
+      - name: Upload Linux AppImage when bundling succeeds
+        if: steps.appimage.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutiny-media-1.0.1-linux-x64-appimage
+          path: linux-src/src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Summarize native Linux build
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Mutiny Media 1.0.1 native Linux build"
+            echo
+            echo "Source: same pinned Harbor baseline and archived Mutiny Media customization used by the Windows build."
+            echo
+            echo "Linux packages: DEB (required), AppImage (best effort)."
+            echo
+            echo "AppImage outcome: ${{ steps.appimage.outcome }}."
+            echo
+            echo "Building a package does not establish successful GUI launch, playback, addon provider operation or Vulkan acceleration on the Vultr PC."
+          } >> "$GITHUB_STEP_SUMMARY"
