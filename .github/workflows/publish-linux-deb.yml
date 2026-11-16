@@ -1,0 +1,66 @@
+name: Publish Mutiny Media Linux DEB as a public download
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/publish-linux-deb.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download verified successful Linux build artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: HornyforCheese/Myrepo
+          run-id: 43857762388
+          name: mutiny-media-1.0.1-linux-x64-deb
+          path: linux-installer
+
+      - name: Verify DEB structure and calculate checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          file 'linux-installer/Mutiny Media_1.0.1_amd64.deb'
+          dpkg-deb --field 'linux-installer/Mutiny Media_1.0.1_amd64.deb' Package Version Architecture
+          mv 'linux-installer/Mutiny Media_1.0.1_amd64.deb' 'linux-installer/MutinyMedia-1.0.1-linux-amd64.deb'
+          (cd linux-installer && sha256sum MutinyMedia-1.0.1-linux-amd64.deb > SHA256SUMS.txt)
+
+      - name: Publish direct public GitHub Release download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: HornyforCheese/Myrepo
+        run: |
+          set -euo pipefail
+          TAG=linux-v1.0.1-deb
+          cat > /tmp/release-notes.md <<'NOTES'
+          Mutiny Media 1.0.1 native Linux AMD64 DEB.
+          Built successfully on ubuntu-24.04 from the Windows 1.0.1 source overlay and pinned upstream.
+          This is a testing build: GUI startup, video playback, add-ons and hardware acceleration have not been validated on a Vultr machine.
+
+          Install on a compatible Ubuntu-based Linux desktop:
+          sudo apt install ./MutinyMedia-1.0.1-linux-amd64.deb
+
+          Build provenance: https://github.com/HornyforCheese/Myrepo/actions/runs/43857762388
+          NOTES
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" 'linux-installer/MutinyMedia-1.0.1-linux-amd64.deb' 'linux-installer/SHA256SUMS.txt' --clobber
+            gh release edit "$TAG" --notes-file /tmp/release-notes.md --draft=false
+          else
+            gh release create "$TAG" \
+              'linux-installer/MutinyMedia-1.0.1-linux-amd64.deb' \
+              'linux-installer/SHA256SUMS.txt' \
+              --target c4c7b4f63f78b7911a0140508f4b388c18eef1bd \
+              --title 'Mutiny Media 1.0.1 - Native Linux AMD64 DEB' \
+              --notes-file /tmp/release-notes.md --prerelease
+          fi
+          gh release view "$TAG" --json url,assets --jq '{url: .url, assets: [.assets[] | {name: .name, size: .size, url: .url}]}'
