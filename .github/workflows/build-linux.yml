@@ -138,19 +138,24 @@ jobs:
         working-directory: linux-src
         run: pnpm run setup
 
-      - name: Build native Ubuntu DEB using system FFmpeg and yt-dlp
+      - name: Build native Ubuntu DEB using system FFmpeg
         working-directory: linux-src
         run: pnpm tauri build --config src-tauri/tauri.linux-system.conf.json --bundles deb
 
-      - name: Check package does not overwrite Ubuntu multimedia tools
+      - name: Verify DEB never replaces system multimedia tools
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
           packages=(linux-src/src-tauri/target/release/bundle/deb/*.deb)
           test "${#packages[@]}" -eq 1
-          pkg="${packages[0]}"
-          if dpkg-deb --fsys-tarfile "$pkg" | tar -tf - | grep -E '^\\./usr/bin/(ffprobe|ffmpeg|yt-dlp)
+          package="${packages[0]}"
+          if dpkg-deb --fsys-tarfile "$package" | tar -tf - | grep -E '^\./usr/bin/(ffprobe|ffmpeg|yt-dlp)$'; then
+            echo "ERROR: DEB would replace system multimedia tool" >&2
+            exit 1
+          fi
+          dpkg-deb --field "$package" Package Version Architecture Depends
+          echo "No /usr/bin multimedia tool conflicts"
 
       - name: Upload native Linux DEB
         uses: actions/upload-artifact@v4
@@ -165,54 +170,6 @@ jobs:
         continue-on-error: true
         working-directory: linux-src
         run: pnpm tauri build --config src-tauri/tauri.linux-system.conf.json --bundles appimage
-
-      - name: Upload Linux AppImage when bundling succeeds
-        if: steps.appimage.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: mutiny-media-1.0.1-linux-x64-appimage
-          path: linux-src/src-tauri/target/release/bundle/appimage/*.AppImage
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Summarize native Linux build
-        if: always()
-        shell: bash
-        run: |
-          {
-            echo "## Mutiny Media 1.0.1 native Linux build"
-            echo
-            echo "Source: same pinned Harbor baseline and archived Mutiny Media customization used by the Windows build."
-            echo
-            echo "Linux packages: DEB (required), AppImage (best effort)."
-            echo
-            echo "AppImage outcome: ${{ steps.appimage.outcome }}."
-            echo
-            echo "Building a package does not establish successful GUI launch, playback, addon provider operation or Vulkan acceleration on the Vultr PC."
-          } >> "$GITHUB_STEP_SUMMARY"
-; then
-            echo 'ERROR: Package would overwrite existing system multimedia tools' >&2
-            exit 1
-          fi
-          echo 'PASS: no ffmpeg, ffprobe or yt-dlp files under /usr/bin'
-          dpkg-deb --field "$pkg" Package Version Architecture Depends
-          sudo apt-get -s install "./$pkg" >/tmp/mutiny-apt-check.txt
-          tail -20 /tmp/mutiny-apt-check.txt
-          echo 'PASS: Ubuntu 24.04 package installation simulated successfully'
-
-      - name: Upload native Linux DEB
-        uses: actions/upload-artifact@v4
-        with:
-          name: mutiny-media-1.0.1-linux-x64-deb
-          path: linux-src/src-tauri/target/release/bundle/deb/*.deb
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Build Linux AppImage
-        id: appimage
-        continue-on-error: true
-        working-directory: linux-src
-        run: pnpm tauri build --bundles appimage
 
       - name: Upload Linux AppImage when bundling succeeds
         if: steps.appimage.outcome == 'success'
