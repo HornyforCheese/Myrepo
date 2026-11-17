@@ -109,6 +109,7 @@ jobs:
           set -euo pipefail
           node tools/apply-player-deck.mjs --target linux-src
           node tools/brand-windows-1.0.1.mjs linux-src --apply
+          node tools/repair-linux-ui.mjs linux-src
           node tools/apply-player-deck.mjs --target linux-src --verify
           node tools/check-project.mjs linux-src
 
@@ -165,14 +166,22 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Build Linux AppImage
-        id: appimage
-        continue-on-error: true
+      - name: Build and verify Linux AppImage
         working-directory: linux-src
-        run: pnpm tauri build --config src-tauri/tauri.linux-system.conf.json --bundles appimage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          NO_STRIP: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm tauri build --config src-tauri/tauri.linux-system.conf.json --bundles appimage
+          shopt -s nullglob
+          appimages=(src-tauri/target/release/bundle/appimage/*.AppImage)
+          test "${#appimages[@]}" -eq 1
+          test -s "${appimages[0]}"
+          file "${appimages[0]}"
 
-      - name: Upload Linux AppImage when bundling succeeds
-        if: steps.appimage.outcome == 'success'
+      - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
         with:
           name: mutiny-media-1.0.1-linux-x64-appimage
@@ -189,9 +198,9 @@ jobs:
             echo
             echo "Source: same pinned Harbor baseline and archived Mutiny Media customization used by the Windows build."
             echo
-            echo "Linux packages: DEB (required), AppImage (best effort)."
+            echo "Linux packages: DEB and AppImage are both required."
             echo
-            echo "AppImage outcome: ${{ steps.appimage.outcome }}."
+            echo "The AppImage build and upload steps must succeed for a green job."
             echo
             echo "Building a package does not establish successful GUI launch, playback, addon provider operation or Vulkan acceleration on the Vultr PC."
           } >> "$GITHUB_STEP_SUMMARY"
