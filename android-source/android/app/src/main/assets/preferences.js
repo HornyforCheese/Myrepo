@@ -53,7 +53,7 @@ export function isAnime(meta) {
   const genres=[...(meta?.genres||[]),...(meta?.genre||[])];
   return genres.some(x=>/anime|animation/i.test(String(x))) || /anime/i.test(String(meta?.name||''));
 }
-function getStreamLabel(stream) {return [stream?.title,stream?.name,stream?.description].filter(Boolean).join(' ').toLowerCase();}
+function getStreamLabel(stream) {return [stream?.title,stream?.name,stream?.description,stream?.providerName].filter(Boolean).join(' ').toLowerCase();}
 export function streamResolution(stream) {
   const label = getStreamLabel(stream);
   const match = label.match(/(2160|1080|720|480|360)p?\b/);
