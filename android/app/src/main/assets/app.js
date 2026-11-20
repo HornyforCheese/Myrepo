@@ -25,6 +25,7 @@ function setPage(next) {
   main.replaceChildren(); window.scrollTo(0, 0);
   if (page === 'home') home();
   if (page === 'search') search();
+  if (page === 'anime') animeDiscover();
   if (page === 'library') library();
   if (page === 'settings') settings();
 }
@@ -113,8 +114,41 @@ function search() {
   shortcuts.append(actions);
   const anime = el('section', null, 'anime-discovery');
   anime.append(el('h2', 'Anime'), el('p', 'Search anime titles in the catalog. Dub, sub and uncensored filters require provider metadata.', 'note'));
-  anime.append(button('Find anime', () => { input.value = 'anime'; run(); }, 'box'));
+  anime.append(button('Browse anime', () => setPage('anime'), 'box'));
   main.append(shortcuts, form, chips, anime, results); stateBox(results, 'Search movies, series and anime by title.');
+}
+function animeDiscover() {
+  main.append(el('span', 'Anime discovery', 'eyebrow'), el('h1', 'Anime'), el('p', 'Search anime films and series. Catalog results are title matches, not a verified anime-only index.', 'note'));
+  main.append(button('‹ Back to Discover', () => setPage('search')));
+  const form = el('form'), input = el('input');
+  input.type = 'search'; input.placeholder = 'Anime title or keyword'; input.value = 'anime'; input.maxLength = 150;
+  input.setAttribute('aria-label', 'Search anime titles');
+  const submit = el('button', 'Search anime', 'primary'); submit.type = 'submit'; form.append(input, submit);
+  const typeRow = el('div', null, 'chips'), results = el('section');
+  let animeType = 'series', token = 0;
+  const updateType = () => {
+    typeRow.replaceChildren();
+    for (const [value, name] of [['series', 'Series'], ['movie', 'Films']])
+      typeRow.append(button(name, () => { animeType = value; updateType(); run(); }, animeType === value ? 'selected' : ''));
+  };
+  const run = async () => {
+    const query = input.value.trim();
+    if (!query) return stateBox(results, 'Enter an anime title or keyword.');
+    const request = ++token, pageRequest = pageToken;
+    stateBox(results, 'Searching anime titles…');
+    try {
+      const data = await jsonRequest(`${API}/catalog/${animeType}/top/search=${encodeURIComponent(query)}.json`);
+      if (request !== token || page !== 'anime' || pageRequest !== pageToken) return;
+      if (!Array.isArray(data.metas) || !data.metas.length) return stateBox(results, 'No matching titles found.');
+      results.replaceChildren(grid(data.metas), el('p', 'Dub, sub, dual-audio and uncensored availability depends on each stream provider and cannot be confirmed from these catalog results.', 'note'));
+    } catch (error) {
+      if (request === token && page === 'anime') stateBox(results, 'Anime search failed. Check your connection and retry.', run);
+    }
+  };
+  form.addEventListener('submit', event => { event.preventDefault(); run(); });
+  updateType();
+  main.append(form, typeRow, results);
+  run();
 }
 function library() {
   main.append(el('span', 'Collected by you', 'eyebrow'), el('h1', 'My library'), el('p', 'Your saved titles stay on this device.'));
