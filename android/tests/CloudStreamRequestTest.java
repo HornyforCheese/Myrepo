@@ -3,7 +3,7 @@ package app.mutiny.media;
 import org.json.JSONObject;
 
 public final class CloudStreamRequestTest {
-    private static void rejects(JSONObject request) {
+    private static void rejects(JSONObject request) throws Exception {
         try { CloudStreamRequest.validate(request); throw new AssertionError("Accepted: " + request); }
         catch (IllegalArgumentException expected) { }
     }
