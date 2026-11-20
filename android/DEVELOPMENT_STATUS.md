@@ -127,3 +127,7 @@ User uploaded `StreamPlay.cs3` (2,236,985 bytes, SHA-256 `94d7ec68ed45cf3527fb71
 ## StreamPlay v715 DEX host method inventory
 
 Static Python DEX method-ID parsing of user-uploaded v715 binary identified 211 method references in 81 CloudStream class owners; see `android/STREAMPLAY_COMPATIBILITY.md` commit `35dbf67cf8b5bb6c1bb8e760d92cef66e00f56d2`. Added reproducible local Node inspector `android/tests/streamplay-abi.mjs` in `e335111c86785eab56699682b37218a55d699f83`. Inspector source re-read but Node script not executed; independent Python parsing ran. This is compatibility analysis, **not executable plugin integration**. No APK/device test. Cannot support 90% reliability estimate.
+
+## StreamPlay pinned archive descriptor IPC
+
+`272ee89755405989d0bb58e343882146faf40bcc` passes pinned archive via read-only ParcelFileDescriptor to isolated worker, `37beff0038c60d842691dd29902f3f67aa44b54d` binds native API to digest-aware transport, `66da718066b6921786b021095c768f356dddff31` adds worker-thread SHA-256 verification before failing closed, and `c3a6406ce6716e9787039df921c5ae68e7c48c2e` updates static regression assertions. Source re-read only, no tests or APK. **StreamPlay still cannot execute; full CloudStream host ABI missing.**
