@@ -29,7 +29,12 @@ public final class AiClient {
         java.util.Map<String,String> changes = new java.util.HashMap<>();
         changes.put("ai.model." + provider, model);
         if (input.optBoolean("clearKey")) changes.put("ai.key." + provider, "");
-        else if (!input.optString("key").trim().isEmpty()) changes.put("ai.key." + provider, input.getString("key").trim());
+        else if (!input.optString("key").trim().isEmpty()) {
+            String key = input.getString("key").trim();
+            if (key.length() > 4096 || key.chars().anyMatch(c -> c <= 32 || c == 127))
+                throw new IllegalArgumentException("Invalid API key format");
+            changes.put("ai.key." + provider, key);
+        }
         changes.put("ai.provider", provider);
         secrets.putAll(changes);
         return config();
@@ -38,6 +43,8 @@ public final class AiClient {
     public JSONObject models(String provider, String suppliedKey) throws Exception {
         endpoint(provider);
         String key = suppliedKey == null ? "" : suppliedKey.trim();
+        if (key.length() > 4096 || key.chars().anyMatch(c -> c <= 32 || c == 127))
+            throw new IllegalArgumentException("Invalid API key format");
         if (key.isEmpty()) key = secrets.get("ai.key." + provider);
         if (key.isEmpty() && !provider.equals("openrouter"))
             throw new IllegalStateException("Enter and save an API key for " + provider + " before refreshing models");
@@ -112,8 +119,9 @@ public final class AiClient {
         JSONObject settings = config(); String provider = settings.getString("provider");
         String key = secrets.get("ai.key." + provider), model = settings.getString("model");
         if (key.isEmpty() || model.isEmpty()) throw new IllegalStateException("Add an API key and model in AI settings first");
-        if (query.trim().isEmpty() || query.length() > 2000) throw new IllegalArgumentException("Describe what you want in 1–2000 characters");
+        if (query == null || query.trim().isEmpty() || query.length() > 2000) throw new IllegalArgumentException("Describe what you want in 1–2000 characters");
         String prompt = "Find up to 8 real movies or TV series matching the user. Return ONLY a JSON array of objects {\"title\":\"exact title\",\"year\":2000,\"type\":\"movie\" or \"series\",\"reason\":\"short reason\"}. For a specific episode also add numeric season and episode. Never invent IDs or URLs.";
+        if (references == null) references = "";
         if (references.length() > 6000) throw new IllegalArgumentException("Reference text is too long");
         JSONArray messages = new JSONArray().put(new JSONObject().put("role", "system").put("content", prompt));
         if (history != null) {
