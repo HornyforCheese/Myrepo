@@ -37,6 +37,14 @@ try {
     });
     await page.route('https://addon.example/**', route => route.fulfill({ json: route.request().url().endsWith('/manifest.json') ? { id: 'test.addon', name: 'Test add-on', types: ['movie', 'series'], resources: ['stream'] } : { streams: [{ name: 'HTTPS sample', url: 'https://video.example/sample.mp4' }, { name: 'Torrent only', infoHash: 'abc123' }] } }));
     await page.goto(`http://127.0.0.1:${port}/`);
+    assert.equal(await page.locator('.home-shortcuts button').count(), 5); checks++;
+    await page.locator('nav [data-page=settings]').click();
+    await page.getByRole('button', { name: /General Settings/ }).click();
+    await page.getByRole('button', { name: 'Load cloud library' }).waitFor(); checks++;
+    await page.evaluate(() => window.mutinyBack());
+    await page.getByRole('button', { name: /Streaming Server/ }).click();
+    await page.getByRole('button', { name: 'Refresh torrent' }).waitFor(); checks++;
+    await page.locator('nav [data-page=home]').click();
     await page.getByRole('button', { name: /The Matrix/ }).click();
     await page.getByRole('button', { name: /Save to library/ }).click();
     await page.getByRole('button', { name: 'Play source', exact: false }).click();
