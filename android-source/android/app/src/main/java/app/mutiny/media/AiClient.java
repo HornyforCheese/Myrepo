@@ -33,7 +33,7 @@ public final class AiClient {
         if (key.isEmpty() || model.isEmpty()) throw new IllegalStateException("Add an API key and model in AI settings first");
         if (query.trim().isEmpty() || query.length() > 2000) throw new IllegalArgumentException("Describe what you want in 1–2000 characters");
         if (!"media".equals(kind)) throw new IllegalArgumentException("Only media recommendations are supported");
-        String prompt = "Find up to 8 real movies, TV series or anime matching the user. Return ONLY a JSON array of objects {\\\"title\\\":\\\"exact title\\\",\\\"year\\\":2000,\\\"type\\\":\\\"movie\\\" or \\\"series\\\",\\\"reason\\\":\\\"short reason\\\"}. Never invent IDs, URLs, or verified availability.";
+        String prompt = "Find up to 8 real movies, TV series or anime matching the user. Return ONLY a JSON array of objects with title, year, type (movie or series), and short reason. Never invent IDs, URLs, or verified availability.";
         JSONObject body = new JSONObject().put("model", model).put("max_tokens", 1800).put("messages", new JSONArray()
             .put(new JSONObject().put("role", "system").put("content", prompt))
             .put(new JSONObject().put("role", "user").put("content", query.trim())));
