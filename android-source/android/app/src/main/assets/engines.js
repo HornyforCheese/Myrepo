@@ -45,27 +45,67 @@ export function controls(main, openTitle) {
   button(torrentButtons,'Refresh torrent',showTorrent);
   button(torrentButtons,'Stop torrent',async()=>{await rpc('torrent.stop');await showTorrent();});
   const account=group('Stremio and Nuvio accounts');
-  const provider=choose(account,'Account provider',[['stremio','Stremio'],['nuvio','Nuvio']]);
-  const email=field(account,'Email','email'), password=field(account,'Password','password');password.autocomplete='current-password';
-  const profileWrap=add(account,'div',null,'profile-selection'), profile=field(profileWrap,'Nuvio profile number (1–6)','number');profile.min=1;profile.max=6;profile.value=1;
-  provider.addEventListener('change',()=>{profileWrap.hidden=provider.value!=='nuvio';showAccount().catch(()=>{});});profileWrap.hidden=true;
-  const accountStatus=add(account,'p','Checking account status…','note');
-  async function showAccount(){const data=await rpc('account.status'), selected=data[provider.value];accountStatus.textContent=selected?.signedIn?'Signed in as '+(selected.email||provider.value):'Not signed in to '+provider.value;}
-  const accountActions=add(account,'div',null,'row');
-  button(accountActions,'Sign in',async()=>{await rpc('account.login',{provider:provider.value,email:email.value,password:password.value});password.value='';await showAccount();status.textContent='Signed in';});
-  button(accountActions,'Sign out',async()=>{await rpc('account.logout',{provider:provider.value});await showAccount();status.textContent='Signed out';});
-  const cloud=add(account,'div',null,'cloud-library');
-  button(account,'Load cloud library',async()=>{
-    const data=await rpc('account.sync',{provider:provider.value,profile:provider.value==='nuvio'?Number(profile.value):1});
-    cloud.replaceChildren();
-    const items=(Array.isArray(data.library)?data.library:[]).filter(x=>!x.removed&&!x.temp).map(x=>({id:x._id||x.content_id,type:x.type||x.content_type,name:x.name||x.title||'Untitled',poster:x.poster||'',releaseInfo:x.releaseInfo||''})).filter(x=>x.id&&['movie','series'].includes(x.type));
-    add(cloud,'p',items.length+' title(s) returned by '+provider.value+'.');
-    const libraryButtons=add(cloud,'div',null,'row');
-    button(libraryButtons,'Merge into My library',async()=>{window.dispatchEvent(new CustomEvent('mutiny-library-import',{detail:items}));status.textContent=items.length+' titles merged into your device library';});
-    for(const item of items.slice(0,50))button(cloud,item.name,()=>openTitle(item));
-    if(items.length>50)add(cloud,'p','Showing the first 50 titles here. Merge to see the full collection.','note');
-    const addons=Array.isArray(data.addons)?data.addons:[];
-    if(addons.length)button(cloud,'Import '+addons.length+' cloud add-on(s)',async()=>{window.dispatchEvent(new CustomEvent('mutiny-addons-import',{detail:addons}));status.textContent='Valid add-on manifests will be checked before importing';});
+  add(account,'p','Sign in separately to your existing Stremio and Nuvio accounts. The app uses their account APIs; passwords are not stored in the web interface. Add-ons from both accounts appear together in Providers.','note');
+  const accountStatus={};
+  async function showAccount(){
+    const data=await rpc('account.status');
+    for(const provider of ['stremio','nuvio']){
+      const selected=data[provider];
+      accountStatus[provider].textContent=selected?.signedIn?'Signed in as '+(selected.email||provider):'Not signed in to '+provider;
+    }
+  }
+  for(const provider of ['stremio','nuvio']){
+    const label=provider==='stremio'?'Stremio':'Nuvio';
+    const panel=add(account,'section',null,'box');
+    add(panel,'h3',label+' account');
+    accountStatus[provider]=add(panel,'p','Checking account status…','note');
+    const email=field(panel,label+' email','email'),password=field(panel,label+' password','password');
+    email.autocomplete='username';password.autocomplete='current-password';
+    const actions=add(panel,'div',null,'row');
+    button(actions,'Sign in to '+label,async()=>{
+      try{await rpc('account.login',{provider,email:email.value,password:password.value});}
+      finally{password.value='';}
+      await showAccount();
+      window.dispatchEvent(new CustomEvent('mutiny-account-changed'));
+      status.textContent=label+' signed in. Updating combined providers…';
+    });
+    button(actions,'Sign out of '+label,async()=>{
+      await rpc('account.logout',{provider});await showAccount();
+      window.dispatchEvent(new CustomEvent('mutiny-account-changed'));
+      status.textContent=label+' signed out. Other account providers remain available.';
+    });
+    const profile=provider==='nuvio'?field(panel,'Nuvio profile number (1–6)','number'):null;
+    if(profile){profile.min=1;profile.max=6;profile.value='1';}
+    const cloud=add(panel,'div',null,'cloud-library');
+    button(panel,'Load '+label+' cloud library',async()=>{
+      const data=await rpc('account.sync',{provider,profile:profile?Number(profile.value):1});
+      cloud.replaceChildren();
+      const items=(Array.isArray(data.library)?data.library:[]).filter(x=>!x.removed&&!x.temp)
+        .map(x=>({id:x._id||x.content_id,type:x.type||x.content_type,name:x.name||x.title||'Untitled',poster:x.poster||'',releaseInfo:x.releaseInfo||''}))
+        .filter(x=>x.id&&['movie','series'].includes(x.type));
+      add(cloud,'p',items.length+' title(s) returned by '+label+'.');
+      const actions=add(cloud,'div',null,'row');
+      button(actions,'Merge into My library',async()=>{
+        window.dispatchEvent(new CustomEvent('mutiny-library-import',{detail:items}));
+        status.textContent=items.length+' titles merged into your device library';
+      });
+      for(const item of items.slice(0,50))button(cloud,item.name,()=>openTitle(item));
+      if(items.length>50)add(cloud,'p','Showing the first 50 titles here. Merge to see the full collection.','note');
+      window.dispatchEvent(new CustomEvent('mutiny-account-changed'));
+    });
+  }
+  button(account,'Refresh combined add-ons',async()=>{
+    window.dispatchEvent(new CustomEvent('mutiny-account-changed'));
+    status.textContent='Refreshing providers from both signed-in accounts…';
+  });
+  const providerStatus=add(account,'p','Account add-ons refresh on app launch and after sign-in.','note');
+  window.addEventListener('mutiny-account-providers-synced',event=>{
+    if(!root.isConnected)return;
+    const summary=event.detail||{},stats=summary.stats||{};
+    providerStatus.textContent='Combined providers: '+(summary.count||0)+' · Stremio: '+(stats.stremio?.count||0)+
+      ' · Nuvio: '+(stats.nuvio?.count||0)+
+      (stats.stremio?.error?' · Stremio sync unavailable':'')+
+      (stats.nuvio?.error?' · Nuvio sync unavailable':'');
   });
   const cloudstream=group('CloudStream extensions');
   add(cloudstream,'p','Import and manage .cs3 extensions from a repository or your device. Packages are validated and stored locally. Provider execution is not yet supported: imported extensions will not appear in search or playback until a compatible CloudStream runtime is integrated. Only import code from sources you trust.','note');
@@ -113,6 +153,6 @@ export function controls(main, openTitle) {
   window.mutinyRefreshCs3=()=>{if(root.isConnected)refreshInstalled().catch(error=>{status.textContent=error.message||'Could not refresh extensions';});};
   if(window.Mutiny)refreshInstalled().catch(error=>{status.textContent=error.message||'Could not read installed extensions';});
   root.append(status);main.append(root);
-  if(window.Mutiny){showAccount().catch(()=>{accountStatus.textContent='Account status unavailable';});}
+  if(window.Mutiny){showAccount().catch(()=>{for(const name of ['stremio','nuvio'])accountStatus[name].textContent='Account status unavailable';});}
   return root;
 }
