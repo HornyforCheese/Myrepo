@@ -1,7 +1,7 @@
 name: Validate Mutiny Android provider and player improvements
 on:
   push:
-    branches: [fix/android-providers-player-next]
+    branches: [fix/android-providers-player-next, 'feature/android-cs3-*']
     paths:
       - 'android-source/android/**'
       - '.github/workflows/android-feature-ci.yml'

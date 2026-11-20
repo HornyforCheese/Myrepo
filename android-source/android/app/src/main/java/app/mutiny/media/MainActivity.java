@@ -75,6 +75,11 @@ public class MainActivity extends Activity {
     }
     private WebResourceResponse empty() { return new WebResourceResponse("text/plain", "UTF-8", 404, "Not found", java.util.Collections.emptyMap(), new ByteArrayInputStream(new byte[0])); }
     private void action(Uri action) {
+        if ("cs3".equals(action.getHost())) {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(pick, 11);
+            return;
+        }
         if ("local".equals(action.getHost())) {
             Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE);
             startActivityForResult(pick, 10);
@@ -91,7 +96,24 @@ public class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
-        if (request == 10 && result == RESULT_OK && data != null && data.getData() != null) {
+        if (result != RESULT_OK || data == null || data.getData() == null) return;
+        if (request == 11) {
+            Uri uri = data.getData();
+            commands.execute(() -> {
+                try {
+                    JSONObject installed = CloudStreamPackageStore.installFromUri(getApplicationContext(), uri);
+                    runOnUiThread(() -> {
+                        if (isDestroyed()) return;
+                        Toast.makeText(this, installed.optString("name") + " imported (runtime not yet enabled)", Toast.LENGTH_LONG).show();
+                        web.evaluateJavascript("window.dispatchEvent(new Event('mutiny-cs3-updated'))", null);
+                    });
+                } catch (Exception error) {
+                    runOnUiThread(() -> {
+                        if (!isDestroyed()) Toast.makeText(this, "CloudStream import failed: " + error.getMessage(), Toast.LENGTH_LONG).show();
+                    });
+                }
+            });
+        } else if (request == 10) {
             startActivity(new Intent(this, VlcPlayerActivity.class).setData(data.getData()).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
         }
     }
