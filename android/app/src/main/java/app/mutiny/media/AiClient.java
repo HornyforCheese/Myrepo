@@ -27,6 +27,50 @@ public final class AiClient {
         else if (!input.optString("key").trim().isEmpty()) secrets.put("ai.key." + provider, input.getString("key").trim());
         return config();
     }
+    /** Fetch provider-published model IDs. Only OpenRouter publishes a dependable free-price flag. */
+    public JSONObject models(String provider, String suppliedKey) throws Exception {
+        endpoint(provider);
+        String key = suppliedKey == null ? "" : suppliedKey.trim();
+        if (key.isEmpty()) key = secrets.get("ai.key." + provider);
+        if (key.isEmpty() && !provider.equals("openrouter"))
+            throw new IllegalStateException("Enter and save an API key for " + provider + " before refreshing models");
+        String url = provider.equals("openrouter") ? "https://openrouter.ai/api/v1/models"
+            : provider.equals("groq") ? "https://api.groq.com/openai/v1/models"
+            : "https://generativelanguage.googleapis.com/v1beta/models?key=" + java.net.URLEncoder.encode(key, "UTF-8");
+        JSONObject headers = new JSONObject();
+        if (!key.isEmpty() && !provider.equals("gemini")) headers.put("Authorization", "Bearer " + key);
+        JSONObject response = (JSONObject) http.request(url, "GET", headers, null);
+        JSONArray raw = response.optJSONArray("data");
+        if (provider.equals("gemini")) raw = response.optJSONArray("models");
+        if (raw == null) throw new IllegalStateException("Provider returned no model catalogue");
+        JSONArray out = new JSONArray();
+        for (int i = 0; i < raw.length() && out.length() < 500; i++) {
+            JSONObject item = raw.optJSONObject(i); if (item == null) continue;
+            String id = item.optString("id", item.optString("name", ""));
+            if (provider.equals("gemini")) {
+                if (!id.startsWith("models/")) continue;
+                JSONArray methods = item.optJSONArray("supportedGenerationMethods");
+                boolean generates = false;
+                if (methods != null) for (int j=0;j<methods.length();j++) if ("generateContent".equals(methods.optString(j))) generates=true;
+                if (!generates) continue;
+                id = id.substring("models/".length());
+            }
+            if (id.isEmpty()) continue;
+            boolean free = false;
+            if (provider.equals("openrouter")) {
+                JSONObject pricing = item.optJSONObject("pricing");
+                free = id.endsWith(":free") || (pricing != null && "0".equals(pricing.optString("prompt")) && "0".equals(pricing.optString("completion")));
+                if (!free) continue;
+            }
+            out.put(new JSONObject().put("id", id)
+                .put("name", item.optString("name", item.optString("displayName", id)))
+                .put("free", free));
+        }
+        return new JSONObject().put("provider", provider).put("models", out)
+            .put("freeVerified", provider.equals("openrouter"))
+            .put("note", provider.equals("openrouter") ? "Showing provider-listed zero-cost models; quotas and availability may change."
+                : "Provider does not publish per-model free-tier eligibility here. Check your account quota and pricing.");
+    }
     public String suggest(String query, String kind) throws Exception {
         JSONObject settings = config(); String provider = settings.getString("provider");
         String key = secrets.get("ai.key." + provider), model = settings.getString("model");
