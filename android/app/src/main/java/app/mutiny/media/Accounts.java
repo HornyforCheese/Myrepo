@@ -30,7 +30,9 @@ public final class Accounts {
     }
     private Object nuvio(String path, String method, JSONObject body) throws Exception {
         if (secrets.get("nuvio.token").isEmpty()) throw new IllegalStateException("Sign in to Nuvio first");
-        long expiry = Long.parseLong(secrets.get("nuvio.expiry"));
+        long expiry;
+        try { expiry = Long.parseLong(secrets.get("nuvio.expiry")); }
+        catch (NumberFormatException invalid) { expiry = 0; }
         if (System.currentTimeMillis() / 1000 > expiry - 60) {
             JSONObject refresh = (JSONObject) http.request(NUVIO + "/auth/v1/token?grant_type=refresh_token", "POST", nuvioHeaders(false), new JSONObject().put("refresh_token", secrets.get("nuvio.refresh")));
             secrets.putAll(nuvioSession(refresh, false));
@@ -45,6 +47,7 @@ public final class Accounts {
         changes.put("nuvio.expiry", String.valueOf(System.currentTimeMillis() / 1000 + session.optLong("expires_in", 3600)));
         JSONObject user = session.optJSONObject("user");
         if (login && (user == null || user.optString("id").isEmpty())) throw new IllegalStateException("Missing Nuvio account identity");
+        if (!login && user != null && !secrets.get("nuvio.user").equals(user.optString("id"))) throw new IllegalStateException("Nuvio session identity changed. Sign in again.");
         if (user != null) { changes.put("nuvio.user", user.getString("id")); changes.put("nuvio.email", user.optString("email")); }
         return changes;
     }
@@ -93,10 +96,7 @@ public final class Accounts {
             result.put("profiles", new JSONArray()); profile = 1;
         } else {
             JSONArray profiles = (JSONArray) nuvio("/rest/v1/profiles?order=profile_index.asc", "GET", null);
-            JSONObject chosen = null;
-            for (int i = 0; i < profiles.length(); i++) if (profiles.getJSONObject(i).optInt("profile_index") == profile) chosen = profiles.getJSONObject(i);
-            if (chosen == null) throw new IllegalArgumentException("Nuvio profile not found");
-            if (chosen.optBoolean("pin_enabled")) throw new IllegalArgumentException("This Nuvio profile is PIN protected. Use an unlocked profile in this Android version.");
+            JSONObject chosen = unlockedProfile(profiles, profile);
             int addonProfile = chosen.optBoolean("uses_primary_addons") ? 1 : profile;
             JSONArray library = new JSONArray();
             for (int offset = 0; ; offset += 200) {
@@ -135,6 +135,7 @@ public final class Accounts {
         return new JSONObject().put("_id", id).put("type", meta.optString("type", "movie")).put("name", meta.optString("name")).put("poster", meta.optString("poster")).put("removed", false).put("temp", true).put("_ctime", Instant.now().toString()).put("state", new JSONObject());
     }
     public synchronized void progress(JSONObject meta, long position, long duration) throws Exception {
+        if (!meta.has("scope") || !activeScope().equals(meta.optString("scope"))) return;
         String active = secrets.get("account.active"); if (active.isEmpty() || position < 1000 || duration <= 0) return;
         String id = meta.optString("id"); if (!id.matches("tt\\d{5,12}")) return;
         String videoId = meta.optString("videoId", id); int season = meta.optInt("season", -1), episode = meta.optInt("episode", -1);
@@ -150,6 +151,25 @@ public final class Accounts {
             nuvio("/rest/v1/rpc/sync_push_watch_progress", "POST", new JSONObject().put("p_profile_id", profile()).put("p_entries", new JSONArray().put(entry)).put("p_origin_client_id", clientId()));
         }
     }
-    private int profile() throws Exception { return Integer.parseInt(secrets.get("account.profile")); }
+    private JSONObject unlockedProfile(JSONArray profiles, int index) throws Exception {
+        for (int i = 0; i < profiles.length(); i++) {
+            JSONObject candidate = profiles.optJSONObject(i);
+            if (candidate == null || candidate.optInt("profile_index") != index) continue;
+            if (!Boolean.FALSE.equals(candidate.opt("pin_enabled")))
+                throw new IllegalStateException("Choose a confirmed, unlocked Nuvio profile.");
+            return candidate;
+        }
+        throw new IllegalArgumentException("Nuvio profile not found");
+    }
+    private int profile() throws Exception {
+        int index = Integer.parseInt(secrets.get("account.profile"));
+        JSONArray profiles = (JSONArray) nuvio("/rest/v1/profiles?order=profile_index.asc", "GET", null);
+        unlockedProfile(profiles, index);
+        return index;
+    }
+    public synchronized String activeScope() throws Exception {
+        String provider = secrets.get("account.active");
+        return provider.isEmpty() ? "" : provider + ":" + secrets.get(provider + ".user") + ":" + secrets.get("account.profile");
+    }
     private String clientId() throws Exception { String id = secrets.get("client.id"); if (id.isEmpty()) { id = java.util.UUID.randomUUID().toString(); secrets.put("client.id", id); } return id; }
 }

@@ -573,7 +573,19 @@ function aiSearch() {
     const row = el('p', role + ': ' + message, role === 'You' ? 'ai-user' : 'ai-answer');
     chat.append(row); chat.scrollTop = chat.scrollHeight; return row;
   };
-  for (const entry of aiHistory) appendMessage(entry.role, entry.message);
+  function appendReferences(sources) {
+    if (!Array.isArray(sources)) return;
+    const list = el('div', null, 'ai-sources');
+    for (const source of sources.slice(0,5)) {
+      if (typeof source?.title !== 'string' || !/^https:\/\/en\.wikipedia\.org\/\?curid=[1-9]\d*$/.test(source.url)) continue;
+      list.append(button(source.title.slice(0,250), () => native('external', source.url)));
+    }
+    if (list.childElementCount) { list.prepend(el('strong','Wikipedia references')); chat.append(list); }
+  }
+  for (const entry of aiHistory) {
+    appendMessage(entry.role, entry.message);
+    appendReferences(entry.sources);
+  }
   const form = el('form'), query = el('textarea');
   query.placeholder = 'Describe what you want to watch…'; query.rows = 5; query.maxLength = 2000; query.setAttribute('aria-label', 'Search with AI message');
   const send = el('button', 'Send', 'primary'); send.type = 'submit';
@@ -603,22 +615,13 @@ function aiSearch() {
       if (pageToken !== viewToken) return;
       const raw = String(await rpc('ai.suggest', {query:message, history, references:context.slice(0,6000)}));
       if (pageToken !== viewToken) return;
-      if (sources.length && page === 'ai' && pageToken === viewToken) {
-        const sourceList = el('div', null, 'ai-sources');
-        sourceList.append(el('strong', 'Reference sources'));
-        for (const source of sources) {
-          const link = el('a', source.title); link.href = source.url;
-          link.target = '_blank'; link.rel = 'noopener noreferrer';
-          sourceList.append(link);
-        }
-        chat.append(sourceList);
-      }
       let items;
       try { items = JSON.parse(raw.slice(raw.indexOf('['), raw.lastIndexOf(']') + 1)).filter(item => typeof item?.title === 'string' && item.title.trim()); } catch { items = null; }
       const response = Array.isArray(items)
         ? items.slice(0,8).map(item => [item.title, item.year, item.reason].filter(Boolean).join(' · ')).join('\n') || 'No suggestions returned.'
         : raw.slice(0,4000);
-      aiHistory.push({role:'Pirate assistant',message:response}); saveAiHistory();
+      aiHistory.push({role:'Pirate assistant',message:response,sources:sources.map(({title,url}) => ({title,url}))}); saveAiHistory();
+      appendReferences(sources);
       if (page === 'ai' && pageToken === viewToken) {
         reply.textContent = 'Pirate assistant: ' + response;
         if (Array.isArray(items)) for (const item of items.slice(0,8)) {

@@ -45,13 +45,15 @@ public final class NativeApi {
             case "torrent.stop": torrent.stop(); context.stopService(new Intent(context, TorrentService.class)); return torrent.status();
             case "torrent.clear": torrent.clearFiles(); return torrent.status();
             case "torrent.play": {
-                String url = torrent.streamUrl(), meta = torrent.media().toString();
+                String url = torrent.streamUrl(), meta = new JSONObject(torrent.media().toString()).put("scope", accounts.activeScope()).toString();
                 activity.runOnUiThread(() -> activity.startActivity(new Intent(activity, VlcPlayerActivity.class).putExtra("url", url).putExtra("meta", meta)));
                 return true;
             }
             case "video.play": {
                 String url = args.getString("url"); if (!UrlPolicy.isPublicHttps(url)) throw new IllegalArgumentException("A public HTTPS video URL is required");
-                String meta = args.optJSONObject("meta") == null ? "{}" : args.getJSONObject("meta").toString();
+                JSONObject playback = args.optJSONObject("meta");
+                if (playback == null) playback = new JSONObject();
+                String meta = playback.put("scope", accounts.activeScope()).toString();
                 String headers = args.optJSONObject("headers") == null ? "{}" : args.getJSONObject("headers").toString();
                 long resume = Math.max(0, args.optLong("resume"));
                 activity.runOnUiThread(() -> activity.startActivity(new Intent(activity, VlcPlayerActivity.class).putExtra("url", url).putExtra("meta", meta).putExtra("headers", headers).putExtra("resume", resume)));
