@@ -1,0 +1,51 @@
+name: Mutiny Media Android desktop port
+on:
+  push:
+    branches: [mutiny-android-desktop-port]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 43453557318
+          name: mutiny-media-windows-1.0.1-complete-source
+          path: archive
+      - run: |
+          mkdir app
+          tar -xzf archive/*.tar.gz -C app
+          cd app
+          node -e "const fs=require('fs'),p='src-tauri/tauri.android.conf.json',c=require('./'+p); c.app.windows[0].url='index.html'; c.app.windows[0].title='Mutiny Media'; fs.writeFileSync(p,JSON.stringify(c,null,2))"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - run: sudo apt-get update -qq && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+      - working-directory: app
+        run: |
+          export NDK_HOME="$ANDROID_NDK_HOME"
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm tauri android init --ci
+          pnpm tauri android build --apk --debug --target aarch64
+      - run: |
+          apk=$(find app/src-tauri/gen/android -path '*/outputs/apk/*' -name '*.apk' | head -1)
+          cp "$apk" MutinyMedia-android-desktop.apk
+          gh release create android-desktop-ui-preview MutinyMedia-android-desktop.apk --target "$GITHUB_SHA" --prerelease --title 'Mutiny Media Android desktop UI preview' --notes 'ARM64 development build using the original customized Windows frontend and upstream Android runtime. Device testing pending.'
+        env:
+          GH_TOKEN: ${{ github.token }}
