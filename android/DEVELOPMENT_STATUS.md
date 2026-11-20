@@ -63,3 +63,10 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Retry correction `6fd4c7d985cbf2d4a6bab89eb68ea73c4863bbb5`: retry the same browse or search mode.
 - UI fixture `7c6ad4ab552893258c613d8dec807a5f7fce0d0d`: mock genre results and assert non-Anime titles are filtered.
 - GitHub source re-read verified changes. **UI fixture not executed, live genre endpoint not checked, no APK built.** Next anime chunk: stream/audio/subtitle preference verification; then Windows parity.
+
+## Anime chunk 2: conservative stream label negation
+
+- Implementation `5cdb4497a332918233a3430e737573f80cac859a`: ignore English dub, Japanese audio, subtitles, and dual-audio labels when directly negated by no/not/without.
+- Regression fixtures `c64984c8e33ac3c202047971cb9c91a6834b7aad`: cover negated and affirmative stream descriptions.
+- Re-fetched GitHub files to verify source and fixtures; **tests not executed, actual media track detection not verified, no APK built**. This is provider-label filtering, not reliable language-track identification.
+- Next: run JS and UI fixtures, then Windows feature parity and interface chunks in user-requested order.
