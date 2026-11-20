@@ -30,3 +30,11 @@ test('dropdown selections retain an available saved model',()=>{
   assert.equal(setModelOptions(node, fallbackFreeModels.groq,'openai/gpt-oss-20b'),'openai/gpt-oss-20b');
   assert.equal(setModelOptions(node, fallbackFreeModels.groq,'unavailable-model'),'openai/gpt-oss-120b');
 });
+
+test('OpenRouter error response lists recently verified options without presenting paid ones',()=>{
+  const failed={provider:'openrouter',catalogueStatus:'unavailable',models:[{id:'openrouter/free',label:'Automatic free model (OpenRouter)'}]};
+  const choices=freeModelOptions('openrouter',failed);
+  assert.ok(choices.length>=10,'the dropdown must not collapse to one option when offline');
+  assert.ok(choices.every(item=>item.id==='openrouter/free'||item.id.endsWith(':free')));
+  assert.deepEqual(freeModelOptions('openrouter',{...failed,catalogueStatus:'live'}),[{id:'openrouter/free',label:'Automatic free model (OpenRouter)'}]);
+});
