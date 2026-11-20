@@ -89,3 +89,10 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Removed misleading Spanish/French interface choices in `4008d55044506666ddbe3de8956deb4083c9d5e0`: interface strings remain English, and storing a language preference did not translate the UI.
 - Re-fetched source and fixture to confirm both edits. **No npm tests, Playwright browser checks, Android runtime testing or APK built.**
 - Windows UI parity **remains PARTIAL**. Full feature comparison, functioning translations if required, navigation, settings, player parity and current CI evidence are outstanding. Do not mark complete based on visual/theme changes alone.
+
+## CloudStream runtime sequence, chunk 1: multi-DEX validation
+
+- `70f535d79bb02247926443dae1b43a8053281ea8`: reject malformed `classes2.dex` and subsequent secondary DEX headers during archive inspection; primary DEX remains mandatory.
+- `fb2d2a195b1f112228e6cbb81b1b84cb0b113575`: negative fixture for malformed secondary DEX.
+- Source and fixture re-read on GitHub; **Java tests not executed, runtime still inactive, provider execution not implemented, no APK built**.
+- User-requested order: complete 4–6 bounded CS3 runtime/provider execution chunks, then 2–3 Stremio/Nuvio integration chunks. Next: isolated execution process contract and mediated provider dispatch, without granting untrusted DEX direct host privileges.
