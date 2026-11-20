@@ -19,7 +19,7 @@ public final class NativeApi {
     }
     public Object call(Activity activity, String method, JSONObject args) throws Exception {
         switch (method) {
-            case "capabilities": return new JSONObject().put("vlc", true).put("torrent", true).put("accounts", true).put("ai", true).put("cloudstreamDiscovery", true).put("cloudstreamExecution", false).put("pictureInPicture", true);
+            case "capabilities": return new JSONObject().put("vlc", true).put("torrent", true).put("accounts", true).put("ai", true).put("cloudstreamDiscovery", true).put("cloudstreamExecution", false).put("cloudstreamImport", true).put("pictureInPicture", true);
             case "player.preferences": return PlayerPreferences.configure(context, args);
             case "account.status": return accounts.status();
             case "account.login": return accounts.login(args.getString("provider"), args.getString("email"), args.getString("password"));
@@ -32,6 +32,9 @@ public final class NativeApi {
             case "ai.chat": return ai.chat(args.getJSONArray("messages"));
             case "ai.suggest": return ai.suggest(args.getString("query"), "media");
             case "cloudstream.discover": return CloudStreamRepository.discover(args.getString("url"), http);
+            case "cloudstream.list": return CloudStreamPackageStore.list(context);
+            case "cloudstream.importUrl": return CloudStreamPackageStore.installFromUrl(context, args.getString("url"), args.optString("fileHash", ""));
+            case "cloudstream.remove": return CloudStreamPackageStore.remove(context, args.getString("sha256"));
             case "public.get": return http.request(args.getString("url"), "GET", new JSONObject(), null);
             case "download.start": {
                 String address = args.getString("url");
