@@ -13,7 +13,7 @@ final class CloudStreamRequest {
 
     private CloudStreamRequest() {}
 
-    static JSONObject validate(JSONObject request) {
+    static JSONObject validate(JSONObject request) throws org.json.JSONException {
         if (request == null || request.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_REQUEST_BYTES)
             throw new IllegalArgumentException("Invalid or oversized CloudStream request");
         String operation = request.optString("operation", "");
