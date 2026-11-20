@@ -50,6 +50,11 @@ public class CloudStreamArchiveTest {
             try { inspect(archiveWithPath(unsafe)); throw new AssertionError("Unsafe path accepted: " + unsafe); }
             catch (IOException expected) {}
         }
+        for (String unsafe : new String[]{"control\\u0000name", "control\\u0001name",
+                "control\\u001fname", "control\\u007fname"}) {
+            try { inspect(archiveWithPath(unsafe)); throw new AssertionError("Control character accepted"); }
+            catch (IOException expected) {}
+        }
         String hash = "ab".repeat(32);
         CloudStreamArchive.verifyHash(hash,hash.toUpperCase());
         try { CloudStreamArchive.verifyHash(hash,"cd".repeat(32)); throw new AssertionError("Checksum mismatch accepted"); }
