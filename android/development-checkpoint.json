@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "CS3-ARCHIVE-CONTROL-PATHS: reject control-character ZIP entries",
-  "lastVerifiedImplementationCommit": "c466d45e61de90e067af26ef3956514bd3e91fe5",
+  "currentChunk": "AI-CATALOG-PRICING: reject unpriced :free model claims",
+  "lastVerifiedImplementationCommit": "82f985426cba0e795632aec931ca9b9d35ebea83",
   "completedChunks": [],
   "tasks": [
     {
@@ -108,7 +108,8 @@
     "CS3 archive path hardening: source re-read verified; negative-path fixtures added but not executed; Java compilation/CI pending",
     "Isolated javac/java backslash guard syntax and behaviour check passed in local environment; full CS3 archive fixtures and Android CI not verified",
     "Reviewed prior GitHub Actions run 44822049872: Android compile and native fixtures succeeded, UI fixture failed at library navigation due to open dialog intercepting clicks; historical run, not current branch CI",
-    "CS3 control-character ZIP path rejection and negative fixtures committed; source re-read verified, test execution pending"
+    "CS3 control-character ZIP path rejection and negative fixtures committed; source re-read verified, test execution pending",
+    "AI OpenRouter free model price check and regression fixture source re-read confirmed; tests and Android CI not executed for these commits"
   ],
-  "nextAction": "Inspect current Android branch CI and investigate UI fixture modal interception; run CS3 archive fixtures including new control-character cases, then implement isolated CS3 runtime."
+  "nextAction": "AI second chunk: verify Gemini model pagination and per-provider key removal, then ANIME genre browsing and stream track preferences, then Windows UI parity; CS3 runtime remains queued."
 }
