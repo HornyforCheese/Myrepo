@@ -95,7 +95,7 @@ function search() {
   shortcuts.append(el('h2', 'Quick actions'));
   const actions = el('div', null, 'grid');
   actions.append(
-    button('Search with AI', () => { setPage('settings'); toast('AI configuration is not connected yet.'); }, 'box'),
+    button('Search with AI', () => aiSearch(), 'box'),
     button('Local video', () => native('local'), 'box'),
     button('Stream URL', () => {
       const url = prompt('Enter a direct HTTPS video URL');
@@ -275,8 +275,7 @@ function renderPreferences(parent, id) {
     preferenceControl(parent, 'Remember last section', 'Keep your Settings navigation preference', 'rememberSection', true);
     parent.append(el('p', 'Stremio and Nuvio account sign-in are not available in this build.', 'note'));
   } else if (id === 'ai') {
-    preferenceChoice(parent, 'AI provider', 'Preferred provider for future AI search', 'aiProvider', [['openrouter','OpenRouter'],['groq','Groq'],['gemini','Gemini']], 'openrouter');
-    parent.append(el('p', 'AI credentials and live AI search are not yet implemented in this branch. No API keys are collected here.', 'note'));
+    aiSettings(parent);
   } else if (id === 'android') {
     preferenceControl(parent, 'Keep screen awake', 'Saved preference; native WakeLock integration pending', 'keepAwake', false);
     parent.append(el('p', 'Auto-start and background service permissions require native Android integration.', 'note'));
@@ -286,6 +285,62 @@ function renderPreferences(parent, id) {
   } else if (id === 'cloudstream') {
     parent.append(el('p', 'CloudStream CS3 installation and execution are not available in this branch yet.', 'note'));
   }
+}
+function aiSettings(parent) {
+  parent.append(el('p', 'Keys are stored in Android secure storage, not browser preferences. A provider account and API key are required.', 'note'));
+  const provider = el('select');
+  for (const id of ['openrouter','groq','gemini']) { const opt = el('option', id === 'openrouter' ? 'OpenRouter' : id === 'groq' ? 'Groq' : 'Gemini'); opt.value=id; provider.append(opt); }
+  const model = el('input'); model.placeholder='Model ID (from your provider)'; model.setAttribute('aria-label','AI model ID');
+  const key = el('input'); key.type='password'; key.placeholder='API key (leave blank to retain saved key)'; key.setAttribute('aria-label','AI API key');
+  const status = el('p','Loading AI configuration…','note');
+  const load = async () => {
+    try { const config=await rpc('ai.config'); provider.value=config.provider; model.value=config.model||''; status.textContent=config.hasKey?'An API key is saved for this provider.':'No API key saved for this provider.'; }
+    catch(e) { status.textContent='AI settings unavailable: '+e.message; }
+  };
+  provider.addEventListener('change', () => { model.value=''; key.value=''; status.textContent='Enter the model ID and key for '+provider.value+'.'; });
+  const save = button('Save AI credentials', async () => {
+    save.disabled=true;
+    try { const result=await rpc('ai.save',{provider:provider.value,model:model.value.trim(),key:key.value.trim()}); key.value='';status.textContent=result.hasKey?'AI credentials saved securely.':'Model saved; add an API key to use AI search.'; }
+    catch(e){status.textContent='Unable to save: '+e.message;}
+    finally {save.disabled=false;}
+  },'primary');
+  const clear = button('Remove saved API key', async () => {
+    if(!confirm('Remove the saved key for '+provider.value+'?'))return;
+    try {await rpc('ai.save',{provider:provider.value,model:model.value.trim(),clearKey:true});key.value='';status.textContent='API key removed.';}catch(e){status.textContent=e.message;}
+  });
+  parent.append(el('label','Provider'),provider,el('label','Model'),model,el('label','API key'),key,save,clear,status);
+  load();
+}
+function aiSearch() {
+  page='ai'; pageToken++; detailToken++; streamToken++;
+  if(dialog.open)dialog.close();
+  document.querySelectorAll('nav button').forEach(node=>node.classList.remove('active'));
+  main.replaceChildren(el('h1','Search with AI'),el('p','Get AI-powered movie and series suggestions. Results are model-generated, not verified live web results.','note'));
+  main.append(button('‹ Back to Discover',()=>setPage('search')));
+  const chat=el('section',null,'ai-chat');
+  chat.style.minHeight='260px';chat.style.maxHeight='55vh';chat.style.overflowY='auto';
+  const form=el('form'),query=el('textarea');query.placeholder='Describe what you want to watch…';query.rows=3;query.maxLength=2000;query.setAttribute('aria-label','Ask AI');
+  const send=el('button','Ask AI','primary');send.type='submit';
+  form.append(query,send);
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();const message=query.value.trim();if(!message)return;
+    chat.append(el('p','You: '+message));query.value='';send.disabled=true;
+    const reply=el('p','Pirate assistant: Searching for suggestions…','note');chat.append(reply);chat.scrollTop=chat.scrollHeight;
+    try {
+      const raw=await rpc('ai.suggest',{query:message,kind:'media'});
+      reply.textContent='Pirate assistant:';
+      let items;
+      try {items=JSON.parse(raw.slice(raw.indexOf('['),raw.lastIndexOf(']')+1));}catch{items=null;}
+      if(!Array.isArray(items)) reply.textContent+=' '+raw.slice(0,4000);
+      else for(const item of items.slice(0,8)){
+        const row=el('div',null,'box');row.append(el('strong',String(item.title||'Untitled')),el('p',[item.year,item.reason].filter(Boolean).join(' · '),'note'));
+        row.append(button('Find in catalog',()=>{setPage('search');const searchInput=main.querySelector('input[type=search]');if(searchInput){searchInput.value=String(item.title||'');searchInput.closest('form')?.requestSubmit();}}));
+        chat.append(row);
+      }
+    }catch(e){reply.textContent='Pirate assistant: '+e.message+' Configure your API key and model in Settings → Ask AI.';}
+    finally{send.disabled=false;chat.scrollTop=chat.scrollHeight;}
+  });
+  main.append(chat,form,button('Configure AI',()=>{setPage('settings');toast('Open Ask AI to configure your credentials.');}));
 }
 function settingsBackup(parent) {
   const backup = button('Export settings', () => {
