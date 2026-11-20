@@ -202,7 +202,7 @@ function animeDiscover() {
       if (!anime.length) return stateBox(results, 'No titles explicitly tagged Anime were found. The catalogue may omit genre tags.');
       results.replaceChildren(grid(anime), el('p', 'Only titles with an Anime genre tag are shown. Stream language and release labels depend on the installed providers.', 'note'));
     } catch (error) {
-      if (request === token && page === 'anime') stateBox(results, 'Anime search failed. Check your connection and retry.', run);
+      if (request === token && page === 'anime') stateBox(results, 'Anime catalogue request failed. Check your connection and retry.', () => run(browse));
     }
   };
   form.addEventListener('submit', event => { event.preventDefault(); run(false); });
