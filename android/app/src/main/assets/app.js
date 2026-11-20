@@ -205,7 +205,7 @@ function library() {
   main.append(grid(saved));
 }
 function closeTitle() { detailToken++; streamToken++; current = null; dialog.close(); if (page === 'library') setPage('library'); }
-document.querySelector('#close-detail').addEventListener('click', closeTitle);
+document.querySelector('.detail-dismiss').addEventListener('submit', event => { event.preventDefault(); closeTitle(); });
 dialog.addEventListener('cancel', event => { event.preventDefault(); closeTitle(); });
 window.mutinyBack = () => {
   if (dialog.open) { closeTitle(); return true; }

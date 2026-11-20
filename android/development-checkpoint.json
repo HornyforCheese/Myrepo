@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "project": "Mutiny Media Android",
+  "branch": "android-v1.0.1-engines-development",
+  "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
+  "currentChunk": "CloudStream package management and runtime",
+  "lastVerifiedImplementationCommit": "95281a2baa103525a19ba7ffed199a7fd1a0a37a",
+  "completedChunks": [],
+  "tasks": [
+    {
+      "id": "CS3-RUNTIME",
+      "chunk": "CloudStream",
+      "description": "Isolate plugin lifecycle, implement real host ABI and provider dispatch",
+      "files": "CloudStreamPackageStore.java, NativeApi.java, build.gradle",
+      "dependencies": "validated archives",
+      "severity": "high",
+      "securityImpact": "critical",
+      "effort": "large",
+      "verificationCost": "high",
+      "userImpact": "search, metadata and stream resolution",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "ACCOUNT-ADDONS",
+      "chunk": "Accounts",
+      "description": "Apply account/profile-scoped add-ons to catalogues and stream selection",
+      "files": "Accounts.java, engines.js, app.js",
+      "dependencies": "account sync",
+      "severity": "high",
+      "securityImpact": "high",
+      "effort": "medium",
+      "verificationCost": "medium",
+      "userImpact": "Nuvio and Stremio provider continuity",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "AI-CATALOG",
+      "chunk": "Historical 2/5",
+      "description": "Verify pagination, credential removal and citation persistence",
+      "files": "AiClient.java, app.js",
+      "dependencies": "AI transport",
+      "severity": "medium",
+      "securityImpact": "high",
+      "effort": "medium",
+      "verificationCost": "medium",
+      "userImpact": "complete model and conversation UX",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "ANIME",
+      "chunk": "Historical 3/4",
+      "description": "Genre browsing and conservative evidence for audio/subtitle combinations",
+      "files": "app.js, VlcPlayerActivity.java",
+      "dependencies": "catalogues and tracks",
+      "severity": "medium",
+      "securityImpact": "low",
+      "effort": "medium",
+      "verificationCost": "medium",
+      "userImpact": "anime discovery and preferences",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "PLAYER",
+      "chunk": "Playback",
+      "description": "Wire preferences, playback diagnostics, history and fallback",
+      "files": "VlcPlayerActivity.java, app.js",
+      "dependencies": "source selection",
+      "severity": "high",
+      "securityImpact": "medium",
+      "effort": "large",
+      "verificationCost": "high",
+      "userImpact": "low-bandwidth playback and parity",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "NAV",
+      "chunk": "Historical 1",
+      "description": "Verify every shortcut and Android Back across routes",
+      "files": "MainActivity.java, app.js, tests/ui-check.mjs",
+      "dependencies": "native bridge",
+      "severity": "medium",
+      "securityImpact": "low",
+      "effort": "small",
+      "verificationCost": "medium",
+      "userImpact": "touch navigation",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "PARITY",
+      "chunk": "Windows parity",
+      "description": "Complete mapping of applicable desktop features and Android gaps",
+      "files": "Windows reference, android/app",
+      "dependencies": "core engines",
+      "severity": "medium",
+      "securityImpact": "medium",
+      "effort": "large",
+      "verificationCost": "high",
+      "userImpact": "final parity matrix",
+      "status": "PARTIAL"
+    }
+  ],
+  "blockedTasks": [],
+  "verification": [
+    "npm test: 9 passed",
+    "Java fixtures: accounts, AI, URL policy, CS3 repository and archive parsing",
+    "DOM fixtures: home, account/torrent navigation, AI context and clear race",
+    "GitHub run 44822049872: Android Java compilation and native transport fixtures succeeded"
+  ],
+  "nextAction": "Check latest hosted UI result, then implement and fixture-test isolated CS3 provider registration against pinned upstream signatures. Keep incomplete providers inactive."
+}

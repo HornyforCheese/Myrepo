@@ -53,6 +53,7 @@ try {
     await page.getByRole('button', { name: 'Try next source' }).click();
     assert.notEqual(await page.locator('#provider').inputValue(), '0'); checks++;
     await page.getByRole('button', { name: 'Close title' }).click();
+    await page.locator('#detail').waitFor({state:'hidden'});
     await page.getByRole('button', { name: 'My library', exact: false }).click();
     assert.equal(await page.getByRole('button', { name: /The Matrix/ }).count(), 1); checks++;
     await page.reload();
@@ -60,7 +61,7 @@ try {
     assert.equal(await page.getByRole('button', { name: /The Matrix/ }).count(), 1); checks++;
     await page.getByRole('button', { name: 'Search', exact: false }).first().click();
     await page.getByRole('searchbox').fill('Matrix');
-    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await page.locator('main form').getByRole('button', { name: 'Search', exact: true }).click();
     await page.getByRole('button', { name: /The Matrix/ }).waitFor(); checks++;
     await page.getByRole('button', { name: 'Discover', exact: false }).click();
     await page.getByRole('button', { name: 'Series', exact: true }).click();
@@ -74,6 +75,7 @@ try {
     await page.waitForTimeout(100);
     assert.ok(commands.some(url => decodeURIComponent(url).includes('/tt0944947/2/4'))); checks++;
     await page.getByRole('button', { name: 'Close title' }).click();
+    await page.locator('#detail').waitFor({state:'hidden'});
     await page.locator('nav [data-page=settings]').click();
     await page.getByRole('button', { name: /Manage installed and community/ }).click();
     await page.getByRole('textbox', { name: 'Add-on manifest URL' }).fill('https://addon.example/manifest.json');
@@ -88,6 +90,7 @@ try {
     await page.waitForTimeout(100);
     assert.ok(commands.some(url => decodeURIComponent(url).includes('mutiny://video?url=https://video.example/sample.mp4'))); checks++;
     await page.getByRole('button', { name: 'Close title' }).click();
+    await page.locator('#detail').waitFor({state:'hidden'});
     await page.locator('nav [data-page=settings]').click();
     await page.getByRole('button', { name: /Manage installed and community/ }).click();
     await page.getByRole('button', { name: 'Remove', exact: true }).click();
