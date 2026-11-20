@@ -77,6 +77,8 @@ final class CloudStreamArchive {
                 if (!names.add(name) || names.size() > 256) throw new IOException("Invalid or excessive archive entries");
                 boolean isManifest = "manifest.json".equals(name);
                 boolean primaryDex = "classes.dex".equals(name);
+                boolean secondaryDex = name.matches("classes[2-9][0-9]*\\.dex");
+                boolean executableDex = primaryDex || secondaryDex;
                 byte[] magic = new byte[8];
                 int size = 0, n;
                 while ((n = zip.read(block)) != -1) {
@@ -86,13 +88,15 @@ final class CloudStreamArchive {
                         if (size + n > MAX_MANIFEST) throw new IOException("Manifest is too large");
                         manifest.write(block,0,n);
                     }
-                    if (primaryDex && size < magic.length)
+                    if (executableDex && size < magic.length)
                         System.arraycopy(block,0,magic,size,Math.min(n,magic.length - size));
                     size += n;
                 }
-                if (primaryDex) {
-                    dex = size >= 112 && magic[0] == 'd' && magic[1] == 'e' && magic[2] == 'x' && magic[3] == '\n' && magic[7] == 0;
-                    for (int i = 4; i <= 6; i++) dex &= magic[i] >= '0' && magic[i] <= '9';
+                if (executableDex) {
+                    boolean validDex = size >= 112 && magic[0] == 'd' && magic[1] == 'e' && magic[2] == 'x' && magic[3] == '\n' && magic[7] == 0;
+                    for (int i = 4; i <= 6; i++) validDex &= magic[i] >= '0' && magic[i] <= '9';
+                    if (!validDex) throw new IOException("Invalid extension DEX header");
+                    if (primaryDex) dex = true;
                 }
             }
             if (!dex || manifest.size() == 0) throw new IOException("Missing manifest or valid primary DEX header");
