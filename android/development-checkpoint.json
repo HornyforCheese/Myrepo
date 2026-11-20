@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "STREAMPLAY-V715 ABI discovery: exact binary method references audited; runtime compatibility not established",
-  "lastVerifiedImplementationCommit": "e335111c86785eab56699682b37218a55d699f83",
+  "currentChunk": "STREAMPLAY-V715: isolated archive descriptor and digest verification (provider execution still unavailable)",
+  "lastVerifiedImplementationCommit": "c3a6406ce6716e9787039df921c5ae68e7c48c2e",
   "completedChunks": [],
   "tasks": [
     {
@@ -122,7 +122,8 @@
     "Inspected public candidate StreamPlay Gradle config: Android-only, requires resources, CloudStream pre-release host and multiple build-time API/token fields; no matching user binary, execution or device verification.",
     "Uploaded StreamPlay.cs3 SHA-256 94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332; manifest v715 plugin com.phisher98.StreamPlayPlugin requiresResources=false, DEX035; static inspection only, no execution",
     "Re-read NativeApi cs3.request digest gate, installed-package check and static fixture; Java/Android compilation, live IPC and StreamPlay provider execution not verified",
-    "Local Python DEX parser found 81 CloudStream method-owner classes and 211 distinct method signatures in uploaded v715; Node reproducibility script committed and source re-read, but not executed from repository"
+    "Local Python DEX parser found 81 CloudStream method-owner classes and 211 distinct method signatures in uploaded v715; Node reproducibility script committed and source re-read, but not executed from repository",
+    "GitHub source re-read verifies descriptor IPC and worker SHA-256 verification code; no Android compilation, static fixtures, device IPC, provider execution or playback tests run"
   ],
-  "nextAction": "Use exact method-reference inventory to integrate compatible CloudStream Android/Kotlin runtime into isolated worker; verify class resolution and plugin registration, then search, metadata, link extraction, playback and Android CI. Confidence cannot be rated 90% until device tests pass."
+  "nextAction": "Build compatible CloudStream Android/Kotlin host API inside isolated process, load exact v715 DEX only after verification, register provider and run search/metadata/stream extraction/device playback tests. Do not claim success before passing."
 }
