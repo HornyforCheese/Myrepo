@@ -32,9 +32,8 @@ public final class AiClient {
         String key = secrets.get("ai.key." + provider), model = settings.getString("model");
         if (key.isEmpty() || model.isEmpty()) throw new IllegalStateException("Add an API key and model in AI settings first");
         if (query.trim().isEmpty() || query.length() > 2000) throw new IllegalArgumentException("Describe what you want in 1–2000 characters");
-        String prompt = kind.equals("games")
-            ? "Suggest up to 8 real Steam games matching the user. Return ONLY a JSON array of objects {\"title\":\"exact Steam title\",\"reason\":\"short reason\"}. Never invent IDs or URLs."
-            : "Find up to 8 real movies or TV series matching the user. Return ONLY a JSON array of objects {\"title\":\"exact title\",\"year\":2000,\"type\":\"movie\" or \"series\",\"reason\":\"short reason\"}. For a specific episode also add numeric season and episode. Never invent IDs or URLs.";
+        if (!"media".equals(kind)) throw new IllegalArgumentException("Only media recommendations are supported");
+        String prompt = "Find up to 8 real movies, TV series or anime matching the user. Return ONLY a JSON array of objects {\\\"title\\\":\\\"exact title\\\",\\\"year\\\":2000,\\\"type\\\":\\\"movie\\\" or \\\"series\\\",\\\"reason\\\":\\\"short reason\\\"}. Never invent IDs, URLs, or verified availability.";
         JSONObject body = new JSONObject().put("model", model).put("max_tokens", 1800).put("messages", new JSONArray()
             .put(new JSONObject().put("role", "system").put("content", prompt))
             .put(new JSONObject().put("role", "user").put("content", query.trim())));
