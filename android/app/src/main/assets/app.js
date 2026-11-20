@@ -69,6 +69,16 @@ function grid(metas) {
   }
   return node;
 }
+async function addHomeMagnet() {
+  const magnet = prompt('Enter a magnet link')?.trim();
+  if (!magnet) return;
+  if (!/^magnet:\?/i.test(magnet)) return toast('Enter a BitTorrent magnet link.');
+  const token = pageToken;
+  try {
+    await rpc('torrent.add',{magnet,fileIndex:-1});
+    if (token === pageToken) { setPage('settings'); settings('server'); }
+  } catch (error) { toast(error.message || 'Torrent service unavailable.'); }
+}
 function home() {
   const hero = el('section', null, 'hero');
   hero.append(el('span', 'Your next great escape', 'eyebrow'), el('h1', 'A world of stories.\nOne place to start.'), el('p', 'Find something worth watching. Bring your sources. Make it your own.'), button('Explore the catalog  →', () => setPage('search'), 'primary'));
@@ -79,13 +89,7 @@ function home() {
     button('Search with AI', () => aiSearch(), 'box'),
     button('Local video', () => native('local'), 'box'),
     button('Stream URL', () => { const url = prompt('Enter a direct HTTPS video URL'); if (url?.trim()) native('video', url.trim()); }, 'box'),
-    button('Magnet link', async () => {
-      const magnet = prompt('Enter a magnet link');
-      if (!magnet?.trim()) return;
-      if (!magnet.trim().startsWith('magnet:?xt=urn:btih:')) return toast('Enter a valid magnet link.');
-      try { await rpc('torrent.add', {magnet:magnet.trim(),fileIndex:-1}); toast('Magnet link submitted.'); }
-      catch(e) { toast(e.message || 'Torrent service unavailable.'); }
-    }, 'box'),
+    button('Magnet link', addHomeMagnet, 'box'),
     button('Search providers', () => { setPage('settings'); settings('addons'); }, 'box')
   );
   quick.append(actions);
@@ -139,13 +143,7 @@ function search() {
       const url = prompt('Enter a direct HTTPS video URL');
       if (url?.trim()) native('video', url.trim());
     }, 'box'),
-    button('Magnet link', async () => {
-      const magnet = prompt('Enter a magnet link');
-      if (!magnet?.trim()) return;
-      if (!/^magnet:\?xt=urn:btih:/i.test(magnet.trim())) return toast('Enter a valid BitTorrent magnet link.');
-      try { await rpc('torrent.add', {magnet:magnet.trim(),fileIndex:-1}); toast('Magnet link submitted.'); }
-      catch(e) { toast(e.message || 'Torrent service is unavailable.'); }
-    }, 'box'),
+    button('Magnet link', addHomeMagnet, 'box'),
     button('Search providers', () => { setPage('settings'); settings('addons'); }, 'box')
   );
   shortcuts.append(actions);
@@ -362,7 +360,7 @@ async function renderStreams(target, forceRefresh = false) {
       }
       if (window.Mutiny && /^[a-f0-9]{40}$/i.test(stream.infoHash||'')) {
         count++;
-        target.append(button('Download ' + (stream.title||stream.name||'torrent'),async()=>{try{await rpc('torrent.add',{magnet:'magnet:?xt=urn:btih:'+stream.infoHash,fileIndex:stream.fileIdx??-1,meta:current});closeTitle();setPage('settings')}catch(e){toast(e.message)}}));
+        target.append(button('Download ' + (stream.title||stream.name||'torrent'),async()=>{try{await rpc('torrent.add',{magnet:'magnet:?xt=urn:btih:'+stream.infoHash,fileIndex:stream.fileIdx??-1,meta:current});closeTitle();setPage('settings');settings('server')}catch(e){toast(e.message)}}));
         continue;
       }
       const url = stream.url || stream.externalUrl;

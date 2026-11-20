@@ -24,14 +24,14 @@ public final class TorrentEngine {
     private TorrentEngine(Context context) { this.context = context; directory = new File(context.getFilesDir(), "torrents"); directory.mkdirs(); }
     public synchronized JSONObject add(String magnet, int fileIndex, JSONObject meta) throws Exception {
         if (!stage.equals("stopped") && !stage.equals("error")) throw new IllegalStateException("Stop the current torrent before adding another");
-        if (!magnet.startsWith("magnet:?") || !magnet.matches("(?s).*xt=urn:btih:(?:[a-fA-F0-9]{40}|[a-zA-Z2-7]{32})(?:&.*)?") || magnet.length() > 20000) throw new IllegalArgumentException("Enter a valid BitTorrent v1 magnet link");
+        String normalized = MagnetUri.normalize(magnet);
         stop(); stage = "metadata"; error = ""; media = meta == null ? new JSONObject() : new JSONObject(meta.toString());
         int run = generation;
         task = worker.submit(() -> {
             try {
                 SessionManager active = new SessionManager(); session = active;
                 active.start(new SessionParams(new SettingsPack().connectionsLimit(100).uploadRateLimit(512 * 1024)));
-                byte[] metadata = active.fetchMagnet(magnet, 90, directory);
+                byte[] metadata = active.fetchMagnet(normalized, 90, directory);
                 if (run != generation) return;
                 if (metadata == null) throw new IOException("No torrent metadata received. Check peers, trackers, and your connection.");
                 TorrentInfo parsed = new TorrentInfo(metadata);
