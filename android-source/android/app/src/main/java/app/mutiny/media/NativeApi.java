@@ -45,13 +45,13 @@ public final class NativeApi {
                 if (manager == null) throw new IllegalStateException("Android Download Manager is unavailable");
                 return new JSONObject().put("downloadId", manager.enqueue(download));
             }
-            case "TorrentEngine.get(context).add":
+            case "torrent.add":
                 if (android.os.Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
                     activity.runOnUiThread(() -> activity.requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 20));
                 return TorrentEngine.get(context).add(args.getString("magnet"), args.optInt("fileIndex", -1), args.optJSONObject("meta"));
-            case "TorrentEngine.get(context).status": return TorrentEngine.get(context).status();
-            case "TorrentEngine.get(context).select": return TorrentEngine.get(context).select(args.getInt("index"));
-            case "TorrentEngine.get(context).stop": TorrentEngine.get(context).stop(); context.stopService(new Intent(context, TorrentService.class)); return TorrentEngine.get(context).status();
+            case "torrent.status": return TorrentEngine.get(context).status();
+            case "torrent.select": return TorrentEngine.get(context).select(args.getInt("index"));
+            case "torrent.stop": TorrentEngine.get(context).stop(); context.stopService(new Intent(context, TorrentService.class)); return TorrentEngine.get(context).status();
             case "torrent.clear": TorrentEngine.get(context).clearFiles(); return TorrentEngine.get(context).status();
             case "torrent.play": {
                 String url = TorrentEngine.get(context).streamUrl(), meta = TorrentEngine.get(context).media().toString();
