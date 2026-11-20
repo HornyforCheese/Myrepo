@@ -55,6 +55,9 @@ public class CloudStreamArchiveTest {
             try { inspect(archiveWithPath(unsafe)); throw new AssertionError("Control character accepted: " + code); }
             catch (IOException expected) {}
         }
+        // A secondary DEX must not bypass the archive's executable header checks.
+        try { inspect(archiveWithPath("classes2.dex")); throw new AssertionError("Invalid secondary DEX accepted"); }
+        catch (IOException expected) {}
         String hash = "ab".repeat(32);
         CloudStreamArchive.verifyHash(hash,hash.toUpperCase());
         try { CloudStreamArchive.verifyHash(hash,"cd".repeat(32)); throw new AssertionError("Checksum mismatch accepted"); }
