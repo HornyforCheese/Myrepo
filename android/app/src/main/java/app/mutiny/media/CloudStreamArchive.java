@@ -13,6 +13,24 @@ final class CloudStreamArchive {
     static final int MAX_BYTES = 48 * 1024 * 1024;
     private static final int MAX_MANIFEST = 64 * 1024;
 
+    /** Verify the stored archive still matches the pinned digest before any future DEX load. */
+    static boolean hasFileHash(File file, String expected, long maxBytes) throws Exception {
+        if (file == null || expected == null || !expected.matches("[a-f0-9]{64}") ||
+            !file.isFile() || file.length() < 1 || file.length() > maxBytes) return false;
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        long total = 0;
+        try (InputStream input = new FileInputStream(file)) {
+            byte[] buffer = new byte[16384];
+            int size;
+            while ((size = input.read(buffer)) != -1) {
+                if (size > maxBytes - total) return false;
+                total += size;
+                digest.update(buffer, 0, size);
+            }
+        }
+        return total > 0 && expected.equals(asHex(digest.digest()));
+    }
+
     static void verifyHash(String actual, String expected) {
         String value = expected == null ? "" : expected.trim();
         if (value.isEmpty()) return;
