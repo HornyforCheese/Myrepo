@@ -25,7 +25,7 @@ try {
   for (const width of [360, 412, 800]) {
     const context = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 700, deviceScaleFactor: 1 });
     const page = await context.newPage();
-    page.on('pageerror', error => failures.push(error.message));
+    page.on('pageerror', error => { failures.push(error.message); console.error(error.message); });
     const commands = [];
     const cdp = await context.newCDPSession(page); await cdp.send('Page.enable');
     cdp.on('Page.frameRequestedNavigation', event => { if (event.url.startsWith('mutiny://')) commands.push(event.url); });
@@ -59,8 +59,8 @@ try {
     await page.reload();
     await page.getByRole('button', { name: 'My library', exact: false }).click();
     assert.equal(await page.getByRole('button', { name: /The Matrix/ }).count(), 1); checks++;
-    await page.getByRole('button', { name: 'Search', exact: false }).first().click();
-    await page.getByRole('searchbox').fill('Matrix');
+    await page.locator('nav [data-page=search]').click();
+    await page.getByLabel('Search titles', {exact:true}).fill('Matrix');
     await page.locator('main form').getByRole('button', { name: 'Search', exact: true }).click();
     await page.getByRole('button', { name: /The Matrix/ }).waitFor(); checks++;
     await page.getByRole('button', { name: 'Discover', exact: false }).click();

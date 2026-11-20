@@ -15,7 +15,7 @@ permissions:
 jobs:
   build:
     name: Verify Android and optionally package debug APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     defaults:
       run:
@@ -59,7 +59,8 @@ jobs:
           done
       - name: Verify mobile UI with fixture providers
         run: |
-          CHROMIUM_EXECUTABLE="$(command -v google-chrome)" npm run test:ui
+          npx playwright install chromium
+          npm run test:ui
       - name: Compile and package Android application
         if: github.event_name == 'workflow_dispatch'
         run: bash ./gradlew --no-daemon --stacktrace :app:assembleDebug

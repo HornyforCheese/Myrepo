@@ -1,3 +1,4 @@
+import { animeStreamTags, animeStreamMatch, rankStreams } from './stream-preferences.js';
 import { controls, rpc } from './engines.js';
 import { safeUrl, addonBase, sourcesFor, streamId, supportsStreams, jsonRequest } from './model.js';
 
@@ -134,22 +135,6 @@ function search() {
 }
 function isAnimeMeta(meta) {
   return Array.isArray(meta?.genres) && meta.genres.some(genre => /^anime$/i.test(String(genre)));
-}
-function animeStreamTags(stream) {
-  const label = [stream.name, stream.title, stream.description].filter(Boolean).join(' ');
-  const dub = /\b(english[ ._-]*dub(?:bed)?|eng[ ._-]*dub(?:bed)?|dubbed[ ._-]*english)\b/i.test(label);
-  const sub = /\b(english[ ._-]*sub(?:bed|titles?)?|eng[ ._-]*sub(?:bed)?|japanese[ ._-]*audio|jpn[ ._-]*audio|subbed)\b/i.test(label);
-  const dual = /\bdual[ ._-]*audio\b/i.test(label) && /\b(eng(?:lish)?|jpn|japanese)\b/i.test(label);
-  const uncensored = /\buncensored\b/i.test(label);
-  return {dub,sub,dual,uncensored, audioKnown:dub||sub||dual, releaseKnown:uncensored||/\bcensored\b/i.test(label)};
-}
-function animeStreamMatch(stream, preferences) {
-  const tags = animeStreamTags(stream);
-  const audio = preferences.animeAudio || 'any';
-  const release = preferences.animeRelease || 'any';
-  const audioMatch = audio === 'any' || (audio === 'dub' && (tags.dub || tags.dual)) ||
-    (audio === 'sub' && (tags.sub || tags.dual)) || (audio === 'dual' && tags.dual);
-  return {matches:audioMatch && (release !== 'uncensored' || tags.uncensored), tags};
 }
 function animeFiltersPanel(onChange) {
   const panel = el('section', null, 'anime-stream-preferences');
@@ -334,12 +319,17 @@ async function renderStreams(target, forceRefresh = false) {
   const animeMode = isAnimeMeta(current), animePrefs = getPreferences();
   if (animeMode && (animePrefs.animeAudio && animePrefs.animeAudio !== 'any' || animePrefs.animeRelease === 'uncensored'))
     target.append(el('p', 'Anime filters use unverified provider labels. Unknown metadata is excluded.', 'note'));
+  const rows = [];
   for (const result of results) {
     if (result.status !== 'fulfilled') { failures++; continue; }
     const { addon, data } = result.value;
     if (!Array.isArray(data?.streams)) { failures++; continue; }
     for (const stream of data.streams.slice(0, 80)) {
       if (!stream || typeof stream !== 'object') { unsupported++; continue; }
+      rows.push({stream, addon});
+    }
+  }
+  for (const {stream, addon} of rankStreams(rows, animePrefs)) {
       if (animeMode) {
         const match = animeStreamMatch(stream, animePrefs);
         if (!match.matches) {
@@ -365,7 +355,6 @@ async function renderStreams(target, forceRefresh = false) {
       box.append(button(stream.externalUrl ? 'Open source ↗' : '▶  Play video', () => window.Mutiny && !stream.externalUrl ? rpc('video.play',{url,meta:{...current,videos:undefined,videoId:streamId(current,episode),season:episode?.season,episode:episode?.episode}}).catch(e=>toast(e.message)) : native(stream.externalUrl ? 'external' : 'video', url), 'primary'));
       if (!stream.externalUrl) box.append(button('Open in another app', () => native('external', url)));
       target.append(box);
-    }
   }
   if (!count) target.append(el('p', filtered ? 'No streams matched the selected anime preferences. Adjust the filters to include unknown sources.' : 'No playable HTTPS streams were returned for this title.', 'note'));
   if (filtered) target.append(el('p', `${filtered} stream(s) excluded by anime filters; ${unknown} have incomplete labels.`, 'note'));
@@ -415,8 +404,8 @@ function renderPreferences(parent, id) {
     parent.append(el('h2', 'Anime stream preferences'));
     preferenceChoice(parent, 'Anime audio', 'Used for explicitly labelled add-on streams', 'animeAudio', [['any','Any'],['dub','English dub'],['sub','Japanese with subtitles'],['dual','Dual audio']], 'any');
     preferenceChoice(parent, 'Anime release', 'Require explicit uncensored labels when selected', 'animeRelease', [['any','Any'],['uncensored','Uncensored only']], 'any');
-    preferenceControl(parent, 'Low-bandwidth preference', 'Prefer lower-bitrate sources where supported', 'lowBandwidth', false);
-    parent.append(el('p', 'Playback preferences are saved locally. Stream selection and the native player do not yet honour every preference.', 'note'));
+    preferenceControl(parent, 'Low-bandwidth preference', 'Rank lower labelled resolutions first; actual bitrate varies', 'lowBandwidth', false);
+    parent.append(el('p', 'Quality and low-bandwidth preferences order labelled add-on streams. Audio and subtitle tracks can be selected in the player.', 'note'));
   } else if (id === 'general') {
     controls(parent, openTitle, id);
   } else if (id === 'ai') {
