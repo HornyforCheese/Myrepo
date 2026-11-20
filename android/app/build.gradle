@@ -1,0 +1,40 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'app.mutiny.media'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'app.mutiny.media'
+        minSdk 26
+        targetSdk 35
+        versionCode 10102
+        versionName '1.0.1-android-engines'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    signingConfigs { debug { storeFile file("${rootProject.projectDir}/.gradle/debug.keystore") } }
+    buildTypes { release { minifyEnabled false } }
+}
+dependencies {
+    implementation 'androidx.webkit:webkit:1.14.0'
+    implementation 'org.videolan.android:libvlc-all:3.6.5'
+    implementation 'org.libtorrent4j:libtorrent4j:2.1.0-39'
+    runtimeOnly 'org.libtorrent4j:libtorrent4j-android-arm64:2.1.0-39'
+    runtimeOnly 'org.libtorrent4j:libtorrent4j-android-arm:2.1.0-39'
+    runtimeOnly 'org.libtorrent4j:libtorrent4j-android-x86_64:2.1.0-39'
+    runtimeOnly 'org.libtorrent4j:libtorrent4j-android-x86:2.1.0-39'
+}
+
+def previewKey = file("${rootProject.projectDir}/.gradle/debug.keystore")
+tasks.register('ensurePreviewKey') {
+    outputs.file(previewKey)
+    onlyIf { !previewKey.exists() }
+    doLast {
+        previewKey.parentFile.mkdirs()
+        exec {
+            commandLine "${System.getProperty('java.home')}/bin/keytool", '-genkeypair',
+                '-keystore', previewKey, '-storepass', 'android', '-keypass', 'android',
+                '-alias', 'androiddebugkey', '-keyalg', 'RSA', '-keysize', '2048',
+                '-validity', '3650', '-dname', 'CN=Mutiny Android Preview,O=Development,C=US'
+        }
+    }
+}
+tasks.configureEach { if (name == 'validateSigningDebug') dependsOn('ensurePreviewKey') }
