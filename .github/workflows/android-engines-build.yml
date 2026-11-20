@@ -34,10 +34,11 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: android/package-lock.json
-      - name: Set up Android SDK 35
-        uses: android-actions/setup-android@v3
-      - name: Install Android SDK
-        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Prepare preinstalled Android SDK
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          command -v sdkmanager
+          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
       - name: Install JavaScript dependencies
         run: npm ci
       - name: Run JavaScript unit tests
