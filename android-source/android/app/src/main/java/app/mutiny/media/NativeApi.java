@@ -30,6 +30,21 @@ public final class NativeApi {
             case "ai.save": return ai.save(args);
             case "ai.suggest": return ai.suggest(args.getString("query"), "media");
             case "public.get": return http.request(args.getString("url"), "GET", new JSONObject(), null);
+            case "download.start": {
+                String address = args.getString("url");
+                if (!UrlPolicy.isPublicHttps(address)) throw new IllegalArgumentException("Only public HTTPS video downloads are allowed");
+                android.net.Uri source = android.net.Uri.parse(address);
+                String file = source.getLastPathSegment() == null ? "" : source.getLastPathSegment().split("\\?")[0];
+                if (!file.toLowerCase(java.util.Locale.ROOT).matches("[a-z0-9._-]{1,100}\\.(mp4|mkv|webm|mov|m4v|avi)"))
+                    throw new IllegalArgumentException("Offline downloads require a direct video file URL, not a web player or playlist");
+                android.app.DownloadManager.Request download = new android.app.DownloadManager.Request(source);
+                download.setTitle(args.optString("title", "Mutiny Media download").replaceAll("[\\r\\n]", " ").substring(0, Math.min(100, args.optString("title", "Mutiny Media download").length())));
+                download.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                download.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "MutinyMedia-" + System.currentTimeMillis() + "-" + file);
+                android.app.DownloadManager manager = (android.app.DownloadManager) context.getSystemService(android.content.Context.DOWNLOAD_SERVICE);
+                if (manager == null) throw new IllegalStateException("Android Download Manager is unavailable");
+                return new JSONObject().put("downloadId", manager.enqueue(download));
+            }
             case "torrent.add":
                 if (android.os.Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
                     activity.runOnUiThread(() -> activity.requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 20));
