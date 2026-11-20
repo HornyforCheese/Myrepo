@@ -33,11 +33,20 @@ try {
     await page.route('https://v3-cinemeta.strem.io/**', route => {
       const url = route.request().url();
       const meta = url.includes('tt0944947') ? series : movie;
+      if (url.includes('genre=Anime.json')) {
+        return route.fulfill({ json: { metas: [{ ...series, genres: ['Anime'] }, movie] } });
+      }
       route.fulfill({ json: url.includes('/meta/') ? { meta } : { metas: url.includes('/series/') ? [series] : [movie] } });
     });
     await page.route('https://addon.example/**', route => route.fulfill({ json: route.request().url().endsWith('/manifest.json') ? { id: 'test.addon', name: 'Test add-on', types: ['movie', 'series'], resources: ['stream'] } : { streams: [{ name: 'HTTPS sample', url: 'https://video.example/sample.mp4' }, { name: 'Torrent only', infoHash: 'abc123' }] } }));
     await page.goto(`http://127.0.0.1:${port}/`);
     assert.equal(await page.locator('.home-shortcuts button').count(), 5); checks++;
+    await page.locator('nav [data-page=search]').click();
+    await page.getByRole('button', { name: 'Browse anime' }).click();
+    await page.getByRole('button', { name: /Game of Thrones/ }).waitFor();
+    assert.equal(await page.getByRole('button', { name: /The Matrix/ }).count(), 0); checks++;
+    await page.getByRole('button', { name: 'Browse Anime genre' }).click();
+    assert.equal(await page.getByRole('button', { name: /Game of Thrones/ }).count(), 1); checks++;
     await page.locator('nav [data-page=settings]').click();
     await page.getByRole('button', { name: /General Settings/ }).click();
     await page.getByRole('button', { name: 'Load cloud library' }).waitFor(); checks++;
