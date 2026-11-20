@@ -18,7 +18,6 @@ public final class NativeApi {
         this.context = context; Secrets secrets = new SecureStore(context); accounts = new Accounts(secrets, http); ai = new AiClient(secrets, http);
     }
     public Object call(Activity activity, String method, JSONObject args) throws Exception {
-        TorrentEngine torrent = TorrentEngine.get(context);
         switch (method) {
             case "capabilities": return new JSONObject().put("vlc", true).put("torrent", true).put("accounts", true).put("ai", true);
             case "account.status": return accounts.status();
@@ -45,16 +44,16 @@ public final class NativeApi {
                 if (manager == null) throw new IllegalStateException("Android Download Manager is unavailable");
                 return new JSONObject().put("downloadId", manager.enqueue(download));
             }
-            case "torrent.add":
+            case "TorrentEngine.get(context).add":
                 if (android.os.Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
                     activity.runOnUiThread(() -> activity.requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 20));
-                return torrent.add(args.getString("magnet"), args.optInt("fileIndex", -1), args.optJSONObject("meta"));
-            case "torrent.status": return torrent.status();
-            case "torrent.select": return torrent.select(args.getInt("index"));
-            case "torrent.stop": torrent.stop(); context.stopService(new Intent(context, TorrentService.class)); return torrent.status();
-            case "torrent.clear": torrent.clearFiles(); return torrent.status();
+                return TorrentEngine.get(context).add(args.getString("magnet"), args.optInt("fileIndex", -1), args.optJSONObject("meta"));
+            case "TorrentEngine.get(context).status": return TorrentEngine.get(context).status();
+            case "TorrentEngine.get(context).select": return TorrentEngine.get(context).select(args.getInt("index"));
+            case "TorrentEngine.get(context).stop": TorrentEngine.get(context).stop(); context.stopService(new Intent(context, TorrentService.class)); return TorrentEngine.get(context).status();
+            case "torrent.clear": TorrentEngine.get(context).clearFiles(); return TorrentEngine.get(context).status();
             case "torrent.play": {
-                String url = torrent.streamUrl(), meta = torrent.media().toString();
+                String url = TorrentEngine.get(context).streamUrl(), meta = TorrentEngine.get(context).media().toString();
                 activity.runOnUiThread(() -> activity.startActivity(new Intent(activity, VlcPlayerActivity.class).putExtra("url", url).putExtra("meta", meta)));
                 return true;
             }
