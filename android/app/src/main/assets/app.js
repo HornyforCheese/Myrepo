@@ -49,7 +49,7 @@ function home() {
   quick.append(el('h2', 'Quick actions'));
   const actions = el('div', null, 'grid');
   actions.append(
-    button('Search with AI', () => { setPage('settings'); toast('AI chat is not connected yet.'); }, 'box'),
+    button('Search with AI', () => aiSearch(), 'box'),
     button('Local video', () => native('local'), 'box'),
     button('Stream URL', () => { const url = prompt('Enter a direct HTTPS video URL'); if (url?.trim()) native('video', url.trim()); }, 'box'),
     button('Magnet link', async () => {
@@ -59,7 +59,7 @@ function home() {
       try { await rpc('torrent.add', {magnet:magnet.trim(),fileIndex:-1}); toast('Magnet link submitted.'); }
       catch(e) { toast(e.message || 'Torrent service unavailable.'); }
     }, 'box'),
-    button('Search providers', () => { setPage('settings'); toast('Open Addons to manage providers.'); }, 'box')
+    button('Search providers', () => { setPage('settings'); settings('addons'); }, 'box')
   );
   quick.append(actions);
   main.append(hero, quick, filters(() => setPage('home')), el('h2', type === 'movie' ? 'Popular movies' : 'Popular series'));
@@ -108,7 +108,7 @@ function search() {
       try { await rpc('torrent.add', {magnet:magnet.trim(),fileIndex:-1}); toast('Magnet link submitted.'); }
       catch(e) { toast(e.message || 'Torrent service is unavailable.'); }
     }, 'box'),
-    button('Search providers', () => { setPage('settings'); toast('Open Addons to manage providers.'); }, 'box')
+    button('Search providers', () => { setPage('settings'); settings('addons'); }, 'box')
   );
   shortcuts.append(actions);
   const anime = el('section', null, 'anime-discovery');
@@ -373,7 +373,7 @@ function settingsBackup(parent) {
     localStorage.removeItem(SETTINGS_KEY); applySavedAppearance(); toast('Preferences reset.'); settings();
   }));
 }
-function settings() {
+function settings(initialSection) {
   // Reset the view before rendering the settings index; otherwise Back duplicates every card.
   main.replaceChildren();
   const heading = el('h1', 'Settings');
@@ -427,6 +427,7 @@ function settings() {
       if (id === 'general') settingsBackup(main);
     }
   }
+  if (initialSection) { openSection(initialSection); return; }
   for (const [symbol, name, description, id] of sections) {
     const card = button('', () => openSection(id), 'settings-card');
     const symbolNode = el('span', symbol, 'settings-symbol');
