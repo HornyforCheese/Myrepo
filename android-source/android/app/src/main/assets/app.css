@@ -88,3 +88,7 @@ header{justify-content:space-between;min-width:0;padding:13px 15px;gap:8px}
 .quick-ai-result p{margin:5px 0}
 @media(min-width:700px){.quick-action-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.quick-action:last-child{grid-column:auto;display:flex;min-height:112px}.quick-action:last-child .quick-action-icon,.quick-action:last-child small{grid-column:auto}.quick-action strong{font-size:13px}}
 @media(max-width:390px){header{padding:11px 8px;gap:4px}.header-links{gap:0}.header-links .header-nav{width:36px;font-size:19px}.home-quick-actions .quick-action{min-height:104px;padding:11px}.quick-action:last-child{min-height:84px}}
+
+/* Show model count and provide an explicit retry without obscuring settings. */
+.quick-model-actions{display:flex;justify-content:flex-end;margin:-6px 0 8px}
+.quick-model-actions .model-refresh{min-height:34px;padding:6px 11px;border:1px solid #ffffff22;font-size:12px;background:transparent;color:var(--gold)}
