@@ -32,5 +32,6 @@ test('StreamPlay requests are pinned to an imported v715 package', () => {
   assert.match(api, /CloudStreamPackageStore\.isInstalled\(context, hash\)/);
   assert.match(api, /CloudStreamTransport\.request\(context, args\.getJSONObject\("request"\)\)/);
   assert.match(store, /static synchronized boolean isInstalled\(/);
-  assert.match(store, /new File\(directory\(context\), sha256 \+ "\.cs3"\)\.isFile\(\)/);
+  assert.match(store, /CloudStreamArchive\.hasFileHash\(new File\(directory\(context\), sha256 \+ "\.cs3"\), sha256, MAX_BYTES\)/);
+  assert.match(java('CloudStreamArchive.java'), /MessageDigest\.getInstance\("SHA-256"\)/);
 });
