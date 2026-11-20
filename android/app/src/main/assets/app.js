@@ -45,7 +45,24 @@ function grid(metas) {
 function home() {
   const hero = el('section', null, 'hero');
   hero.append(el('span', 'Your next great escape', 'eyebrow'), el('h1', 'A world of stories.\nOne place to start.'), el('p', 'Find something worth watching. Bring your sources. Make it your own.'), button('Explore the catalog  →', () => setPage('search'), 'primary'));
-  main.append(hero, filters(() => setPage('home')), el('h2', type === 'movie' ? 'Popular movies' : 'Popular series'));
+  const quick = el('section', null, 'home-shortcuts');
+  quick.append(el('h2', 'Quick actions'));
+  const actions = el('div', null, 'grid');
+  actions.append(
+    button('Search with AI', () => { setPage('settings'); toast('AI chat is not connected yet.'); }, 'box'),
+    button('Local video', () => native('local'), 'box'),
+    button('Stream URL', () => { const url = prompt('Enter a direct HTTPS video URL'); if (url?.trim()) native('video', url.trim()); }, 'box'),
+    button('Magnet link', async () => {
+      const magnet = prompt('Enter a magnet link');
+      if (!magnet?.trim()) return;
+      if (!magnet.trim().startsWith('magnet:?xt=urn:btih:')) return toast('Enter a valid magnet link.');
+      try { await rpc('torrent.add', {magnet:magnet.trim(),fileIndex:-1}); toast('Magnet link submitted.'); }
+      catch(e) { toast(e.message || 'Torrent service unavailable.'); }
+    }, 'box'),
+    button('Search providers', () => { setPage('settings'); toast('Open Addons to manage providers.'); }, 'box')
+  );
+  quick.append(actions);
+  main.append(hero, quick, filters(() => setPage('home')), el('h2', type === 'movie' ? 'Popular movies' : 'Popular series'));
   const results = el('section'); main.append(results);
   loadCatalog(results, `${API}/catalog/${type}/top.json`, pageToken);
 }
