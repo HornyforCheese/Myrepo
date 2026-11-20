@@ -96,11 +96,12 @@ public final class CloudStreamPackageStore {
         File stage = File.createTempFile("cs3-import-", ".zip", context.getCacheDir());
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            int size = 0;
+            long size = 0;
             try (FileOutputStream output = new FileOutputStream(stage)) {
                 byte[] buffer = new byte[16384];
                 int n;
                 while ((n = input.read(buffer)) != -1) {
+                    if (n > MAX_BYTES - size) throw new IOException("Extension exceeds 48 MiB");
                     size += n;
                     if (size > MAX_BYTES) throw new IOException("Extension exceeds 48 MiB");
                     digest.update(buffer, 0, n);
