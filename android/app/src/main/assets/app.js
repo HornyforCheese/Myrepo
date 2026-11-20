@@ -11,13 +11,18 @@ let page = 'home', type = 'movie', pageToken = 0, detailToken = 0;
 let saved = read('mutiny.android.library.v1', []);
 let addons = read('mutiny.android.addons.v1', []);
 let cloudAddons = [], accountGeneration = 0;
-async function reloadAccountAddons() {
+async function reloadAccountAddons(refresh = false) {
   const generation = ++accountGeneration, previous = cloudAddons;
   cloudAddons = [];
   animeStreamCache.clear();
   const snapshots = await rpc('account.addons');
-  const result = await reconcileAccountAddons(previous, snapshots, jsonRequest);
-  if (generation === accountGeneration) cloudAddons = result.addons;
+  const mode = getPreferences().accountSources || 'both';
+  const selected = Object.fromEntries(Object.entries(snapshots).filter(([provider]) => mode === 'both' || mode === provider));
+  const result = await reconcileAccountAddons(previous, selected, jsonRequest, refresh);
+  if (generation === accountGeneration) {
+    cloudAddons = result.addons;
+    document.querySelector('#account-providers')?.dispatchEvent(new Event('providers-loaded'));
+  }
   return result.stats;
 }
 const availableAddons = () => combineProviderAddons(addons,cloudAddons);
@@ -368,6 +373,7 @@ async function renderStreams(target, forceRefresh = false) {
       count++;
       const box = el('div', null, 'box');
       box.append(el('strong', stream.name || addon.manifest.name || 'Stream'), el('p', stream.title || stream.description || '', 'small'));
+      box.append(el('small',addon.manifest.name + (addon.origins ? ' · ' + addon.origins.join(', ') : ''), 'note'));
       if (animeMode) {
         const tags = animeStreamTags(stream);
         box.append(el('p', 'Provider labels: ' + [tags.dub?'English dub':null,tags.sub?'Subbed':null,tags.dual?'Dual audio':null,tags.uncensored?'Uncensored':null].filter(Boolean).join(', ').replace(/^$/,'Unknown audio/release'), 'note'));
@@ -688,7 +694,7 @@ function settingsBackup(parent) {
     try {
       const parsed = JSON.parse(await file.text());
       if (parsed?.format !== 'mutiny-settings-v1' || !parsed.preferences || typeof parsed.preferences !== 'object' || Array.isArray(parsed.preferences)) throw Error('Unsupported settings file.');
-      const allowed = ['language','theme','reduceMotion','compactCards','quality','audioLanguage','subtitles','lowBandwidth','mobileSync','rememberSection','aiProvider','keepAwake','networkMode','animeAudio','animeRelease'];
+      const allowed = ['language','theme','reduceMotion','compactCards','quality','audioLanguage','subtitles','lowBandwidth','mobileSync','rememberSection','aiProvider','keepAwake','networkMode','animeAudio','animeRelease','accountSources'];
       const preferences = Object.fromEntries(Object.entries(parsed.preferences).filter(([key,value]) => allowed.includes(key) && (typeof value === 'boolean' || typeof value === 'string')));
       if (!confirm('Import preferences from this file? Current preferences will be replaced.')) return;
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(preferences));
@@ -726,6 +732,20 @@ function settings(initialSection) {
     settingsSection = id;
     main.replaceChildren(el('h1', sections.find(item => item[3] === id)?.[1] || 'Settings'), back);
     if (id === 'addons') {
+      const accountList = el('section'); accountList.id = 'account-providers';
+      const showAccountProviders = () => {
+        accountList.replaceChildren(el('h2','Account providers'));
+        const providers = availableAddons().filter(addon => addon.origins.some(origin => origin !== 'device'));
+        for (const addon of providers) accountList.append(el('p', addon.manifest.name + ' · ' + addon.origins.join(', ')));
+        if (!providers.length) accountList.append(el('p','Load your cloud library in General Settings to sync providers.', 'note'));
+      };
+      preferenceChoice(main,'Account sources','Choose which synced accounts supply catalogues and streams. Device add-ons stay available.',
+        'accountSources',[['both','Stremio and Nuvio'],['stremio','Stremio'],['nuvio','Nuvio'],['device','Device only']],'both', async () => {
+          try { if (window.Mutiny) await reloadAccountAddons(); } catch (error) { toast(error.message); }
+          showAccountProviders();
+        });
+      accountList.addEventListener('providers-loaded',showAccountProviders);
+      showAccountProviders(); main.append(accountList);
       main.append(el('p', 'Connect a Stremio-compatible provider using its HTTPS manifest address.'));
   const form = el('form'), input = el('input'); input.type = 'url'; input.placeholder = 'https://provider.example/manifest.json'; input.setAttribute('aria-label', 'Add-on manifest URL'); input.required = true;
   const submit = el('button', 'Add', 'primary'); submit.type = 'submit'; form.append(input, submit); main.append(form);

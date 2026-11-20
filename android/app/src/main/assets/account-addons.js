@@ -36,7 +36,7 @@ export function combineProviderAddons(localAddons = [], accountAddons = []) {
 }
 
 /** Keep the previous account snapshot on a transient sync error, but never after logout or user switch. */
-export async function reconcileAccountAddons(previous = [], payload = {}, loadManifest) {
+export async function reconcileAccountAddons(previous = [], payload = {}, loadManifest, refresh = false) {
   const addons = [], stats = {};
   for (const account of ACCOUNTS) {
     const state = payload?.[account];
@@ -65,7 +65,7 @@ export async function reconcileAccountAddons(previous = [], payload = {}, loadMa
     for (let i = 0; i < bases.length; i += 8) {
       const batch = await Promise.all(bases.slice(i, i + 8).map(async base => {
         const old = previousForUser.get(base);
-        if (old) return old;
+        if (old && !refresh) return old;
         try {
           const manifest = await loadManifest(base + '/manifest.json');
           if (!validManifest(manifest)) return null;

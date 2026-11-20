@@ -106,7 +106,7 @@ export function controls(main,openTitle,sectionId,reloadAddons) {
       const meta = {id:item._id || item.content_id,type:item.type || item.content_type,name:item.name,poster:item.poster};
       if (meta.id && meta.name) btn(meta.name,()=>openTitle(meta),library);
     }
-    const stats = (await reloadAddons())[service];
+    const stats = (await reloadAddons(true))[service];
     status.textContent = 'Library loaded · ' + (stats?.count || 0) + ' account providers · ' + (stats?.skipped || 0) + ' skipped';
   });
   accountAction('Sign out', async service => {
