@@ -125,11 +125,11 @@ function isAnimeMeta(meta) {
 }
 function animeStreamTags(stream) {
   const label = [stream.name, stream.title, stream.description].filter(Boolean).join(' ');
-  const dub = /\\b(english[ ._-]*dub(?:bed)?|eng[ ._-]*dub(?:bed)?|dubbed[ ._-]*english)\\b/i.test(label);
-  const sub = /\\b(english[ ._-]*sub(?:bed|titles?)?|eng[ ._-]*sub(?:bed)?|japanese[ ._-]*audio|jpn[ ._-]*audio|subbed)\\b/i.test(label);
-  const dual = /\\bdual[ ._-]*audio\\b/i.test(label) && /\\b(eng(?:lish)?|jpn|japanese)\\b/i.test(label);
-  const uncensored = /\\buncensored\\b/i.test(label);
-  return {dub,sub,dual,uncensored, audioKnown:dub||sub||dual, releaseKnown:uncensored||/\\bcensored\\b/i.test(label)};
+  const dub = /\b(english[ ._-]*dub(?:bed)?|eng[ ._-]*dub(?:bed)?|dubbed[ ._-]*english)\b/i.test(label);
+  const sub = /\b(english[ ._-]*sub(?:bed|titles?)?|eng[ ._-]*sub(?:bed)?|japanese[ ._-]*audio|jpn[ ._-]*audio|subbed)\b/i.test(label);
+  const dual = /\bdual[ ._-]*audio\b/i.test(label) && /\b(eng(?:lish)?|jpn|japanese)\b/i.test(label);
+  const uncensored = /\buncensored\b/i.test(label);
+  return {dub,sub,dual,uncensored, audioKnown:dub||sub||dual, releaseKnown:uncensored||/\bcensored\b/i.test(label)};
 }
 function animeStreamMatch(stream, preferences) {
   const tags = animeStreamTags(stream);
