@@ -63,6 +63,16 @@ final class CloudStreamArchive {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
                 String name = entry.getName();
+                // Reject ambiguous or traversal paths before any future DEX/resource extraction.
+                if (name.isEmpty() || name.startsWith("/") || name.indexOf('\\\\') >= 0 ||
+                    name.matches("^[A-Za-z]:.*"))
+                    throw new IOException("Unsafe extension archive path");
+                String[] segments = name.split("/", -1);
+                for (int part = 0; part < segments.length; part++) {
+                    if (".".equals(segments[part]) || "..".equals(segments[part]) ||
+                        (segments[part].isEmpty() && part != segments.length - 1))
+                        throw new IOException("Unsafe extension archive path");
+                }
                 if (!names.add(name) || names.size() > 256) throw new IOException("Invalid or excessive archive entries");
                 boolean isManifest = "manifest.json".equals(name);
                 boolean primaryDex = "classes.dex".equals(name);
