@@ -35,3 +35,19 @@ The public `tpadev/phiser-streamplay` repository's `StreamPlay/build.gradle.kts`
 5. Execute regression tests and an Android build. Record actual results, commit SHA and reproducible logs.
 
 **Current status: NOT WORKING / NOT VERIFIED.** CS3 chunk 4 is blocked by this StreamPlay acceptance gate.
+
+## StreamPlay v715 exact-binary host ABI inventory
+
+Static extraction from the uploaded `classes.dex` found **99 distinct `Lcom/lagradost/cloudstream3/...` class descriptors**. This is a lower bound on host API compatibility, not a method-level dependency graph.
+
+Key referenced classes and packages:
+
+- Plugin lifecycle: `plugins/Plugin`, `plugins/CloudstreamPlugin`, `plugins/PluginData`, `plugins/PluginManager`
+- Provider contract: `MainAPI`, `MainAPIKt`, `APIHolder`, `MainPageRequest`, `MainPageData`
+- Discovery: `SearchResponse`, `MovieSearchResponse`, `AnimeSearchResponse`, `HomePageResponse`, `HomePageList`
+- Metadata: `LoadResponse`, `MovieLoadResponse`, `TvSeriesLoadResponse`, `AnimeLoadResponse`, `Episode`, `TvType`
+- Extraction: `utils/ExtractorApi`, `utils/ExtractorLink`, `utils/ExtractorLinkType`, `utils/M3u8Helper`, `utils/JsUnpacker`, plus 20+ named extractor implementations
+- HTTP/browser: `network/CloudflareKiller`, `network/WebViewResolver`
+- Other host APIs: `syncproviders/AccountManager`, `syncproviders/SyncAPI`, `syncproviders/providers/AniListApi`, `utils/DataStore`, `utils/AppUtils`, `CommonActivity`, `CloudStreamApp`
+
+**Engineering consequence:** the existing three-operation JSON IPC protocol alone cannot run this binary. The plugin expects a substantial CloudStream Android/Kotlin host ABI. A fabricated stub that merely makes class loading succeed would not meet the user's functional requirement. Next: resolve actual invoked method signatures and compatible dependency versions, then build and execute the isolated host against this pinned binary. Do not claim playback until verified.
