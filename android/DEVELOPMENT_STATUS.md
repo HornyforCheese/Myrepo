@@ -96,3 +96,10 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - `fb2d2a195b1f112228e6cbb81b1b84cb0b113575`: negative fixture for malformed secondary DEX.
 - Source and fixture re-read on GitHub; **Java tests not executed, runtime still inactive, provider execution not implemented, no APK built**.
 - User-requested order: complete 4–6 bounded CS3 runtime/provider execution chunks, then 2–3 Stremio/Nuvio integration chunks. Next: isolated execution process contract and mediated provider dispatch, without granting untrusted DEX direct host privileges.
+
+## CloudStream runtime sequence, chunk 2: bounded provider request contract
+
+- `fcc4690656254fc1d166b2590e77edcbcacbc91b`: added `CloudStreamRequest` validator allowing only search, metadata, streams; provider IDs, media types, UTF-8 request size, query/ID limits and control-character checks.
+- `32e56c043cb5440eed20f9b459d7f6abe1fd4e38`: request contract negative fixtures. Follow-up checked-JSON exception signature fixes `adf76a64ec201924088b61dba1e9dc8f4988a834`, `6f2852678f4749fcf452a8c2cd1aca5ecb6800ca`, `faa875fc886c1f890693b1d53795e7cf76b09b63`.
+- GitHub source re-read confirmed files. **No Java/Android compilation or test execution; no isolated request transport or provider code execution; no APK built.**
+- Next: isolated request/reply transport with deadlines, then mediated CloudStream ABI/provider registration and dispatch. Stremio/Nuvio integration follows requested CS3 sequence.
