@@ -42,3 +42,10 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Fixture commits `5f561647d57674920af944714e0ecfc7b3cc675a` and `c466d45e61de90e067af26ef3956514bd3e91fe5`: add control-character path cases without Java Unicode-escape source hazards.
 - Inspected historical GitHub Actions run `44822049872`: Android Java compilation and native fixtures succeeded, but UI fixture failed with a modal dialog intercepting a click on My library. This is an **older run**, not confirmation of current branch CI.
 - Source files were re-read after commit; new tests and current Android CI **not executed/verified**. No APK built. Next: verify current CI, repair modal/navigation test failure if reproducible, then CS3 isolated runtime work.
+
+## AI-first development sequence (user priority)
+
+- AI chunk 1 implementation `bf33e6520b942bcda0b9ff71b24da2ba7e2299cf`: OpenRouter models with missing pricing no longer qualify as verified free solely from a `:free` suffix.
+- Regression fixture `82f985426cba0e795632aec931ca9b9d35ebea83`: covers unpriced suffix, paid model, and explicitly zero-priced model.
+- GitHub source re-read verified both changes; **fixtures not executed, Android compilation/CI not checked**. No APK built.
+- Requested order: finish AI catalogue and credential verification, then anime discovery/preferences, then Windows parity and UI. Resume CloudStream runtime afterward.
