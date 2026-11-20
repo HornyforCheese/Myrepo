@@ -8,7 +8,7 @@ public final class CloudStreamRequestTest {
         catch (IllegalArgumentException expected) { }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         JSONObject search = new JSONObject().put("operation", "search").put("provider", "example.provider")
             .put("query", "Anime").put("type", "series");
         if (!"Anime".equals(CloudStreamRequest.validate(search).getString("query"))) throw new AssertionError();
