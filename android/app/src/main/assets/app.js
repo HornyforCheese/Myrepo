@@ -124,6 +124,11 @@ function animeDiscover() {
   input.type = 'search'; input.placeholder = 'Anime title or keyword'; input.value = 'anime'; input.maxLength = 150;
   input.setAttribute('aria-label', 'Search anime titles');
   const submit = el('button', 'Search anime', 'primary'); submit.type = 'submit'; form.append(input, submit);
+  const preferencePanel = el('section', null, 'anime-preferences');
+  preferencePanel.append(el('h2', 'Anime preferences'));
+  preferenceChoice(preferencePanel, 'Audio preference', 'Saved for future source selection; catalog results do not identify audio tracks.', 'animeAudio', [['any','Any'],['dub','English dub'],['sub','Japanese with subtitles'],['dual','Dual audio']], 'any');
+  preferenceChoice(preferencePanel, 'Release preference', 'Saved preference; uncensored availability cannot be confirmed without provider metadata.', 'animeRelease', [['any','Any'],['uncensored','Prefer uncensored']], 'any');
+  preferencePanel.append(el('p', 'These preferences are saved locally. They do not filter catalog titles or guarantee a matching stream until provider metadata and playback selection are integrated.', 'note'));
   const typeRow = el('div', null, 'chips'), results = el('section');
   let animeType = 'series', token = 0;
   const updateType = () => {
@@ -147,7 +152,7 @@ function animeDiscover() {
   };
   form.addEventListener('submit', event => { event.preventDefault(); run(); });
   updateType();
-  main.append(form, typeRow, results);
+  main.append(form, typeRow, preferencePanel, results);
   run();
 }
 function library() {
@@ -393,7 +398,7 @@ function settingsBackup(parent) {
     try {
       const parsed = JSON.parse(await file.text());
       if (parsed?.format !== 'mutiny-settings-v1' || !parsed.preferences || typeof parsed.preferences !== 'object' || Array.isArray(parsed.preferences)) throw Error('Unsupported settings file.');
-      const allowed = ['language','theme','reduceMotion','compactCards','quality','audioLanguage','subtitles','lowBandwidth','mobileSync','rememberSection','aiProvider','keepAwake','networkMode'];
+      const allowed = ['language','theme','reduceMotion','compactCards','quality','audioLanguage','subtitles','lowBandwidth','mobileSync','rememberSection','aiProvider','keepAwake','networkMode','animeAudio','animeRelease'];
       const preferences = Object.fromEntries(Object.entries(parsed.preferences).filter(([key,value]) => allowed.includes(key) && (typeof value === 'boolean' || typeof value === 'string')));
       if (!confirm('Import preferences from this file? Current preferences will be replaced.')) return;
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(preferences));
