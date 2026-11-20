@@ -55,7 +55,7 @@ export function metadataCandidates(meta,addons=[]) {
     if(!safeUrl(base)||seen.has(base))return;
     seen.add(base);candidates.push(`${base}/meta/${type}/${encodeURIComponent(id)}.json`);
   };
-  if(/^tt\\d{5,12}$/i.test(id))add(CINEMETA);
+  if(/^tt\d{5,12}$/i.test(id))add(CINEMETA);
   const matching=addons.filter(addon=>{
     if(!safeUrl(addon?.base)||!addon?.manifest)return false;
     const manifest=addon.manifest;
