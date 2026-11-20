@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "PARITY-AUDIT: repair appearance assertions and remove nonfunctional language choices",
-  "lastVerifiedImplementationCommit": "4008d55044506666ddbe3de8956deb4083c9d5e0",
+  "currentChunk": "CS3-RUNTIME 1/4-6: validate multi-DEX archive headers before executable plugin runtime",
+  "lastVerifiedImplementationCommit": "fb2d2a195b1f112228e6cbb81b1b84cb0b113575",
   "completedChunks": [],
   "tasks": [
     {
@@ -115,7 +115,8 @@
     "Anime label negation guard and regression fixtures re-read from GitHub; JS tests and Android device playback not executed",
     "CSS theme palettes and appearance regression fixture re-read from GitHub; npm tests, browser screenshots and Android device not verified",
     "Re-read Android theme-color and system preference event handling and static regression fixture; npm tests and device behaviour not verified",
-    "Re-read fixed appearance assertions and English-only interface settings; no npm/Playwright or device tests executed, parity not complete"
+    "Re-read fixed appearance assertions and English-only interface settings; no npm/Playwright or device tests executed, parity not complete",
+    "Re-read secondary DEX validation and malformed DEX fixture from GitHub; Java tests, plugin runtime and provider dispatch not executed"
   ],
-  "nextAction": "Run npm test and Playwright UI suite; verify native theme updates, language translation implementation, settings persistence, navigation, playback and Windows parity matrix before declaring complete."
+  "nextAction": "CS3 chunk 2: design and implement isolated runtime process protocol with bounded provider requests and fail-closed execution; continue 4-6 CS3 chunks before 2-3 Stremio/Nuvio integration chunks."
 }
