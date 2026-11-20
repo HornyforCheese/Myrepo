@@ -1,5 +1,4 @@
 import {rpc} from './engines.js';
-import {freeModelOptions, setModelOptions} from './free-models.js';
 
 let activeDialog = null;
 export function closeQuickDialog() {
@@ -116,106 +115,82 @@ function magnetPanel(launcher) {
   dialog.append(row, result);
   magnet.focus();
 }
-function aiPanel(launcher, onSearchTitle) {
-  const dialog = modal('Search with AI', launcher);
-  dialog.append(element('p', 'Get movie, series and anime recommendations. Configure an AI provider and model before asking.', 'note'));
-  const providerWrap = element('label', 'AI provider', 'quick-field');
-  const provider = element('select');
-  for (const [id, name] of [['openrouter','OpenRouter'], ['groq','Groq'], ['gemini','Gemini']]) {
-    const option = element('option', name); option.value = id; provider.append(option);
+function aiPanel(launcher,onSearchTitle,openSettings) {
+  const dialog=modal('Search with AI',launcher);
+  const tabs=element('div',undefined,'ai-tabs');tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','AI mode');
+  const chat=element('section',undefined,'ai-mode-panel'),titles=element('section',undefined,'ai-mode-panel');
+  chat.id='ai-chat-panel';titles.id='ai-titles-panel';
+  chat.setAttribute('role','tabpanel');titles.setAttribute('role','tabpanel');
+  const chatTab=action(tabs,'Chat',()=>show('chat')),titleTab=action(tabs,'Title Search',()=>show('titles'));
+  for(const [button,panel] of [[chatTab,chat],[titleTab,titles]]) {
+    button.setAttribute('role','tab');button.setAttribute('aria-controls',panel.id);
   }
-  providerWrap.append(provider); dialog.append(providerWrap);
-  const modelWrap = element('label', 'Free / free-tier LLM model', 'quick-field');
-  const model = element('select');
-  model.setAttribute('aria-label', 'Free LLM model');
-  modelWrap.append(model); dialog.append(modelWrap);
-  const modelActions = element('div', undefined, 'quick-model-actions');
-  const reloadModels = action(modelActions, 'Refresh free models', () => loadModels(model.value), 'model-refresh');
-  dialog.append(modelActions);
-  const modelNotice = status(dialog);
-  let modelRequest = 0;
-  async function loadModels(preferred = '') {
-    const selectedProvider = provider.value, request = ++modelRequest;
-    setModelOptions(model, freeModelOptions(selectedProvider), preferred);
-    modelNotice.textContent = model.options.length + ' recent free choices · checking current availability…';
-    reloadModels.disabled = true;
-    try {
-      const response = window.Mutiny ? await rpc('ai.freeModels', {provider: selectedProvider}) : null;
-      if (!dialog.isConnected || request !== modelRequest || provider.value !== selectedProvider) return;
-      const choices = freeModelOptions(selectedProvider, response);
-      setModelOptions(model, choices, model.value || preferred);
-      const status = response?.catalogueStatus === 'live' ? 'live zero-cost catalogue' :
-        selectedProvider === 'openrouter' ? 'recent free-model snapshot; verify availability' :
-        'documented free-tier list; account limits apply';
-      modelNotice.textContent = choices.length + ' available choices (' + status + '). ' +
-        (response?.notice || 'Free models have rate limits.');
-    } catch {
-      if (!dialog.isConnected || request !== modelRequest) return;
-      const choices = freeModelOptions(selectedProvider);
-      setModelOptions(model, choices, model.value || preferred);
-      modelNotice.textContent = choices.length + ' recently listed free models. Live catalogue unavailable; a model might be retired.';
-    } finally {
-      if (dialog.isConnected && request === modelRequest) reloadModels.disabled = false;
+  function show(selected) {
+    for(const [button,panel,name] of [[chatTab,chat,'chat'],[titleTab,titles,'titles']]){
+      const active=selected===name;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;panel.hidden=!active;
     }
   }
-  provider.addEventListener('change', () => { loadModels(); });
-  const key = field(dialog, 'API key', 'password', 'Leave blank to keep the saved key');
-  key.autocomplete = 'off'; key.spellcheck = false;
-  const settingsStatus = status(dialog);
-  const prompt = field(dialog, 'Ask about movies, series or anime', 'text', 'Sci-fi horror with an English dub…');
-  prompt.maxLength = 2000;
-  const list = element('div', undefined, 'quick-results');
-  const actions = element('div', undefined, 'quick-modal-actions');
-  const save = action(actions, 'Save AI settings', () => busy(async () => {
-    await rpc('ai.save', {provider: provider.value, model: model.value.trim(), key: key.value});
-    key.value = ''; settingsStatus.textContent = 'AI settings saved';
-  }));
-  const ask = action(actions, 'Find recommendations', () => busy(async () => {
-    if (!prompt.value.trim()) throw Error('Describe what you want to watch');
-    if (!model.value) throw Error('Choose a free/free-tier model');
-    // Keep the selection and the native model actually used for this query in sync.
-    await rpc('ai.save', {provider: provider.value, model: model.value, key: key.value});
-    key.value = '';
-    const suggestions = parseAiSuggestions(await rpc('ai.suggest', {query: prompt.value.trim(), kind: 'media'}));
-    list.replaceChildren();
-    if (!suggestions.length) list.append(element('p', 'No recommendations returned.', 'note'));
-    for (const item of suggestions) {
-      const card = element('div', undefined, 'quick-ai-result');
-      card.append(element('strong', item.title), element('p', [item.year, item.reason].filter(Boolean).join(' · '), 'note'));
-      action(card, 'Search title', () => { closeQuickDialog(); onSearchTitle(item.title); });
-      list.append(card);
-    }
-  }), 'primary');
-  async function busy(fn) {
-    if (nativeRequired(settingsStatus)) return;
-    save.disabled = ask.disabled = true;
-    settingsStatus.textContent = 'Working…';
-    try { await fn(); if (dialog.isConnected && settingsStatus.textContent === 'Working…') settingsStatus.textContent = ''; }
-    catch (error) { if (dialog.isConnected) settingsStatus.textContent = error?.message || 'AI request failed'; }
-    finally { save.disabled = ask.disabled = false; }
-  }
-  dialog.append(actions, list);
-  if (window.Mutiny) rpc('ai.config').then(value => {
-    if (!dialog.isConnected) return;
-    if (['openrouter','groq','gemini'].includes(value.provider)) provider.value = value.provider;
-    loadModels(value.model || '');
-    settingsStatus.textContent = value.hasKey ? 'An API key is saved on this device.' : 'No API key saved.';
-  }).catch(() => { if (dialog.isConnected) {settingsStatus.textContent = 'AI settings unavailable';loadModels();} });
-  else loadModels();
-  prompt.focus();
+  dialog.append(tabs);
+  chat.append(element('p','Ask about movies, series or anime and ask follow-up questions.','note'));
+  const log=element('div',undefined,'ai-conversation');log.setAttribute('role','log');log.setAttribute('aria-live','polite');
+  const chatForm=element('form',undefined,'ai-chat-form');
+  const chatInput=element('textarea');chatInput.setAttribute('aria-label','Message to AI');chatInput.placeholder='Find an English-dubbed sci-fi anime…';chatInput.rows=3;chatInput.maxLength=2000;
+  const send=element('button','Send','primary');send.type='submit';chatForm.append(chatInput,send);
+  const chatFeedback=status(chat),messages=[];
+  chatForm.addEventListener('submit',async event=>{
+    event.preventDefault();const content=chatInput.value.trim();if(!content||nativeRequired(chatFeedback))return;
+    send.disabled=true;chatFeedback.textContent='Thinking…';
+    const next=[...messages.slice(-11),{role:'user',content}];
+    try{
+      const answer=String(await rpc('ai.chat',{messages:next}));if(!dialog.isConnected)return;
+      for(const [role,value] of [['user',content],['assistant',answer]]){
+        const bubble=element('div',undefined,'ai-bubble ai-'+role);
+        bubble.append(element('strong',role==='user'?'You':'Mutiny Media'),element('p',value));log.append(bubble);
+      }
+      messages.splice(0,messages.length,...next,{role:'assistant',content:answer});
+      if(messages.length>12)messages.splice(0,messages.length-12);
+      chatInput.value='';chatFeedback.textContent='';log.scrollTop=log.scrollHeight;
+    }catch(error){if(dialog.isConnected)chatFeedback.textContent=error?.message||'Chat failed. Check AI settings.';}
+    finally{send.disabled=false;}
+  });
+  chat.append(log,chatForm);
+  titles.append(element('p','AI recommendations shown as titles only. Tap a title to search the catalog.','note'));
+  const titleForm=element('form',undefined,'ai-chat-form'),titleInput=element('input');
+  titleInput.type='search';titleInput.maxLength=2000;titleInput.placeholder='Mind-bending sci-fi with an English dub';
+  titleInput.setAttribute('aria-label','Describe titles to find');
+  const find=element('button','Find titles','primary');find.type='submit';titleForm.append(titleInput,find);
+  const titleFeedback=status(titles),results=element('div',undefined,'quick-results');
+  titleForm.addEventListener('submit',async event=>{
+    event.preventDefault();const query=titleInput.value.trim();if(!query||nativeRequired(titleFeedback))return;
+    find.disabled=true;titleFeedback.textContent='Searching…';
+    try{
+      const suggestions=parseAiSuggestions(await rpc('ai.suggest',{query,kind:'media'}));if(!dialog.isConnected)return;
+      results.replaceChildren();if(!suggestions.length)results.append(element('p','No titles returned.','note'));
+      for(const item of suggestions)action(results,item.title,()=>{closeQuickDialog();onSearchTitle(item.title);},'ai-title-result');
+      titleFeedback.textContent='';
+    }catch(error){if(dialog.isConnected)titleFeedback.textContent=error?.message||'Title search failed. Check AI settings.';}
+    finally{find.disabled=false;}
+  });
+  titles.append(titleForm,results);dialog.append(chat,titles);
+  const footer=element('div',undefined,'ai-setup-hint');
+  const note=element('p','Provider, free model and API key are configured in Settings.','note');
+  footer.append(note);action(footer,'AI settings',()=>{closeQuickDialog();openSettings('ai');});dialog.append(footer);
+  if(window.Mutiny)rpc('ai.config').then(config=>{
+    if(dialog.isConnected&&!config.hasKey)note.textContent='Add an API key and free model under Settings → AI to begin.';
+  }).catch(()=>{});
+  show('chat');chatInput.focus();
 }
-/** Five actions from the Windows home toolbar, adapted for native Android. */
-export function renderHomeActions({openWebSources, openLocalVideo, openSettings, onSearchTitle}) {
+/** Media-only Android quick actions. */
+export function renderHomeActions({openLocalVideo, openSettings, onSearchTitle}) {
   const section = element('section', undefined, 'home-quick-actions');
   section.setAttribute('aria-label', 'Mutiny Media quick actions');
   section.append(element('h2', 'Quick actions'));
   const grid = element('div', undefined, 'quick-action-grid');
   const buttons = [
-    ['🌐', 'Web Sources', 'Browse streaming sources', openWebSources],
-    ['🎬', 'Local Video', 'Open a file on your device', openLocalVideo],
-    ['🧲', 'Stream Magnet', 'Play a magnet link', () => magnetPanel(grid.querySelector('[data-quick-action="Stream Magnet"]'))],
-    ['⚙️', 'Settings', 'Appearance and integrations', openSettings],
-    ['✨', 'Search with AI', 'Find movies and anime with AI', () => aiPanel(grid.querySelector('[data-quick-action="Search with AI"]'), onSearchTitle)],
+    ['✨','Search with AI','Chat or find media titles',()=>aiPanel(grid.querySelector('[data-quick-action="Search with AI"]'),onSearchTitle,openSettings)],
+    ['🎬','Local Video','Open a file on your device',openLocalVideo],
+    ['🧲','Stream Magnet','Play a magnet link',()=>magnetPanel(grid.querySelector('[data-quick-action="Stream Magnet"]'))],
+    ['⚙️','Settings','Personalise your media app',()=>openSettings()],
   ];
   for (const [symbol, name, description, handler] of buttons) {
     const item = action(grid, '', handler, 'quick-action');
