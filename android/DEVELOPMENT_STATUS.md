@@ -123,3 +123,7 @@ User uploaded `StreamPlay.cs3` (2,236,985 bytes, SHA-256 `94d7ec68ed45cf3527fb71
 ## StreamPlay chunk 4: native bridge, not executable runtime
 
 `b8e741d6be481c2eddaa3f88c59e9b388905dd7d` and `0bb63eaa648bd0f4440293766a95bdb5e353e9af` add installed package hash lookup; `c72a15755332407f6dd2a39171d2958576f8d35b` adds `cs3.request` native dispatch pinned to uploaded StreamPlay v715 SHA-256 and existing isolated transport; `db8cefd0503606afbd4829e5bb2f6cfa8a63de02` adds static source assertions. No tests executed. Worker still rejects requests. **No working StreamPlay runtime or APK.**
+
+## StreamPlay v715 DEX host method inventory
+
+Static Python DEX method-ID parsing of user-uploaded v715 binary identified 211 method references in 81 CloudStream class owners; see `android/STREAMPLAY_COMPATIBILITY.md` commit `35dbf67cf8b5bb6c1bb8e760d92cef66e00f56d2`. Added reproducible local Node inspector `android/tests/streamplay-abi.mjs` in `e335111c86785eab56699682b37218a55d699f83`. Inspector source re-read but Node script not executed; independent Python parsing ran. This is compatibility analysis, **not executable plugin integration**. No APK/device test. Cannot support 90% reliability estimate.
