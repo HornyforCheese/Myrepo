@@ -129,23 +129,33 @@ function aiPanel(launcher, onSearchTitle) {
   const model = element('select');
   model.setAttribute('aria-label', 'Free LLM model');
   modelWrap.append(model); dialog.append(modelWrap);
+  const modelActions = element('div', undefined, 'quick-model-actions');
+  const reloadModels = action(modelActions, 'Refresh free models', () => loadModels(model.value), 'model-refresh');
+  dialog.append(modelActions);
   const modelNotice = status(dialog);
   let modelRequest = 0;
   async function loadModels(preferred = '') {
     const selectedProvider = provider.value, request = ++modelRequest;
     setModelOptions(model, freeModelOptions(selectedProvider), preferred);
-    model.disabled = true;
-    modelNotice.textContent = 'Checking free model catalogue…';
+    modelNotice.textContent = model.options.length + ' recent free choices · checking current availability…';
+    reloadModels.disabled = true;
     try {
       const response = window.Mutiny ? await rpc('ai.freeModels', {provider: selectedProvider}) : null;
       if (!dialog.isConnected || request !== modelRequest || provider.value !== selectedProvider) return;
-      setModelOptions(model, freeModelOptions(selectedProvider, response), preferred || model.value);
-      modelNotice.textContent = response?.notice || 'Preview catalogue only. Free-tier eligibility, quotas and availability vary by account.';
+      const choices = freeModelOptions(selectedProvider, response);
+      setModelOptions(model, choices, model.value || preferred);
+      const status = response?.catalogueStatus === 'live' ? 'live zero-cost catalogue' :
+        selectedProvider === 'openrouter' ? 'recent free-model snapshot; verify availability' :
+        'documented free-tier list; account limits apply';
+      modelNotice.textContent = choices.length + ' available choices (' + status + '). ' +
+        (response?.notice || 'Free models have rate limits.');
     } catch {
       if (!dialog.isConnected || request !== modelRequest) return;
-      modelNotice.textContent = 'Live models could not be retrieved. Showing known free/free-tier options; availability is unverified.';
+      const choices = freeModelOptions(selectedProvider);
+      setModelOptions(model, choices, model.value || preferred);
+      modelNotice.textContent = choices.length + ' recently listed free models. Live catalogue unavailable; a model might be retired.';
     } finally {
-      if (dialog.isConnected && request === modelRequest) model.disabled = false;
+      if (dialog.isConnected && request === modelRequest) reloadModels.disabled = false;
     }
   }
   provider.addEventListener('change', () => { loadModels(); });
