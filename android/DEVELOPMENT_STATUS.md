@@ -56,3 +56,10 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Fixtures `b35f3570f98e550d73ece96607b930f9cb3ce592`: cover two-page Gemini discovery and per-provider API key removal.
 - Source re-read verified both changes. **No fixture execution, Android compilation, CI result or APK build verified.** Live provider credentials and model eligibility remain untested.
 - Next: execute Java AI fixtures and compile, then anime discovery/stream preference chunks, then Windows UI parity.
+
+## Anime chunk 1: explicit genre browsing
+
+- Implementation `4623b11644304d855014ebb71a85a2c071c8d567`: separate `genre=Anime` catalogue browsing from title search, retaining genre-tag filtering.
+- Retry correction `6fd4c7d985cbf2d4a6bab89eb68ea73c4863bbb5`: retry the same browse or search mode.
+- UI fixture `7c6ad4ab552893258c613d8dec807a5f7fce0d0d`: mock genre results and assert non-Anime titles are filtered.
+- GitHub source re-read verified changes. **UI fixture not executed, live genre endpoint not checked, no APK built.** Next anime chunk: stream/audio/subtitle preference verification; then Windows parity.
