@@ -53,6 +53,7 @@ public class MainActivity extends Activity {
                 });
             });
         }
+        web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();

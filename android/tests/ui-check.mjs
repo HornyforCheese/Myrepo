@@ -16,7 +16,7 @@ const server = http.createServer(async (request, response) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const port = server.address().port;
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE });
 const movie = { id: 'tt0133093', type: 'movie', name: 'The Matrix', moviedb_id: 603, releaseInfo: '1999', imdbRating: '8.7', description: 'A computer hacker discovers a world beyond the one he knows.', poster: 'https://posters.example/matrix.svg' };
 const series = { id: 'tt0944947', type: 'series', name: 'Game of Thrones', moviedb_id: 1399, releaseInfo: '2011–2019', poster: 'https://posters.example/thrones.svg', videos: [{ id: 'tt0944947:1:1', season: 1, episode: 1, title: 'Winter Is Coming' }, { id: 'tt0944947:2:4', season: 2, episode: 4, title: 'Garden of Bones' }] };
 const failures = [];
@@ -66,7 +66,8 @@ try {
     await page.waitForTimeout(100);
     assert.ok(commands.some(url => decodeURIComponent(url).includes('/tt0944947/2/4'))); checks++;
     await page.getByRole('button', { name: 'Close title' }).click();
-    await page.getByRole('button', { name: 'Settings', exact: false }).click();
+    await page.locator('nav [data-page=settings]').click();
+    await page.getByRole('button', { name: /Manage installed and community/ }).click();
     await page.getByRole('textbox', { name: 'Add-on manifest URL' }).fill('https://addon.example/manifest.json');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByText('Test add-on', { exact: true }).waitFor(); checks++;
@@ -79,7 +80,8 @@ try {
     await page.waitForTimeout(100);
     assert.ok(commands.some(url => decodeURIComponent(url).includes('mutiny://video?url=https://video.example/sample.mp4'))); checks++;
     await page.getByRole('button', { name: 'Close title' }).click();
-    await page.getByRole('button', { name: 'Settings', exact: false }).click();
+    await page.locator('nav [data-page=settings]').click();
+    await page.getByRole('button', { name: /Manage installed and community/ }).click();
     await page.getByRole('button', { name: 'Remove', exact: true }).click();
     assert.equal(await page.getByText('Test add-on', { exact: true }).count(), 0); checks++;
     await page.getByRole('button', { name: 'Discover', exact: false }).click();

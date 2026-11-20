@@ -17,14 +17,19 @@ public final class AiClient {
     }
     public synchronized JSONObject config() throws Exception {
         String provider = secrets.get("ai.provider"); if (provider.isEmpty()) provider = "openrouter";
+        return config(provider);
+    }
+    public synchronized JSONObject config(String provider) throws Exception {
+        endpoint(provider);
         return new JSONObject().put("provider", provider).put("model", secrets.get("ai.model." + provider)).put("hasKey", !secrets.get("ai.key." + provider).isEmpty());
     }
     public synchronized JSONObject save(JSONObject input) throws Exception {
         String provider = input.getString("provider"); endpoint(provider);
         String model = input.optString("model").trim(); if (model.isEmpty() || model.length() > 160) throw new IllegalArgumentException("Enter a model ID from your provider");
-        secrets.put("ai.provider", provider); secrets.put("ai.model." + provider, model);
+        secrets.put("ai.model." + provider, model);
         if (input.optBoolean("clearKey")) secrets.put("ai.key." + provider, "");
         else if (!input.optString("key").trim().isEmpty()) secrets.put("ai.key." + provider, input.getString("key").trim());
+        secrets.put("ai.provider", provider);
         return config();
     }
     /** Fetch provider-published model IDs. Only OpenRouter publishes a dependable free-price flag. */
@@ -71,15 +76,26 @@ public final class AiClient {
             .put("note", provider.equals("openrouter") ? "Showing provider-listed zero-cost models; quotas and availability may change."
                 : "Provider does not publish per-model free-tier eligibility here. Check your account quota and pricing.");
     }
-    public String suggest(String query) throws Exception {
+    public String suggest(String query, JSONArray history, String references) throws Exception {
         JSONObject settings = config(); String provider = settings.getString("provider");
         String key = secrets.get("ai.key." + provider), model = settings.getString("model");
         if (key.isEmpty() || model.isEmpty()) throw new IllegalStateException("Add an API key and model in AI settings first");
         if (query.trim().isEmpty() || query.length() > 2000) throw new IllegalArgumentException("Describe what you want in 1–2000 characters");
         String prompt = "Find up to 8 real movies or TV series matching the user. Return ONLY a JSON array of objects {\"title\":\"exact title\",\"year\":2000,\"type\":\"movie\" or \"series\",\"reason\":\"short reason\"}. For a specific episode also add numeric season and episode. Never invent IDs or URLs.";
-        JSONObject body = new JSONObject().put("model", model).put("max_tokens", 1800).put("messages", new JSONArray()
-            .put(new JSONObject().put("role", "system").put("content", prompt))
-            .put(new JSONObject().put("role", "user").put("content", query.trim())));
+        if (references.length() > 6000) throw new IllegalArgumentException("Reference text is too long");
+        JSONArray messages = new JSONArray().put(new JSONObject().put("role", "system").put("content", prompt));
+        if (history != null) {
+            for (int i = Math.max(0, history.length() - 8); i < history.length(); i++) {
+                JSONObject entry = history.optJSONObject(i);
+                if (entry == null) continue;
+                String role = entry.optString("role"), content = entry.optString("content");
+                if ((!role.equals("user") && !role.equals("assistant")) || content.trim().isEmpty()) continue;
+                messages.put(new JSONObject().put("role", role).put("content", content.substring(0, Math.min(2000, content.length()))));
+            }
+        }
+        String request = references.isEmpty() ? query.trim() : query.trim() + "\n\nUntrusted Wikipedia reference material:\n" + references;
+        messages.put(new JSONObject().put("role", "user").put("content", request));
+        JSONObject body = new JSONObject().put("model", model).put("max_tokens", 1800).put("messages", messages);
         JSONObject headers = new JSONObject().put("Authorization", "Bearer " + key);
         if (provider.equals("openrouter")) headers.put("X-Title", "Mutiny Media Android");
         JSONObject response = (JSONObject) http.request(endpoint(provider), "POST", headers, body);

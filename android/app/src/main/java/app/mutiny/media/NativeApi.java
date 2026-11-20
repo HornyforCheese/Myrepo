@@ -27,10 +27,10 @@ public final class NativeApi {
             case "account.logout": accounts.logout(args.getString("provider")); return accounts.status();
             case "account.sync": return accounts.sync(args.getString("provider"), args.optInt("profile", 1));
             case "account.bookmark": accounts.bookmark(args.getJSONObject("meta"), args.optBoolean("removed")); return true;
-            case "ai.config": return ai.config();
+            case "ai.config": return args.has("provider") ? ai.config(args.getString("provider")) : ai.config();
             case "ai.models": return ai.models(args.getString("provider"), args.optString("key", ""));
             case "ai.save": return ai.save(args);
-            case "ai.suggest": return ai.suggest(args.getString("query"));
+            case "ai.suggest": return ai.suggest(args.getString("query"), args.optJSONArray("history"), args.optString("references"));
             case "torrent.add":
                 if (android.os.Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
                     activity.runOnUiThread(() -> activity.requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 20));

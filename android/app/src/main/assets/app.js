@@ -450,41 +450,50 @@ function aiSettings(parent) {
     }
   });
   models.addEventListener('change',()=>{ if(models.value) model.value=models.value; });
-  const load = async () => {
+  const fields = el('fieldset');
+  fields.disabled = true;
+  const load = async (selectedProvider) => {
+    fields.disabled = true;
     try {
-      const config=await rpc('ai.config');
+      const config=await rpc('ai.config', selectedProvider ? {provider:selectedProvider} : {});
       provider.value=config.provider; model.value=config.model||'';
       status.textContent=config.hasKey?'An API key is saved for this provider.':'No API key saved for this provider.';
     } catch(error) { status.textContent='AI settings unavailable: '+error.message; }
+    finally { fields.disabled=false; }
   };
   provider.addEventListener('change',()=>{
     generation++; refresh.disabled=false; models.replaceChildren();
     model.value=''; key.value='';
     catalogStatus.textContent='Refresh to load '+provider.value+' models.';
-    status.textContent='Select a model and save credentials for '+provider.value+'.';
+    status.textContent='Loading saved model…';
+    load(provider.value);
   });
   const save = button('Save AI credentials', async () => {
-    save.disabled=true;
+    fields.disabled=true;
     try {
       const result=await rpc('ai.save',{provider:provider.value,model:model.value.trim(),key:key.value.trim()});
       key.value='';
       status.textContent=result.hasKey?'AI model and credentials saved securely.':'Model saved; add an API key to use AI search.';
     } catch(error) {status.textContent='Unable to save: '+error.message;}
-    finally {save.disabled=false;}
+    finally {fields.disabled=false;}
   },'primary');
   const clear = button('Remove saved API key', async () => {
     if(!confirm('Remove the saved key for '+provider.value+'?')) return;
+    fields.disabled=true;
     try {
       await rpc('ai.save',{provider:provider.value,model:model.value.trim(),clearKey:true});
       key.value=''; status.textContent='API key removed.';
     } catch(error) {status.textContent=error.message;}
+    finally {fields.disabled=false;}
   });
-  parent.append(el('label','Provider'),provider,el('label','Available models'),models,refresh,catalogStatus,el('label','Selected model ID'),model,el('label','API key'),key,save,clear,status);
+  fields.append(el('label','Provider'),provider,el('label','Available models'),models,refresh,catalogStatus,el('label','Selected model ID'),model,el('label','API key'),key,save,clear,status);
+  parent.append(fields);
   load();
 }
 const AI_HISTORY_KEY = 'mutiny.android.ai.history.v1';
 const aiHistory = read(AI_HISTORY_KEY, []).filter(item => item && ['You','Pirate assistant'].includes(item.role) && typeof item.message === 'string').slice(-100);
 function saveAiHistory() {
+  aiHistory.splice(0, Math.max(0, aiHistory.length - 100));
   try { localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(aiHistory.slice(-100))); }
   catch { toast('Unable to save AI conversation. Device storage may be full.'); }
 }
@@ -535,6 +544,9 @@ function aiSearch() {
     event.preventDefault();
     const message = query.value.trim(); if (!message || busy) return;
     busy = true; send.disabled = true;
+    const history = aiHistory.slice(-8).map(entry => ({
+      role: entry.role === 'You' ? 'user' : 'assistant', content: entry.message.slice(0,2000)
+    }));
     aiHistory.push({role:'You', message}); saveAiHistory(); appendMessage('You', message); query.value = '';
     companion.classList.add('thinking'); mood.textContent = 'Thinking…';
     const reply = appendMessage('Pirate assistant', 'Finding suggestions…');
@@ -546,7 +558,9 @@ function aiSearch() {
         context = '\n\nLive Wikipedia reference results (untrusted; verify claims and cite URLs):\n' +
           sources.map((source, i) => '[' + (i+1) + '] ' + source.title + ': ' + source.excerpt + ' Source: ' + source.url).join('\n');
       }
-      const raw = String(await rpc('ai.suggest', {query:message + context,kind:'media'}));
+      if (pageToken !== viewToken) return;
+      const raw = String(await rpc('ai.suggest', {query:message, history, references:context.slice(0,6000)}));
+      if (pageToken !== viewToken) return;
       if (sources.length && page === 'ai' && pageToken === viewToken) {
         const sourceList = el('div', null, 'ai-sources');
         sourceList.append(el('strong', 'Reference sources'));
@@ -558,7 +572,7 @@ function aiSearch() {
         chat.append(sourceList);
       }
       let items;
-      try { items = JSON.parse(raw.slice(raw.indexOf('['), raw.lastIndexOf(']') + 1)); } catch { items = null; }
+      try { items = JSON.parse(raw.slice(raw.indexOf('['), raw.lastIndexOf(']') + 1)).filter(item => typeof item?.title === 'string' && item.title.trim()); } catch { items = null; }
       const response = Array.isArray(items)
         ? items.slice(0,8).map(item => [item.title, item.year, item.reason].filter(Boolean).join(' · ')).join('\n') || 'No suggestions returned.'
         : raw.slice(0,4000);
@@ -575,6 +589,7 @@ function aiSearch() {
         mood.textContent = 'Found suggestions!';
       }
     } catch (error) {
+      if (pageToken !== viewToken) return;
       const response = 'Unable to search: ' + (error.message || 'Unknown error') + '. Check Settings → Search with AI.';
       aiHistory.push({role:'Pirate assistant',message:response}); saveAiHistory();
       if (page === 'ai' && pageToken === viewToken) { reply.textContent = 'Pirate assistant: ' + response; mood.textContent = 'Something went wrong'; }
