@@ -26,3 +26,9 @@
 :root[data-theme=light] .settings-labels small { color:#5b5665; }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
 .compact-cards .grid { grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); gap:12px 8px; }
+
+.settings-card[hidden] { display:none!important; }
+#main > input[type=search] { margin:12px 0 4px; border-radius:14px; background:#343238; color:#f7f5fa; }
+.settings-back { background:#343238; color:#f7f5fa; border-radius:14px; }
+.settings-option input[type=checkbox]:focus-visible, .settings-choice select:focus-visible { outline:2px solid #9d79ee; outline-offset:3px; }
+@media (max-width:440px) { .settings-card { padding:15px; gap:12px; min-height:74px; } .settings-labels strong { font-size:15px; } .settings-labels small { font-size:12px; } }
