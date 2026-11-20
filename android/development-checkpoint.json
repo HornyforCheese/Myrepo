@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "PARITY-APPEARANCE: functional light/system theme palettes",
-  "lastVerifiedImplementationCommit": "86cae5bd9c46ed2ebccd1ab02dfa5a16c59c3e14",
+  "currentChunk": "PARITY-SYSTEM-THEME: update Android theme-color and react to device theme changes",
+  "lastVerifiedImplementationCommit": "79a51f9a2e1c50d462c38294eb0a8b5cbf1ae6f2",
   "completedChunks": [],
   "tasks": [
     {
@@ -113,7 +113,8 @@
     "Gemini page token bound and key-removal/pagination fixtures source re-read verified; fixture execution, Java compilation and current CI not run",
     "Anime genre browse action and mocked UI fixture re-read from GitHub; test execution and live Cinemeta endpoint compatibility not verified",
     "Anime label negation guard and regression fixtures re-read from GitHub; JS tests and Android device playback not executed",
-    "CSS theme palettes and appearance regression fixture re-read from GitHub; npm tests, browser screenshots and Android device not verified"
+    "CSS theme palettes and appearance regression fixture re-read from GitHub; npm tests, browser screenshots and Android device not verified",
+    "Re-read Android theme-color and system preference event handling and static regression fixture; npm tests and device behaviour not verified"
   ],
-  "nextAction": "Run npm test including appearance.test.mjs and visual UI fixture; audit and implement next Windows parity gap without gaming features."
+  "nextAction": "Run npm test and browser appearance fixture, fix failures, then complete further Windows UI parity and navigation gaps."
 }
