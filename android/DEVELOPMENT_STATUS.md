@@ -29,3 +29,9 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Implementation commit `37e2b8478838ee30c05171b04297efae5fa65a5c`: reject absolute paths, drive-prefixed paths, backslashes, dot and parent-directory segments, and ambiguous empty segments in `.cs3` ZIP entries.
 - Fixture commit `033b72a7682be160c50153f83dffd88aa913e0b3`: add negative-path archive fixtures for those cases.
 - Verification: fetched both updated files back from GitHub and inspected changes. **No fixture execution, Java compilation, CI pass, APK build or device test is claimed.** Runtime provider execution remains unavailable.
+
+## CS3 Java syntax repair
+
+- Commit `40d93778fa22637c18a0c061f5f5ceae26b7a2b0`: fixed the previously invalid Java character literal in the archive backslash path guard.
+- A standalone Java `javac` and `java` check compiled and exercised the corrected guard successfully. This **does not** verify the complete archive class, full regression fixtures, Android compilation or hosted CI. No APK was built.
+- Next: inspect hosted Android CI for the changed branch, then advance to isolated CS3 runtime and provider ABI.
