@@ -11,8 +11,8 @@ test('light and system appearance settings have actual CSS palettes', () => {
   assert.match(css, /body\{[^}]*color:var\(--ink\)/);
   assert.match(css, /nav\{[^}]*background:var\(--nav\)/);
   assert.match(css, /\.settings-card\s*\{[^}]*background:var\(--settings-panel\)/);
-  assert.match(app, /document\\.documentElement\\.dataset\\.theme = theme/);
-  assert.match(app, /themeColor\\.content = light \\? '#f7f8fa' : '#101319'/);
-  assert.match(app, /systemAppearance\\.addEventListener\\('change'/);
-  assert.match(app, /getPreferences\\(\\)\\.theme === 'system'/);
+  assert.ok(app.includes('document.documentElement.dataset.theme = theme'));
+  assert.ok(app.includes("themeColor.content = light ? '#f7f8fa' : '#101319'"));
+  assert.ok(app.includes("systemAppearance.addEventListener('change'"));
+  assert.ok(app.includes("getPreferences().theme === 'system'"));
 });
