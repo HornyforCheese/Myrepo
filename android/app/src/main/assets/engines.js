@@ -1,5 +1,11 @@
 const pending = new Map();
+export function playbackPreferences() {
+  let stored;
+  try { stored = JSON.parse(localStorage.getItem('mutiny.android.preferences.v1')); } catch {}
+  return {audio:['en','ja'].includes(stored?.audioLanguage) ? stored.audioLanguage : 'auto', subtitles:stored?.subtitles === true};
+}
 export function rpc(method,args={}) {
+  if (method === 'torrent.play' || method === 'video.play') args = {...args, ...playbackPreferences()};
   if (!window.Mutiny) return Promise.reject(Error('Update Android System WebView to use native features.'));
   window.Mutiny.onmessage = event => {
     const message = JSON.parse(event.data), task = pending.get(message.id);

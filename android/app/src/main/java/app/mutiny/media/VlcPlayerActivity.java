@@ -21,10 +21,16 @@ public final class VlcPlayerActivity extends Activity {
     private Button toggle;
     private boolean seeking, wasPlaying;
     private Uri uri;
+    private ParcelFileDescriptor localDescriptor;
+    private boolean applySubtitles;
+    private final ArrayList<java.io.File> subtitleFiles = new ArrayList<>();
+    private final java.util.concurrent.ExecutorService imports = java.util.concurrent.Executors.newSingleThreadExecutor();
     private JSONObject meta = new JSONObject();
     private long resume, lastCloudSave;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final java.util.concurrent.ExecutorService sync = java.util.concurrent.Executors.newSingleThreadExecutor();
+    private final java.util.concurrent.ExecutorService sync = new java.util.concurrent.ThreadPoolExecutor(1, 1, 0L,
+        java.util.concurrent.TimeUnit.SECONDS, new java.util.concurrent.ArrayBlockingQueue<>(1),
+        new java.util.concurrent.ThreadPoolExecutor.DiscardOldestPolicy());
     private final Runnable tick = new Runnable() {
         public void run() {
             if (player == null) return;
@@ -45,6 +51,7 @@ public final class VlcPlayerActivity extends Activity {
         boolean torrent = url != null && TorrentEngine.get(this).isStreamUrl(url);
         if (uri == null || (!local && !torrent && !UrlPolicy.isPublicHttps(uri.toString()))) { finish(); return; }
         try { meta = new JSONObject(getIntent().getStringExtra("meta") == null ? "{}" : getIntent().getStringExtra("meta")); } catch (Exception ignored) { }
+        applySubtitles = getIntent().getBooleanExtra("subtitles",false);
         resume = state == null ? getPreferences(MODE_PRIVATE).getLong(resumeKey(), getIntent().getLongExtra("resume", 0)) : state.getLong("position");
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(0xff000000);
         root.setOnApplyWindowInsetsListener((view, insets) -> { view.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets.consumeSystemWindowInsets(); });
@@ -61,14 +68,30 @@ public final class VlcPlayerActivity extends Activity {
         controls.addView(control("+30s", () -> player.setTime(player.getTime() + 30000))); root.addView(controls);
         setContentView(root);
         try {
-            vlc = new LibVLC(this, new ArrayList<>(Arrays.asList("--network-caching=2000", "--file-caching=1000", "--no-video-title-show")));
+            ArrayList<String> options = new ArrayList<>(Arrays.asList("--network-caching=2000", "--file-caching=1000", "--no-video-title-show"));
+            String audio = getIntent().getStringExtra("audio");
+            if ("en".equals(audio)) options.add("--audio-language=eng,en,English");
+            if ("ja".equals(audio)) options.add("--audio-language=jpn,ja,Japanese");
+            vlc = new LibVLC(this, options);
             player = new MediaPlayer(vlc); player.attachViews(surface, null, true, false);
             player.setEventListener(event -> {
+                if (applySubtitles && (event.type == MediaPlayer.Event.Playing || event.type == MediaPlayer.Event.ESAdded)) {
+                    MediaPlayer.TrackDescription[] tracks = player.getSpuTracks();
+                    if (player.getSpuTrack() >= 0) applySubtitles = false;
+                    else if (tracks != null) for (MediaPlayer.TrackDescription track : tracks) {
+                        if (track.id >= 0 && player.setSpuTrack(track.id)) { applySubtitles = false; break; }
+                    }
+                }
                 if (event.type == MediaPlayer.Event.Playing && resume > 0) { player.setTime(resume); resume = 0; }
                 if (event.type == MediaPlayer.Event.EncounteredError) new AlertDialog.Builder(this).setTitle("Playback failed").setMessage("The source may be unavailable or require a different playback setting.").setPositiveButton("Open externally", (dialog, which) -> external()).setNegativeButton("Close", (dialog, which) -> finish()).show();
                 if (event.type == MediaPlayer.Event.EndReached) saveProgress();
             });
-            Media media = local ? new Media(vlc, getContentResolver().openFileDescriptor(uri, "r").getFileDescriptor()) : new Media(vlc, uri);
+            if (local) {
+                localDescriptor = getContentResolver().openFileDescriptor(uri, "r");
+                if (localDescriptor == null) throw new java.io.IOException("Local video unavailable");
+            }
+            Media media = local ? new Media(vlc, localDescriptor.getFileDescriptor()) : new Media(vlc, uri);
+            try {
             media.setHWDecoderEnabled(true, false);
             String rawHeaders = getIntent().getStringExtra("headers");
             if (rawHeaders != null) {
@@ -80,7 +103,9 @@ public final class VlcPlayerActivity extends Activity {
                     if (key.equalsIgnoreCase("Referer")) media.addOption(":http-referrer=" + value);
                 }
             }
-            player.setMedia(media); media.release(); player.play(); handler.post(tick);
+            player.setMedia(media);
+            } finally { media.release(); }
+            player.play();
         } catch (Throwable failure) {
             new AlertDialog.Builder(this).setTitle("Could not start libVLC").setMessage("This device could not load the bundled media engine or open the video.").setPositiveButton("Close", (dialog, which) -> finish()).show();
         }
@@ -98,7 +123,7 @@ public final class VlcPlayerActivity extends Activity {
             MediaPlayer.TrackDescription[] tracks = item == 0 ? player.getAudioTracks() : player.getSpuTracks();
             if (tracks == null || tracks.length == 0) { Toast.makeText(this, "No tracks available", Toast.LENGTH_SHORT).show(); return; }
             String[] names = new String[tracks.length]; for (int i = 0; i < tracks.length; i++) names[i] = tracks[i].name;
-            new AlertDialog.Builder(this).setTitle(item == 0 ? "Audio" : "Subtitles").setItems(names, (picker, index) -> { if (item == 0) player.setAudioTrack(tracks[index].id); else player.setSpuTrack(tracks[index].id); }).show();
+            new AlertDialog.Builder(this).setTitle(item == 0 ? "Audio" : "Subtitles").setItems(names, (picker, index) -> { if (item == 0) player.setAudioTrack(tracks[index].id); else { applySubtitles = false; player.setSpuTrack(tracks[index].id); } }).show();
         }).show();
     }
     private void options() {
@@ -112,13 +137,40 @@ public final class VlcPlayerActivity extends Activity {
     @Override protected void onActivityResult(int code, int result, Intent data) {
         super.onActivityResult(code, result, data);
         if (code == 50 && result == RESULT_OK && data != null && data.getData() != null && player != null) {
-            try {
-                java.io.File file = new java.io.File(getCacheDir(), "subtitle-" + System.currentTimeMillis() + ".srt");
-                try (java.io.InputStream input = getContentResolver().openInputStream(data.getData()); java.io.OutputStream output = new java.io.FileOutputStream(file)) {
-                    byte[] bytes = new byte[8192]; int n, total = 0; while ((n = input.read(bytes)) != -1) { total += n; if (total > 10_000_000) throw new java.io.IOException("Subtitle too large"); output.write(bytes, 0, n); }
+            Uri source = data.getData();
+            imports.execute(() -> importSubtitle(source));
+        }
+    }
+    private void importSubtitle(Uri source) {
+        java.io.File staged = null;
+        try {
+            staged = java.io.File.createTempFile("subtitle-", ".srt", getCacheDir());
+            try (java.io.InputStream input = getContentResolver().openInputStream(source);
+                 java.io.OutputStream output = new java.io.FileOutputStream(staged)) {
+                if (input == null) throw new java.io.IOException("Subtitle unavailable");
+                byte[] bytes = new byte[8192];
+                int n, total = 0;
+                while ((n = input.read(bytes)) != -1) {
+                    if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException();
+                    total += n;
+                    if (total > 10_000_000) throw new java.io.IOException("Subtitle too large");
+                    output.write(bytes, 0, n);
                 }
-                player.addSlave(Media.Slave.Type.Subtitle, Uri.fromFile(file), true);
-            } catch (Exception error) { Toast.makeText(this, "Unable to open subtitle", Toast.LENGTH_LONG).show(); }
+            }
+            final java.io.File ready = staged;
+            runOnUiThread(() -> {
+                if (isDestroyed() || isFinishing()) { ready.delete(); return; }
+                if (player.addSlave(Media.Slave.Type.Subtitle, Uri.fromFile(ready), true)) {
+                    applySubtitles = false;
+                    subtitleFiles.add(ready);
+                } else {
+                    ready.delete();
+                    Toast.makeText(this, "Unsupported subtitle file", Toast.LENGTH_LONG).show();
+                }
+            });
+        } catch (Exception error) {
+            if (staged != null) staged.delete();
+            runOnUiThread(() -> { if (!isDestroyed()) Toast.makeText(this, "Unable to import subtitle", Toast.LENGTH_LONG).show(); });
         }
     }
     private void external() { try { startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "video/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)); } catch (Exception error) { Toast.makeText(this, "No compatible player installed", Toast.LENGTH_LONG).show(); } }
@@ -129,10 +181,14 @@ public final class VlcPlayerActivity extends Activity {
         if (duration <= 0 || position < 1000) return;
         getPreferences(MODE_PRIVATE).edit().putLong(resumeKey(), position < duration * .95 ? position : 0).apply();
         lastCloudSave = System.currentTimeMillis();
+        if (meta.optString("scope").isEmpty() || sync.isShutdown()) return;
         sync.submit(() -> { try { NativeApi.get(this).accounts.progress(meta, position, duration); } catch (Exception ignored) { /* Local resume remains available when cloud sync is offline. */ } });
     }
-    @Override protected void onPause() { if (player != null) { saveProgress(); wasPlaying = player.isPlaying(); player.pause(); } super.onPause(); }
-    @Override protected void onResume() { super.onResume(); if (player != null && wasPlaying) player.play(); }
+    @Override protected void onPause() { handler.removeCallbacks(tick); if (player != null) { saveProgress(); wasPlaying = player.isPlaying(); player.pause(); } super.onPause(); }
+    @Override protected void onResume() { super.onResume(); if (player != null) { if (wasPlaying) player.play(); handler.post(tick); } }
     @Override protected void onSaveInstanceState(Bundle state) { super.onSaveInstanceState(state); if (player != null) state.putLong("position", player.getTime()); }
-    @Override protected void onDestroy() { handler.removeCallbacks(tick); sync.shutdown(); if (player != null) { player.stop(); player.detachViews(); player.release(); } if (vlc != null) vlc.release(); super.onDestroy(); }
+    @Override protected void onDestroy() { handler.removeCallbacks(tick); imports.shutdownNow(); sync.shutdown(); if (player != null) { player.stop(); player.detachViews(); player.release(); } if (vlc != null) vlc.release();
+        for (java.io.File subtitle : subtitleFiles) subtitle.delete();
+        if (localDescriptor != null) try { localDescriptor.close(); } catch (java.io.IOException ignored) {}
+        super.onDestroy(); }
 }

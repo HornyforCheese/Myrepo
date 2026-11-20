@@ -16,10 +16,13 @@ import org.json.*;
 public class MainActivity extends Activity {
     static final String ORIGIN = "https://appassets.androidplatform.net";
     private WebView web;
+    private String localAudio;
+    private boolean localSubtitles;
     private final java.util.concurrent.ExecutorService commands = java.util.concurrent.Executors.newFixedThreadPool(4);
     private final java.util.concurrent.atomic.AtomicInteger pending = new java.util.concurrent.atomic.AtomicInteger();
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        if (state != null) { localAudio = state.getString("localAudio"); localSubtitles = state.getBoolean("localSubtitles"); }
         getWindow().setStatusBarColor(0xff101319);
         web = new WebView(this);
         web.setBackgroundColor(0xff101319);
@@ -81,6 +84,8 @@ public class MainActivity extends Activity {
             return;
         }
         if ("local".equals(action.getHost())) {
+            localAudio = action.getQueryParameter("audio");
+            localSubtitles = "true".equals(action.getQueryParameter("subtitles"));
             Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE);
             startActivityForResult(pick, 10);
             return;
@@ -91,7 +96,7 @@ public class MainActivity extends Activity {
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)); }
             catch (Exception error) { Toast.makeText(this, "No compatible app installed", Toast.LENGTH_LONG).show(); }
         } else if ("web".equals(action.getHost()) || "video".equals(action.getHost())) {
-            startActivity(new Intent(this, "web".equals(action.getHost()) ? PlayerActivity.class : VlcPlayerActivity.class).putExtra("url", url).putExtra("web", "web".equals(action.getHost())));
+            startActivity(new Intent(this, "web".equals(action.getHost()) ? PlayerActivity.class : VlcPlayerActivity.class).putExtra("audio", action.getQueryParameter("audio")).putExtra("subtitles", "true".equals(action.getQueryParameter("subtitles"))).putExtra("url", url).putExtra("web", "web".equals(action.getHost())));
         }
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
@@ -110,10 +115,10 @@ public class MainActivity extends Activity {
             });
         }
         if (request == 10 && result == RESULT_OK && data != null && data.getData() != null) {
-            startActivity(new Intent(this, VlcPlayerActivity.class).setData(data.getData()).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
+            startActivity(new Intent(this, VlcPlayerActivity.class).putExtra("audio",localAudio).putExtra("subtitles",localSubtitles).setData(data.getData()).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
         }
     }
-    @Override protected void onSaveInstanceState(Bundle state) { super.onSaveInstanceState(state); web.saveState(state); }
+    @Override protected void onSaveInstanceState(Bundle state) { super.onSaveInstanceState(state); state.putString("localAudio",localAudio); state.putBoolean("localSubtitles",localSubtitles); web.saveState(state); }
     @Override public void onBackPressed() { web.evaluateJavascript("window.mutinyBack && window.mutinyBack()", result -> { if (!"true".equals(result)) super.onBackPressed(); }); }
     @Override protected void onDestroy() { commands.shutdown(); web.destroy(); super.onDestroy(); }
 }

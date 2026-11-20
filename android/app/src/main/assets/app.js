@@ -1,6 +1,6 @@
 import { animeStreamTags, animeStreamMatch, rankStreams } from './stream-preferences.js';
 import { combineProviderAddons, reconcileAccountAddons } from './account-addons.js';
-import { controls, rpc } from './engines.js';
+import { controls, rpc, playbackPreferences } from './engines.js';
 import { safeUrl, addonBase, sourcesFor, streamId, supportsStreams, jsonRequest } from './model.js';
 
 const main = document.querySelector('#main');
@@ -30,7 +30,16 @@ function write(key, value) { try { localStorage.setItem(key, JSON.stringify(valu
 function el(tag, text, className) { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; }
 function button(text, action, className) { const node = el('button', text, className); node.type = 'button'; node.addEventListener('click', action); return node; }
 function toast(message) { const node = document.querySelector('#toast'); node.textContent = message; node.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => node.style.display = 'none', 4500); }
-function native(action, url) { if (url && !safeUrl(url)) return toast('Unsupported address. Only public HTTPS sources can be opened.'); location.href = `mutiny://${action}${url ? '?url=' + encodeURIComponent(url) : ''}`; }
+function native(action, url) {
+  if (url && !safeUrl(url)) return toast('Unsupported address. Only public HTTPS sources can be opened.');
+  const params = new URLSearchParams();
+  if (url) params.set('url',url);
+  if (action === 'video' || action === 'local') {
+    const prefs = playbackPreferences();
+    params.set('audio',prefs.audio); params.set('subtitles',String(prefs.subtitles));
+  }
+  location.href = 'mutiny://' + action + (params.toString() ? '?' + params : '');
+}
 function picture(url, title) { const img = el('img'); img.alt = title || ''; img.loading = 'lazy'; if (safeUrl(url)) img.src = url; return img; }
 function stateBox(target, message, retry) { target.replaceChildren(el('p', message, 'empty')); if (retry) target.append(button('Try again', retry)); }
 function setPage(next) {
@@ -418,7 +427,7 @@ function renderPreferences(parent, id) {
     preferenceChoice(parent, 'Anime audio', 'Used for explicitly labelled add-on streams', 'animeAudio', [['any','Any'],['dub','English dub'],['sub','Japanese with subtitles'],['dual','Dual audio']], 'any');
     preferenceChoice(parent, 'Anime release', 'Require explicit uncensored labels when selected', 'animeRelease', [['any','Any'],['uncensored','Uncensored only']], 'any');
     preferenceControl(parent, 'Low-bandwidth preference', 'Rank lower labelled resolutions first; actual bitrate varies', 'lowBandwidth', false);
-    parent.append(el('p', 'Quality and low-bandwidth preferences order labelled add-on streams. Audio and subtitle tracks can be selected in the player.', 'note'));
+    parent.append(el('p', 'Quality and low-bandwidth preferences order labelled add-on streams. The native player applies audio and subtitle preferences when matching tracks are available.', 'note'));
   } else if (id === 'general') {
     controls(parent, openTitle, id, reloadAccountAddons);
   } else if (id === 'ai') {

@@ -103,6 +103,7 @@ try {
   // Exercise the origin bridge contract with account fixtures. All provider traffic is intercepted.
   const account = await browser.newContext();
   await account.addInitScript(() => {
+    localStorage.setItem('mutiny.android.preferences.v1',JSON.stringify({audioLanguage:'ja',subtitles:true}));
     let signedIn = true;
     window.fixtureCalls = [];
     window.Mutiny = {postMessage(raw) {
@@ -138,7 +139,7 @@ try {
   assert.ok(saved.includes('addon:') && !saved.includes('/config')); checks++;
   await page.getByRole('button',{name:'Add-on providers',exact:true}).click();
   await page.getByRole('button',{name:/Play video/}).click();
-  assert.ok(await page.evaluate(()=>window.fixtureCalls.some(c=>c.method==='video.play' && c.args.meta.id==='fixture:item'))); checks++;
+  assert.ok(await page.evaluate(()=>window.fixtureCalls.some(c=>c.method==='video.play' && c.args.meta.id==='fixture:item' && c.args.audio==='ja' && c.args.subtitles===true))); checks++;
   await page.getByRole('button',{name:'Close title'}).click();
   await page.locator('nav [data-page=settings]').click();
   await page.getByRole('button',{name:/General Settings/}).click();
