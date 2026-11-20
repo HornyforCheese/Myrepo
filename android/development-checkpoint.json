@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "ANIME-GENRE: separate catalogue genre browsing from text search",
-  "lastVerifiedImplementationCommit": "7c6ad4ab552893258c613d8dec807a5f7fce0d0d",
+  "currentChunk": "ANIME-LABEL-NEGATION: exclude explicitly negated dub, sub and dual-audio labels",
+  "lastVerifiedImplementationCommit": "c64984c8e33ac3c202047971cb9c91a6834b7aad",
   "completedChunks": [],
   "tasks": [
     {
@@ -111,7 +111,8 @@
     "CS3 control-character ZIP path rejection and negative fixtures committed; source re-read verified, test execution pending",
     "AI OpenRouter free model price check and regression fixture source re-read confirmed; tests and Android CI not executed for these commits",
     "Gemini page token bound and key-removal/pagination fixtures source re-read verified; fixture execution, Java compilation and current CI not run",
-    "Anime genre browse action and mocked UI fixture re-read from GitHub; test execution and live Cinemeta endpoint compatibility not verified"
+    "Anime genre browse action and mocked UI fixture re-read from GitHub; test execution and live Cinemeta endpoint compatibility not verified",
+    "Anime label negation guard and regression fixtures re-read from GitHub; JS tests and Android device playback not executed"
   ],
-  "nextAction": "Execute anime UI fixtures and verify live genre endpoint; next anime chunk: conservative audio/subtitle track preference behaviour, then Windows UI parity."
+  "nextAction": "Run stream-preferences.test.mjs and browser anime fixture, fix failures; then begin Windows feature parity/UI gap review and first bounded implementation."
 }
