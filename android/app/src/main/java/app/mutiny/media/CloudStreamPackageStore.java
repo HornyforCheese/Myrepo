@@ -49,6 +49,17 @@ public final class CloudStreamPackageStore {
         return installed;
     }
 
+    /** Only a previously imported package with the exact pinned digest may be selected. */
+    static synchronized boolean isInstalled(Context context, String sha256) throws Exception {
+        if (sha256 == null || !sha256.matches("[a-f0-9]{64}")) return false;
+        for (int i = 0; i < index(context).length(); i++) {
+            JSONObject row = index(context).optJSONObject(i);
+            if (row != null && sha256.equals(row.optString("sha256")) &&
+                new File(directory(context), sha256 + ".cs3").isFile()) return true;
+        }
+        return false;
+    }
+
     public static synchronized JSONObject installFromUri(Context context, Uri uri) throws Exception {
         if (uri == null || !"content".equalsIgnoreCase(uri.getScheme()))
             throw new IllegalArgumentException("Use the Android document picker to select a .cs3 file");
