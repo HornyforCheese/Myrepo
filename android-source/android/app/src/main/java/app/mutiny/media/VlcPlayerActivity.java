@@ -87,16 +87,7 @@ public final class VlcPlayerActivity extends Activity {
             });
             Media media = local ? new Media(vlc, getContentResolver().openFileDescriptor(uri, "r").getFileDescriptor()) : new Media(vlc, uri);
             media.setHWDecoderEnabled(true, false);
-            String rawHeaders = getIntent().getStringExtra("headers");
-            if (rawHeaders != null) {
-                JSONObject headers = new JSONObject(rawHeaders);
-                for (Iterator<String> it = headers.keys(); it.hasNext();) {
-                    String key = it.next(), value = headers.optString(key);
-                    if (value.contains("\r") || value.contains("\n")) continue;
-                    if (key.equalsIgnoreCase("User-Agent")) media.addOption(":http-user-agent=" + value);
-                    if (key.equalsIgnoreCase("Referer")) media.addOption(":http-referrer=" + value);
-                }
-            }
+            configureRequestHeaders(media);
             player.setMedia(media); media.release(); player.play(); handler.post(tick);
         } catch (Throwable failure) {
             new AlertDialog.Builder(this).setTitle("Could not start libVLC").setMessage("This device could not load the bundled media engine or open the video.").setPositiveButton("Close", (dialog, which) -> finish()).show();
@@ -106,6 +97,18 @@ public final class VlcPlayerActivity extends Activity {
             public void onStartTrackingTouch(SeekBar bar) { seeking = true; }
             public void onStopTrackingTouch(SeekBar bar) { if (player != null && player.getLength() > 0) player.setTime(player.getLength() * bar.getProgress() / 1000); seeking = false; }
         });
+    }
+    /** Apply the same sanitized request headers to compatible fallback URLs. */
+    private void configureRequestHeaders(Media media) throws org.json.JSONException {
+        String raw = getIntent().getStringExtra("headers");
+        if (raw == null || raw.length() > 6000) return;
+        JSONObject headers = new JSONObject(raw);
+        for (Iterator<String> iterator = headers.keys(); iterator.hasNext();) {
+            String key = iterator.next(), value = headers.optString(key);
+            if (value.length() > 512 || value.contains("\r") || value.contains("\n")) continue;
+            if (key.equalsIgnoreCase("User-Agent")) media.addOption(":http-user-agent=" + value);
+            if (key.equalsIgnoreCase("Referer") && UrlPolicy.isPublicHttps(value)) media.addOption(":http-referrer=" + value);
+        }
     }
     private void tryNextSource() {
         if (tryingFallback || isFinishing() || isDestroyed()) return;
@@ -118,6 +121,7 @@ public final class VlcPlayerActivity extends Activity {
                 try {
                     Media media = new Media(vlc, uri);
                     media.setHWDecoderEnabled(true, false);
+                    configureRequestHeaders(media);
                     player.stop();
                     player.setMedia(media);
                     media.release();
@@ -180,7 +184,13 @@ public final class VlcPlayerActivity extends Activity {
         super.onActivityResult(code, result, data);
         if (code == 50 && result == RESULT_OK && data != null && data.getData() != null && player != null) {
             try {
-                java.io.File file = new java.io.File(getCacheDir(), "subtitle-" + System.currentTimeMillis() + ".srt");
+                String filename = "";
+                try (android.database.Cursor cursor = getContentResolver().query(data.getData(), new String[]{android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+                    if (cursor != null && cursor.moveToFirst()) filename = cursor.getString(0);
+                }
+                String lower = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
+                String extension = lower.matches(".*[.](srt|vtt|ass|ssa|ttml)") ? lower.substring(lower.lastIndexOf('.')) : ".srt";
+                java.io.File file = new java.io.File(getCacheDir(), "subtitle-" + System.currentTimeMillis() + extension);
                 try (java.io.InputStream input = getContentResolver().openInputStream(data.getData()); java.io.OutputStream output = new java.io.FileOutputStream(file)) {
                     byte[] bytes = new byte[8192]; int n, total = 0; while ((n = input.read(bytes)) != -1) { total += n; if (total > 10_000_000) throw new java.io.IOException("Subtitle too large"); output.write(bytes, 0, n); }
                 }
