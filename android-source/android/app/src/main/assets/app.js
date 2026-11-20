@@ -343,7 +343,16 @@ async function refreshAccountProviders() {
     detail: {count: activeAddons().length, stats: updated.stats}
   }));
 }
-window.addEventListener('mutiny-account-changed', () => {
+window.addEventListener('mutiny-account-changed', event => {
+  // Clear the old provider/account snapshot before starting a new request.
+  // This also prevents stale cross-account URLs after an offline sign-out.
+  const changed = event.detail?.provider;
+  if (changed === 'stremio' || changed === 'nuvio') {
+    ++accountRefreshToken;
+    accountAddons = accountAddons.filter(item => item.account !== changed);
+    write('mutiny.android.account.addons.v1', accountAddons);
+    if (page === 'settings') setPage('settings');
+  }
   refreshAccountProviders().catch(error => toast('Provider sync: ' + error.message));
 });
 window.addEventListener('mutiny-search-title',event=>{
