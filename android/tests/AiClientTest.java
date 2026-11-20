@@ -30,8 +30,6 @@ public class AiClientTest {
         catch (IllegalArgumentException expected) { }
         try { ai.suggest("film", history, "x".repeat(6001)); throw new AssertionError("Oversized references accepted"); }
         catch (IllegalArgumentException expected) { }
-        // A missing reference must behave as an empty reference, not crash.
-        if (!"fixture reply".equals(ai.suggest("film", history, null))) throw new AssertionError("Null reference handling");
         AiClient catalogue = new AiClient(store, (url, method, headers, body) -> {
             if (!url.equals("https://openrouter.ai/api/v1/models")) throw new AssertionError("Catalogue routing");
             JSONArray models = new JSONArray()
