@@ -82,3 +82,10 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Implementation `ac039eeb37da08e39b5b21780da3b6d7cc19e084`: app theme selection updates the `theme-color` meta tag, and System theme listens for device light/dark preference changes. Invalid stored theme values fall back to Dark.
 - Fixture `79a51f9a2e1c50d462c38294eb0a8b5cbf1ae6f2`: static assertions for appearance event and theme-colour wiring.
 - Re-fetched GitHub source and fixture to verify committed text. **npm/browser tests and Android status bar behaviour not executed; no APK built.**
+
+## Windows UI parity audit: correctness and scope
+
+- Fixed over-escaped static appearance test assertions in `19d6b68140f00e847efa12fe9d98ff8fa6cb7549`. Previously added assertions could incorrectly fail against correct source.
+- Removed misleading Spanish/French interface choices in `4008d55044506666ddbe3de8956deb4083c9d5e0`: interface strings remain English, and storing a language preference did not translate the UI.
+- Re-fetched source and fixture to confirm both edits. **No npm tests, Playwright browser checks, Android runtime testing or APK built.**
+- Windows UI parity **remains PARTIAL**. Full feature comparison, functioning translations if required, navigation, settings, player parity and current CI evidence are outstanding. Do not mark complete based on visual/theme changes alone.
