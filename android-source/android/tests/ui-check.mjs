@@ -67,6 +67,8 @@ try {
     assert.ok(commands.some(url => decodeURIComponent(url).includes('/tt0944947/2/4'))); checks++;
     await page.getByRole('button', { name: 'Close title' }).click();
     await page.getByRole('button', { name: 'Settings', exact: false }).click();
+    assert.equal(await page.getByText('Games', { exact: true }).count(), 0); checks++;
+    await page.getByRole('heading', { name: 'Appearance, playback and anime' }).waitFor(); checks++;
     await page.getByRole('textbox', { name: 'Add-on manifest URL' }).fill('https://addon.example/manifest.json');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByText('Test add-on', { exact: true }).waitFor(); checks++;
@@ -74,7 +76,7 @@ try {
     await page.getByRole('button', { name: /The Matrix/ }).click();
     await page.getByRole('button', { name: 'Add-on providers', exact: true }).click();
     await page.getByText('HTTPS sample', { exact: true }).waitFor();
-    await page.getByText(/1 stream\(s\) require torrent support/).waitFor(); checks++;
+    await page.getByText(/1 stream\(s\) require unsupported headers or protocols/).waitFor(); checks++;
     await page.getByRole('button', { name: 'Play video', exact: false }).click();
     await page.waitForTimeout(100);
     assert.ok(commands.some(url => decodeURIComponent(url).includes('mutiny://video?url=https://video.example/sample.mp4'))); checks++;
