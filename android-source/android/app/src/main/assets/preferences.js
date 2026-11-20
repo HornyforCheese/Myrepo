@@ -5,6 +5,8 @@ export const defaults = Object.freeze({
   compact: false, reducedMotion: false,
   lowBandwidth: false, maxResolution: 0, preferredCodec: 'any',
   autoFallback: true, preferHevc: true,
+  resumePlayback: true, subtitlesOffByDefault: false, keepScreenOn: true,
+  seekBackSec: 10, seekForwardSec: 30, defaultPlaybackSpeed: 1, networkCacheMs: 0,
   animeAudio: 'any', animeSubtitles: 'any', dualAudio: false, uncensored: false,
   providerPriority: '', blockedProviders: ''
 });
@@ -17,9 +19,14 @@ function sane(raw) {
   result.accent = accents.includes(candidate.accent) ? candidate.accent : result.accent;
   result.fontScale = Number.isInteger(candidate.fontScale) && candidate.fontScale >= 85 && candidate.fontScale <= 140 ? candidate.fontScale : 100;
   result.posterSize = ['small','medium','large'].includes(candidate.posterSize) ? candidate.posterSize : 'medium';
-  for(const flag of ['compact','reducedMotion','lowBandwidth','autoFallback','preferHevc','dualAudio','uncensored']) {
+  for(const flag of ['compact','reducedMotion','lowBandwidth','autoFallback','preferHevc','dualAudio','uncensored','resumePlayback','subtitlesOffByDefault','keepScreenOn']) {
     if(typeof candidate[flag] === 'boolean') result[flag] = candidate[flag];
   }
+  for(const key of ['seekBackSec','seekForwardSec']) {
+    if([5,10,15,30,60].includes(candidate[key])) result[key]=candidate[key];
+  }
+  if([0,2000,5000,10000,20000].includes(candidate.networkCacheMs)) result.networkCacheMs=candidate.networkCacheMs;
+  if([0.5,0.75,1,1.25,1.5,2].includes(candidate.defaultPlaybackSpeed)) result.defaultPlaybackSpeed=candidate.defaultPlaybackSpeed;
   result.maxResolution = [0,360,480,720,1080,2160].includes(candidate.maxResolution) ? candidate.maxResolution : 0;
   result.preferredCodec = ['any','h264','hevc','av1'].includes(candidate.preferredCodec) ? candidate.preferredCodec : 'any';
   result.animeAudio = ['any','english-dub','japanese'].includes(candidate.animeAudio) ? candidate.animeAudio : 'any';
@@ -121,7 +128,7 @@ export function renderPreferenceSettings(parent,announce=()=>{}) {
   function select(title,key,items){
     const field=doc.createElement('select');
     for(const [value,text] of items){const option=doc.createElement('option');option.value=String(value);option.textContent=text;field.append(option);}
-    field.value=String(prefs[key]);field.addEventListener('change',()=>commit({[key]:/^(maxResolution|fontScale)$/.test(key)?Number(field.value):field.value}));label(title,field);
+    field.value=String(prefs[key]);field.addEventListener('change',()=>commit({[key]:/^(maxResolution|fontScale|seekBackSec|seekForwardSec|networkCacheMs|defaultPlaybackSpeed)$/.test(key)?Number(field.value):field.value}));label(title,field);
   }
   function check(title,key){const wrap=doc.createElement('label');wrap.className='setting-check';const field=doc.createElement('input');field.type='checkbox';field.checked=!!prefs[key];field.addEventListener('change',()=>commit({[key]:field.checked}));wrap.append(field,doc.createTextNode(title));section.append(wrap);}
   function text(title,key,placeholder){const field=doc.createElement('input');field.value=prefs[key];field.placeholder=placeholder;field.maxLength=500;field.addEventListener('change',()=>commit({[key]:field.value}));label(title,field);}
@@ -137,6 +144,16 @@ export function renderPreferenceSettings(parent,announce=()=>{}) {
   select('Preferred codec','preferredCodec',[['any','Any'],['h264','H.264'],['hevc','H.265 / HEVC'],['av1','AV1']]);
   check('Prefer HEVC when bandwidth is limited','preferHevc');
   check('Automatic fallback when a source fails','autoFallback');
+  const nativeHeading=doc.createElement('h3'); nativeHeading.textContent='Native player controls';section.append(nativeHeading);
+  const nativeNote=doc.createElement('p');nativeNote.className='note';
+  nativeNote.textContent='These settings configure libVLC for local files, magnets and direct video playback. Source quality settings above only rank provider results.';section.append(nativeNote);
+  check('Resume playback where I stopped','resumePlayback');
+  check('Turn subtitles off when playback starts','subtitlesOffByDefault');
+  check('Keep screen awake during video playback','keepScreenOn');
+  select('Rewind step','seekBackSec',[[5,'5 seconds'],[10,'10 seconds'],[15,'15 seconds'],[30,'30 seconds'],[60,'60 seconds']]);
+  select('Forward skip step','seekForwardSec',[[5,'5 seconds'],[10,'10 seconds'],[15,'15 seconds'],[30,'30 seconds'],[60,'60 seconds']]);
+  select('Default playback speed','defaultPlaybackSpeed',[[0.5,'0.5×'],[0.75,'0.75×'],[1,'1×'],[1.25,'1.25×'],[1.5,'1.5×'],[2,'2×']]);
+  select('Network buffer','networkCacheMs',[[0,'Automatic'],[2000,'2 seconds'],[5000,'5 seconds'],[10000,'10 seconds'],[20000,'20 seconds']]);
   select('Anime audio preference','animeAudio',[['any','Any'],['english-dub','English dub'],['japanese','Japanese audio']]);
   select('Anime subtitles','animeSubtitles',[['any','Any'],['english','English subtitles'],['none','No forced subtitles']]);
   check('Require dual-audio labels for anime','dualAudio');check('Require uncensored labels for anime','uncensored');
