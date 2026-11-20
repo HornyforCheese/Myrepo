@@ -1,0 +1,52 @@
+name: Test Mutiny Media Android media-only branch
+on:
+  push:
+    branches: [mutiny-android-feature-parity]
+    paths:
+      - 'android-source/android/**'
+      - '.github/workflows/android-feature-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mutiny-android-feature-parity
+  cancel-in-progress: true
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: android-source/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: android-source/android/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Unit tests
+        run: |
+          npm ci
+          npm test
+      - name: Mobile UI checks
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:ui
+      - name: Build debug APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mutiny-android-media-only-debug
+          path: android-source/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
