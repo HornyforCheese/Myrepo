@@ -41,6 +41,14 @@ jobs:
           export NDK_HOME="$ANDROID_NDK_HOME"
           pnpm install --frozen-lockfile
           pnpm typecheck
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          p = Path('src-tauri/Cargo.toml')
+          s = p.read_text()
+          line = next(l for l in s.splitlines() if l.startswith('unrar_sys ='))
+          target = next(l for l in s.splitlines() if l.startswith('[target.') and 'not(any' in l and 'android' in l and l.endswith('.dependencies]'))
+          p.write_text(s.replace(line, '', 1).replace(target, target + chr(10) + line, 1))
+          PYTHON
           pnpm tauri android init --ci
           pnpm tauri android build --apk --debug --target aarch64
       - run: |
