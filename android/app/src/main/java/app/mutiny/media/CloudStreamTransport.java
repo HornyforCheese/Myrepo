@@ -11,6 +11,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.os.ParcelFileDescriptor;
+import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -21,15 +23,19 @@ final class CloudStreamTransport {
     private static final int TIMEOUT_SECONDS = 8;
     private CloudStreamTransport() { }
 
-    static JSONObject request(Context context, JSONObject request) throws Exception {
+    static JSONObject request(Context context, String sha256, JSONObject request) throws Exception {
         if (Looper.myLooper() == Looper.getMainLooper())
             throw new IllegalStateException("CloudStream requests require a worker thread");
+        if (!CloudStreamPackageStore.isInstalled(context, sha256))
+            throw new IOException("CloudStream package missing or digest changed");
         final String payload = CloudStreamRequest.validate(request).toString();
+        final File archive = new File(context.getFilesDir(), "cloudstream-extensions/" + sha256 + ".cs3");
         final ArrayBlockingQueue<Bundle> replies = new ArrayBlockingQueue<>(1);
         final Messenger callback = new Messenger(new Handler(Looper.getMainLooper(), message -> {
             if (message.what == CloudStreamWorker.REQUEST) replies.offer(message.getData());
             return true;
         }));
+        try (ParcelFileDescriptor archiveFd = ParcelFileDescriptor.open(archive, ParcelFileDescriptor.MODE_READ_ONLY)) {
         ServiceConnection connection = new ServiceConnection() {
             private void fail() {
                 Bundle result = new Bundle();
@@ -40,6 +46,8 @@ final class CloudStreamTransport {
                 Message message = Message.obtain(null, CloudStreamWorker.REQUEST);
                 Bundle data = new Bundle();
                 data.putString("request", payload);
+                data.putString("sha256", sha256);
+                data.putParcelable("archive", archiveFd);
                 message.setData(data);
                 message.replyTo = callback;
                 try { new Messenger(binder).send(message); }
@@ -62,6 +70,7 @@ final class CloudStreamTransport {
             return new JSONObject(result);
         } finally {
             context.unbindService(connection);
+        }
         }
     }
 }
