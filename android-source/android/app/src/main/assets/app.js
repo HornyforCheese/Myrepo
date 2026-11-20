@@ -216,7 +216,7 @@ async function renderStreams(target) {
         const fallbackUrls=prefs.autoFallback?direct.filter(url=>url!==stream.url).slice(0,5):[];
         return rpc('video.play',{url:stream.url,headers:stream.headers||{},fallbackUrls,lowBandwidth:prefs.lowBandwidth,meta:{...current,videos:undefined,videoId:id,season:episode?.season,episode:episode?.episode}}).catch(error=>toast(error.message));
       },'primary'));
-      if (/\\.(mp4|mkv|webm|mov|m4v|avi)$/i.test(new URL(stream.url).pathname) && !Object.keys(stream.headers||{}).length) {
+      if (/\.(mp4|mkv|webm|mov|m4v|avi)$/i.test(new URL(stream.url).pathname) && !Object.keys(stream.headers||{}).length) {
         box.append(button('Download video',()=>rpc('download.start',{url:stream.url,title:current.name}).then(()=>toast('Download added to Android Download Manager.')).catch(error=>toast(error.message))));
       }
       box.append(button('Open in another app',()=>native('external',stream.url)));
