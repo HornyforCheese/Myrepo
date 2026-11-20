@@ -23,3 +23,9 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 ## Additional bounded security fix
 
 - Commit `bffd3cdb132f75dea8719d1799df15d9f51717ba`: CS3 package import now uses a `long` byte counter and a pre-addition size guard, preventing integer overflow from bypassing the 48 MiB compressed-file limit. Source re-read confirmed the guard. **Static source verification only**: Java compilation, runtime import tests and CI were not executed for this change. This does not implement CS3 execution or provider registration.
+
+## CS3 archive entry path hardening
+
+- Implementation commit `37e2b8478838ee30c05171b04297efae5fa65a5c`: reject absolute paths, drive-prefixed paths, backslashes, dot and parent-directory segments, and ambiguous empty segments in `.cs3` ZIP entries.
+- Fixture commit `033b72a7682be160c50153f83dffd88aa913e0b3`: add negative-path archive fixtures for those cases.
+- Verification: fetched both updated files back from GitHub and inspected changes. **No fixture execution, Java compilation, CI pass, APK build or device test is claimed.** Runtime provider execution remains unavailable.
