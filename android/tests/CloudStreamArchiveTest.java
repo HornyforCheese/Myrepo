@@ -58,6 +58,17 @@ public class CloudStreamArchiveTest {
         // A secondary DEX must not bypass the archive's executable header checks.
         try { inspect(archiveWithPath("classes2.dex")); throw new AssertionError("Invalid secondary DEX accepted"); }
         catch (IOException expected) {}
+        File tamper = Files.createTempFile("mutiny-digest-", ".cs3").toFile();
+        tamper.deleteOnExit();
+        Files.writeString(tamper.toPath(), "abc");
+        String knownDigest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        if (!CloudStreamArchive.hasFileHash(tamper, knownDigest, 3))
+            throw new AssertionError("Exact pinned bytes rejected");
+        if (CloudStreamArchive.hasFileHash(tamper, knownDigest, 2))
+            throw new AssertionError("Oversized pinned file accepted");
+        Files.writeString(tamper.toPath(), "abd");
+        if (CloudStreamArchive.hasFileHash(tamper, knownDigest, 3))
+            throw new AssertionError("Tampered pinned file accepted");
         String hash = "ab".repeat(32);
         CloudStreamArchive.verifyHash(hash,hash.toUpperCase());
         try { CloudStreamArchive.verifyHash(hash,"cd".repeat(32)); throw new AssertionError("Checksum mismatch accepted"); }
