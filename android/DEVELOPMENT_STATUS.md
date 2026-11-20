@@ -115,3 +115,7 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 ## StreamPlay compatibility hold
 
 User's sole required CS3 provider is StreamPlay. Candidate upstream `tpadev/phiser-streamplay/StreamPlay/build.gradle.kts` declares Android-only, `requiresResources=true`, CloudStream pre-release dependency and build-time API/token fields. These imply requirements beyond ZIP/DEX validation and generic IPC. Exact installed binary/version not yet known. Added `android/STREAMPLAY_COMPATIBILITY.md` in `4aff33618dc0d2af5f35427d942e00c8074ac88a` with acceptance gate. **StreamPlay does not yet execute in Mutiny; no live tests performed.** Hold generic chunk 4 until compatibility is verified.
+
+## Exact StreamPlay v715 binary received
+
+User uploaded `StreamPlay.cs3` (2,236,985 bytes, SHA-256 `94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332`). ZIP has `manifest.json` and `classes.dex`; manifest specifies `com.phisher98.StreamPlayPlugin`, version 715, `requiresResources=false`, contradicting candidate public source. Static DEX035 inspection found CloudStream API references. Compatibility gate updated in `986676c338dd661e37df9d9d7937e76948b2303d`. **No execution or runtime success.** Continue targeted host ABI work before CS3 chunk 4.
