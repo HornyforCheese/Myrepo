@@ -701,7 +701,7 @@ function settingsBackup(parent) {
       const booleanKeys = new Set(['reduceMotion','compactCards','subtitles','lowBandwidth','mobileSync','rememberSection','keepAwake','accountSources']);
       const choices = {
         language:['en'], theme:['dark','light','system'], quality:['auto','480','720','1080','2160'],
-        audioLanguage:['auto','en','ja'], animeAudio:['any','english','japanese','dual'],
+        audioLanguage:['auto','en','ja'], animeAudio:['any','dub','sub','dual'],
         animeRelease:['any','uncensored'], networkMode:['auto','wifi','mobile']
       };
       const preferences = Object.fromEntries(Object.entries(parsed.preferences).filter(([key,value]) =>
