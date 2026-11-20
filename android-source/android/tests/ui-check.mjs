@@ -91,6 +91,9 @@ try {
     await page.locator('#top-settings').click();
     assert.equal(await page.getByText('Games', { exact: true }).count(), 0); checks++;
     await page.getByRole('heading', { name: 'Appearance, playback and anime' }).waitFor(); checks++;
+    await page.getByText('Stremio and Nuvio accounts',{exact:true}).click();
+    await page.getByRole('button',{name:'Sign in to Stremio'}).waitFor(); checks++;
+    await page.getByRole('button',{name:'Sign in to Nuvio'}).waitFor(); checks++;
     await page.getByRole('textbox', { name: 'Add-on manifest URL' }).fill('https://addon.example/manifest.json');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByText('Test add-on', { exact: true }).waitFor(); checks++;

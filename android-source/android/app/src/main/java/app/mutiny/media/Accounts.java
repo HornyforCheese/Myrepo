@@ -57,6 +57,7 @@ public final class Accounts {
             JSONObject user = response.getJSONObject("user");
             secrets.put("stremio.token", token); secrets.put("stremio.user", user.getString("_id")); secrets.put("stremio.email", user.optString("email", email));
         } else storeNuvio((JSONObject) http.request(NUVIO + "/auth/v1/token?grant_type=password", "POST", nuvioHeaders(false), new JSONObject().put("email", email.trim()).put("password", password)));
+        if (provider.equals("nuvio")) secrets.put("nuvio.profile", "1");
         secrets.put("account.active", provider); secrets.put("account.profile", "1");
         return status();
     }
@@ -64,6 +65,51 @@ public final class Accounts {
         JSONObject result = new JSONObject().put("active", secrets.get("account.active")).put("profile", secrets.get("account.profile"));
         for (String provider : new String[]{"stremio", "nuvio"}) result.put(provider, new JSONObject().put("signedIn", !secrets.get(provider + ".token").isEmpty()).put("email", secrets.get(provider + ".email")).put("user", secrets.get(provider + ".user")));
         return result;
+    }
+    /**
+     * Read both official account add-on collections without selecting an active
+     * account or changing where bookmarks/watch progress are written.
+     * Failures are scoped to one service so the other can still load.
+     */
+    public synchronized JSONObject syncedAddons() throws Exception {
+        JSONObject state = status();
+        for (String source : new String[]{"stremio", "nuvio"}) {
+            JSONObject account = state.getJSONObject(source);
+            if (!account.getBoolean("signedIn")) continue;
+            try {
+                JSONArray list;
+                if ("stremio".equals(source)) {
+                    JSONObject collection = stremio("addonCollectionGet", auth()
+                        .put("type", "user").put("update", false)).getJSONObject("value");
+                    list = collection.optJSONArray("addons");
+                } else {
+                    int requested = 1;
+                    try { requested = Integer.parseInt(secrets.get("nuvio.profile")); }
+                    catch (NumberFormatException ignored) { /* Primary profile. */ }
+                    JSONArray profiles = (JSONArray) nuvio("/rest/v1/profiles?order=profile_index.asc", "GET", null);
+                    JSONObject chosen = null;
+                    for (int i = 0; i < profiles.length(); i++) {
+                        JSONObject candidate = profiles.getJSONObject(i);
+                        if (candidate.optInt("profile_index") == requested) chosen = candidate;
+                    }
+                    if (chosen == null) throw new IllegalStateException("Selected Nuvio profile not found.");
+                    if (chosen.optBoolean("pin_enabled")) {
+                        throw new IllegalStateException("Selected Nuvio profile is PIN protected; select an unlocked profile.");
+                    }
+                    int addonProfile = chosen.optBoolean("uses_primary_addons") ? 1 : requested;
+                    list = (JSONArray) nuvio("/rest/v1/addons?profile_id=eq." + addonProfile +
+                        "&order=sort_order.asc", "GET", null);
+                    account.put("profile", requested);
+                }
+                account.put("addons", list == null ? new JSONArray() : list);
+            } catch (Exception failed) {
+                // Never include credentials in response or expose a failed account's collection.
+                account.put("error", source.equals("stremio")
+                    ? "Could not refresh Stremio add-ons. Check your session or connection."
+                    : "Could not refresh Nuvio add-ons. Check your profile, session or connection.");
+            }
+        }
+        return state;
     }
     public synchronized void logout(String provider) throws Exception {
         provider(provider);
@@ -105,6 +151,7 @@ public final class Accounts {
                 .put("addons", nuvio("/rest/v1/addons?profile_id=eq." + addonProfile + "&order=sort_order.asc", "GET", null))
                 .put("progress", nuvio("/rest/v1/watch_progress?profile_id=eq." + profile + "&order=last_watched.desc", "GET", null));
         }
+        if (provider.equals("nuvio")) secrets.put("nuvio.profile", String.valueOf(profile));
         secrets.put("account.active", provider); secrets.put("account.profile", String.valueOf(profile));
         return result.put("scope", provider + ":" + secrets.get(provider + ".user") + ":" + profile).put("provider", provider).put("profile", profile);
     }

@@ -4,6 +4,7 @@ import { getPreferences, applyPreferences, rankStreams, normalizeProviderList, r
 import { collectionPicker, collectionManager } from './collections.js';
 import { searchAcrossProviders, metadataCandidates } from './search.js';
 import { safeUrl, addonBase, sourcesFor, streamId, supportsStreams, jsonRequest } from './model.js';
+import {combineProviderAddons, reconcileAccountAddons} from './account-addons.js';
 
 applyPreferences();
 // Sync validated playback preferences to Android so local videos and magnets
@@ -23,6 +24,9 @@ const API = 'https://v3-cinemeta.strem.io';
 let page = 'home', type = 'movie', pageToken = 0, detailToken = 0;
 let saved = read('mutiny.android.library.v1', []);
 let addons = read('mutiny.android.addons.v1', []);
+let accountAddons = read('mutiny.android.account.addons.v1', []);
+let accountRefreshToken = 0;
+const activeAddons = () => combineProviderAddons(addons, accountAddons);
 let current = null, episode = null, sourceIndex = 0, streamToken = 0;
 let toastTimer;
 function read(key, fallback) { try { const data = JSON.parse(localStorage.getItem(key)); return Array.isArray(data) ? data : fallback; } catch { return fallback; } }
@@ -97,7 +101,7 @@ function search() {
     if (!query) return;
     const token = ++pageToken;
     stateBox(results,'Searching Cinemeta and installed add-on catalogs…');
-    searchAcrossProviders(query,type,addons,saved).then(data=>{
+    searchAcrossProviders(query,type,activeAddons(),saved).then(data=>{
       if(token!==pageToken||page!=='search')return;
       if(!data.metas.length)return stateBox(results,'No matching titles found. Try a different search or provider.');
       results.replaceChildren(el('p',data.sources.length?'Results from '+data.sources.join(', '):'Results from your saved library','note'),grid(data.metas));
@@ -123,7 +127,7 @@ async function openTitle(meta) {
   current = { ...meta }; episode = null; sourceIndex = 0;
   detail.replaceChildren(el('p', 'Loading title…')); if (!dialog.open) dialog.showModal();
   let resolved = false;
-  for(const url of metadataCandidates(meta,addons)) {
+  for(const url of metadataCandidates(meta,activeAddons())) {
     try {
       const data = await jsonRequest(url);
       if(token !== detailToken)return;
@@ -133,7 +137,7 @@ async function openTitle(meta) {
     } catch { /* Try the next provider without losing the catalog's metadata. */ }
   }
   if(token !== detailToken)return;
-  if(!resolved && metadataCandidates(meta,addons).length)toast('Full title details unavailable. Showing catalog metadata.');
+  if(!resolved && metadataCandidates(meta,activeAddons()).length)toast('Full title details unavailable. Showing catalog metadata.');
   renderTitle();
 }
 function renderTitle() {
@@ -201,9 +205,9 @@ function renderWeb(target) {
 }
 async function renderStreams(target) {
   const token=++streamToken, id=streamId(current,episode), mediaType=current.type==='series'?'series':'movie';
-  const matching=addons.filter(addon=>supportsStreams(addon.manifest,mediaType,id||''));
+  const matching=activeAddons().filter(addon=>supportsStreams(addon.manifest,mediaType,id||''));
   target.replaceChildren();
-  if(!matching.length)return target.append(el('p','No installed Stremio-compatible add-on offers streams for this title. Add a manifest in Settings.','note'));
+  if(!matching.length)return target.append(el('p','No connected Stremio/Nuvio add-on offers streams for this title. Sign in or install a manifest in Settings.','note'));
   stateBox(target,'Asking add-on providers…');
   const results=await Promise.allSettled(matching.map(async addon=>({addon,data:await jsonRequest(`${addon.base}/stream/${mediaType}/${encodeURIComponent(id)}.json`)})));
   if(token!==streamToken||!target.isConnected)return;
@@ -262,7 +266,7 @@ function settings() {
   main.append(el('span', 'Make it yours', 'eyebrow'),el('h1','Settings'));
   renderPreferenceSettings(main,toast);
   controls(main,openTitle);
-  main.append(el('h2', 'Add-on providers'), el('p', 'Connect a Stremio-compatible provider using its HTTPS manifest address.'));
+  main.append(el('h2', 'Add-on providers'), el('p', 'Combined providers from both signed-in accounts and device installs. Duplicate manifests appear once with all their origins.'));
   const form = el('form'), input = el('input'); input.type = 'url'; input.placeholder = 'https://provider.example/manifest.json'; input.setAttribute('aria-label', 'Add-on manifest URL'); input.required = true;
   const submit = el('button', 'Add', 'primary'); submit.type = 'submit'; form.append(input, submit); main.append(form);
   form.addEventListener('submit', async event => {
@@ -277,10 +281,19 @@ function settings() {
     } catch (error) { toast(error.name === 'AbortError' ? 'Provider timed out. Try again.' : error.message || 'Could not connect to this add-on.'); }
     finally { submit.disabled = false; }
   });
-  if (!addons.length) main.append(el('p', 'No add-on providers installed.', 'note'));
-  for (const addon of addons) {
-    const row = el('div', null, 'addon box'), text = el('div'); text.append(el('strong', addon.manifest.name), el('p', new URL(addon.base).host, 'small'));
-    row.append(text, button('Remove', () => { addons = addons.filter(item => item.base !== addon.base); write('mutiny.android.addons.v1', addons); setPage('settings'); })); main.append(row);
+  const combined = activeAddons();
+  if (!combined.length) main.append(el('p', 'No add-on providers installed. Sign in to Stremio/Nuvio or add a manifest.', 'note'));
+  for (const addon of combined) {
+    const row = el('div', null, 'addon box'), text = el('div');
+    const originLabel = addon.origins.map(source => ({stremio:'Stremio',nuvio:'Nuvio',device:'On device'})[source] || source).join(' + ');
+    text.append(el('strong', addon.manifest.name), el('p', new URL(addon.base).host + ' · ' + originLabel, 'small'));
+    row.append(text);
+    if (addon.origins.includes('device')) row.append(button('Remove', () => {
+      addons = addons.filter(item => item.base !== addon.base);
+      write('mutiny.android.addons.v1', addons);
+      setPage('settings');
+    }));
+    main.append(row);
   }
   main.append(el('h2', 'On this device'), button('Open local video', () => native('local')), el('p', 'Choose a video with Android’s file picker. No broad storage permission is needed.', 'note'));
   const directLabel = el('label', 'Play a direct HTTPS video address'); directLabel.htmlFor = 'direct-url';
@@ -317,6 +330,31 @@ window.addEventListener('mutiny-addons-import',async event=>{
   }
   write('mutiny.android.addons.v1',addons);toast(imported+' add-ons imported'+(failed?', '+failed+' skipped':''));
 });
+async function refreshAccountProviders() {
+  if (!window.Mutiny) return;
+  const token = ++accountRefreshToken;
+  const response = await rpc('account.addons');
+  const updated = await reconcileAccountAddons(accountAddons, response, jsonRequest);
+  if (token !== accountRefreshToken) return;
+  accountAddons = updated.addons;
+  write('mutiny.android.account.addons.v1', accountAddons);
+  if (page === 'settings') setPage('settings');
+  window.dispatchEvent(new CustomEvent('mutiny-account-providers-synced', {
+    detail: {count: activeAddons().length, stats: updated.stats}
+  }));
+}
+window.addEventListener('mutiny-account-changed', event => {
+  // Clear the old provider/account snapshot before starting a new request.
+  // This also prevents stale cross-account URLs after an offline sign-out.
+  const changed = event.detail?.provider;
+  if (changed === 'stremio' || changed === 'nuvio') {
+    ++accountRefreshToken;
+    accountAddons = accountAddons.filter(item => item.account !== changed);
+    write('mutiny.android.account.addons.v1', accountAddons);
+    if (page === 'settings') setPage('settings');
+  }
+  refreshAccountProviders().catch(error => toast('Provider sync: ' + error.message));
+});
 window.addEventListener('mutiny-search-title',event=>{
   const query=String(event.detail||'').slice(0,150);if(!query)return;
   setPage('search');const input=main.querySelector('input[type=search]');
@@ -325,3 +363,4 @@ window.addEventListener('mutiny-search-title',event=>{
 document.querySelectorAll('.header-nav').forEach(node => node.addEventListener('click', () => setPage(node.dataset.page)));
 document.querySelector('#brand').addEventListener('click', event => { event.preventDefault(); setPage('home'); });
 setPage('home');
+refreshAccountProviders().catch(error => console.warn('Account providers could not refresh:', error.message));
