@@ -422,7 +422,7 @@ function preferenceChoice(parent, label, description, key, values, initial, onCh
 }
 function renderPreferences(parent, id) {
   if (id === 'interface') {
-    preferenceChoice(parent, 'Language', 'Language used by the interface', 'language', [['en','English'],['es','Español'],['fr','Français']], 'en');
+    parent.append(el('p', 'Interface language: English. Spanish and French translations are not yet implemented.', 'note'));
     preferenceChoice(parent, 'Theme', 'Choose the interface colour scheme', 'theme', [['dark','Dark'],['light','Light'],['system','System']], 'dark', () => applySavedAppearance());
     preferenceControl(parent, 'Reduce animations', 'Disable nonessential movement', 'reduceMotion', false, value => document.documentElement.classList.toggle('reduce-motion', value));
     preferenceControl(parent, 'Compact cards', 'Display smaller content cards', 'compactCards', false, value => document.documentElement.classList.toggle('compact-cards', value));
