@@ -15,7 +15,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Locale;
 import java.util.zip.ZipEntry;
@@ -108,9 +107,17 @@ public final class CloudStreamPackageStore {
             if (!actual.equalsIgnoreCase(value)) throw new IllegalArgumentException("Extension SHA-256 does not match repository index");
             return;
         }
-        if (value.startsWith("sha256-")) {
+        if (value.toLowerCase(Locale.ROOT).startsWith("sha256-")) {
+            String encoded = value.substring(7);
+            // Official CloudStream repository metadata uses "sha256-" + lowercase hex.
+            if (encoded.matches("(?i)[a-f0-9]{64}")) {
+                if (!actual.equalsIgnoreCase(encoded))
+                    throw new IllegalArgumentException("Extension SHA-256 does not match repository index");
+                return;
+            }
+            // Accept Base64-formatted checksums from other compatible repositories.
             byte[] raw;
-            try { raw = Base64.decode(value.substring(7), Base64.DEFAULT); }
+            try { raw = Base64.decode(encoded, Base64.DEFAULT); }
             catch (IllegalArgumentException invalid) { throw new IllegalArgumentException("Invalid repository SHA-256"); }
             if (raw.length != 32 || !MessageDigest.isEqual(raw, hexToBytes(actual)))
                 throw new IllegalArgumentException("Extension SHA-256 does not match repository index");
