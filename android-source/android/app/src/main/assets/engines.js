@@ -12,7 +12,7 @@ export function rpc(method, args = {}) {
   };
   return new Promise((resolve, reject) => {
     const id = crypto.randomUUID();
-    const timer = setTimeout(() => { pending.delete(id); reject(Error('Request timed out')); }, 120000);
+    const timer = setTimeout(() => { pending.delete(id); reject(Error('Request timed out')); }, method === 'cloudstream.importUrl' ? 600000 : 120000);
     pending.set(id, {resolve, reject, timer});
     try { window.Mutiny.postMessage(JSON.stringify({id, method, args})); }
     catch (error) { pending.delete(id); clearTimeout(timer); reject(error); }
