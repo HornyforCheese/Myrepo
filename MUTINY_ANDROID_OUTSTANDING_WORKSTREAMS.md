@@ -1,0 +1,37 @@
+# Mutiny Media Android | outstanding workstreams
+
+**Branch:** `android-v1.0.1-engines-development`  
+**Scope:** Android app and all applicable Windows 1.0.1 feature parity; **NO gaming features**. This is an open engineering tracker, not a claim of completion.
+
+Checkboxes remain unchecked until implementation, reproducible automated tests, a successful Android build, and relevant on-device/provider verification are recorded. A compiled APK alone does not establish runtime compatibility.
+
+## Feature and integration workstreams
+
+- [ ] **W01 CloudStream .cs3 runtime, StreamPlay v715 [CRITICAL].** Current safe archive import, digest validation, private storage, isolated worker IPC and request validation do **not** execute CloudStream plugins. Implement compatible Kotlin host ABI (CloudStream MainAPI, plugin lifecycle, extractors, dependencies and network handling), isolated DEX loader, provider registration, repository management, search, metadata, episodes, streams, subtitles, and player handoff. Test against exact user-supplied StreamPlay v715 SHA-256 `94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332`, with untrusted code isolated from the main app. See `android/STREAMPLAY_COMPATIBILITY.md`.
+- [ ] **W02 Stremio/Nuvio accounts and provider continuity [HIGH].** Live login, logout, account/profile-scoped add-ons, manifest refresh, bookmarks, history, sync, cloud library, security/privacy isolation, PIN-profile limitations, source handoff and duplicate prevention. Existing fixtures are not live account verification.
+- [ ] **W03 Unified search and source ranking [HIGH].** Merge Stremio + Nuvio + real executable CloudStream provider results, stable IDs, cross-origin duplicate removal, correct episode IDs, language/quality/codec/resolution/size ranking and stream-failure fallback.
+- [ ] **W04 Search with AI [HIGH].** Maintain `Search with AI` shortcut, dropdown of genuinely free eligible OpenRouter/Groq/Gemini models, distinct encrypted API keys and settings, pagination, refresh, context bounds, catalogue results, error and stale reply handling, live service tests. Exclude gaming prompts.
+- [ ] **W05 Five-home-button media UI/navigation [HIGH].** Verify all five shortcuts, requested removal of bottom navigation, functional Android Back/close behavior, no game launcher panels, portrait/tablet responsive layout, touch scrolling, modals and poster displays. The present `index.html` still declares four main navigation buttons, so inspect this instead of assuming the bottom-nav request is satisfied.
+- [ ] **W06 Low-bandwidth and no-waste video streaming [HIGH].** No background autoplay, uncontrolled prefetch/whole-file fetch, persistent media caching or unrequested torrent transfers. Retain only a bounded playback buffer as technically required. Stop network reads on stop/error, pause and background where appropriate; measure TorBox/debrid bytes consumed. Add player bandwidth telemetry and configurable low-data settings, including compatibility with ~1.5 Mbps and ~25 Mbps links. Test data use rather than asserting zero cache.
+- [ ] **W07 Web Sources / Add-on Providers [HIGH].** Preserve the two source tabs, user-initiated Play, source picker and try-next behavior, safe embedded/player handoff, popup/redirect limitations, headers, episode support, actual source availability, and parity with Windows provider catalogue. Test real allowed sample media.
+- [ ] **W08 Anime discovery, filtering and track verification.** Genre browsing; English dub, sub, dual audio, uncensored choices; honest handling of unknown or negated provider labels; verify embedded audio/subtitle tracks on actual playable media.
+- [ ] **W09 Settings, Theme Studio and interface parity.** Theme colours, fonts, posters/card sizes, backgrounds, player controls, seek bar/layout customization, safe import/export, light/dark/system, reduced motion, truthful interface-language support and applicable UI randomization.
+- [ ] **W10 Collections, favourites, watch progress and history.** Unified cross-provider library, profile-aware storage and cloud sync, history/bookmark persistence, safe migration, exports and reset.
+- [ ] **W11 Debrid settings, torrents, magnets and local media.** Provider API-key fields and protected credentials, chosen-file-only playback, explicit download/transfer consent, subtitle import, storage permissions, stop/cancel/cleanup, local video, and background service safeguards.
+- [ ] **W12 Advanced player parity.** libVLC resume, subtitles/audio tracks, headers, seek/speed, bitrate and quality diagnostics, resilient error retry/fallback, exact resolution selection, practical hardware/CPU upscaling feasibility, media-type codec detection and player UI customization.
+- [ ] **W13 Android TV/controller/accessibility/device layouts.** Remote focus traversal, big-picture equivalents, touch, back button, orientation, tablet/handheld responsiveness, system bars, accessibility and Android permission regression.
+- [ ] **W14 Security, regression and runtime QA.** Tests exercising execution rather than only source regexes; safe CS3 ZIP paths and sizes, SHA-256, isolated IPC permissions, network redirect and URL policies, bounded resource usage, credential redaction, account/profile isolation, browser and real-device tests.
+- [ ] **W15 APK distribution and genuine UI screenshots.** Reproducible debug and signed distribution builds, checksum, GitHub artifact/release, install and upgrade smoke, real running-app screenshots (not mockups), account/provider debug logging, crash reports and changelog.
+- [ ] **W16 Windows/Android source parity audit.** Pin exact Windows 1.0.1 counterpart commit, compare actual implementations, enumerate and implement all non-gaming Windows functions where possible; track device-specific limitations transparently. See `android/WINDOWS_ANDROID_PARITY.md`. Linux and Windows **desktop packaging** are independent projects; their unverified work should not be misrepresented as Android completion.
+
+## CI recovery evidence (21 November 2026 AEDT)
+
+- [x] Six outdated/over-escaped CloudStream source assertions repaired; commit `be1b28b5f06646deff4c7a82801d83497ed7aceb`.
+- [x] Obsolete Android SDK setup action removed; new SDK setup succeeded.
+- [x] AI/Accounts workflow Node 22 upgraded to Node 24 for `--test-isolation=none`; commit `fcfd4b76432217b34d722e095ee655f23e18ff6c`.
+- [x] **AI/Accounts APK workflow success:** run https://github.com/HornyforCheese/Myrepo/actions/runs/44834891634 ; artifact `MutinyMedia-Android-AI-Stremio-Nuvio-debug` (GitHub Actions ZIP, approximately 116 MB). JavaScript tests and Android APK assembly succeeded; no physical-device signoff implied.
+- [ ] **Engine workflow full green:** run https://github.com/HornyforCheese/Myrepo/actions/runs/44834725448 passed JS unit and Python CS3 ABI fixture steps; initial Android compile could not resolve Gradle dependencies due to Maven Central HTTP 429. Failed jobs were rerun. Confirm final result and investigate compiler/runtime errors after network resolves.
+
+## Per-workstream completion record
+
+Record: issue/gap, source diff + commit SHA, test commands + passed counts, Android Actions run URL and artifact hash, real Android device/service observations, remaining limitations and blockers. Keep every checklist unchecked until those claims are verified. Do not mark CloudStream working merely because CS3 import succeeds, or describe web-source adapter inventory as confirmed playback.
