@@ -46,37 +46,66 @@ public final class AiClient {
             : "https://generativelanguage.googleapis.com/v1beta/models";
         JSONObject headers = new JSONObject();
         if (!key.isEmpty()) { if (provider.equals("gemini")) headers.put("x-goog-api-key", key); else headers.put("Authorization", "Bearer " + key); }
-        JSONObject response = (JSONObject) http.request(url, "GET", headers, null);
-        JSONArray raw = response.optJSONArray("data");
-        if (provider.equals("gemini")) raw = response.optJSONArray("models");
-        if (raw == null) throw new IllegalStateException("Provider returned no model catalogue");
         JSONArray out = new JSONArray();
-        for (int i = 0; i < raw.length() && out.length() < 500; i++) {
-            JSONObject item = raw.optJSONObject(i); if (item == null) continue;
-            String id = item.optString("id", item.optString("name", ""));
+        java.util.Set<String> ids = new java.util.HashSet<>(), tokens = new java.util.HashSet<>();
+        String token = "";
+        boolean truncated = false;
+        do {
+            String address = url;
             if (provider.equals("gemini")) {
-                if (!id.startsWith("models/")) continue;
-                JSONArray methods = item.optJSONArray("supportedGenerationMethods");
-                boolean generates = false;
-                if (methods != null) for (int j=0;j<methods.length();j++) if ("generateContent".equals(methods.optString(j))) generates=true;
-                if (!generates) continue;
-                id = id.substring("models/".length());
+                address += "?pageSize=200";
+                if (!token.isEmpty()) address += "&pageToken=" + java.net.URLEncoder.encode(token, "UTF-8");
             }
-            if (id.isEmpty()) continue;
-            boolean free = false;
-            if (provider.equals("openrouter")) {
-                JSONObject pricing = item.optJSONObject("pricing");
-                free = id.endsWith(":free") || (pricing != null && "0".equals(pricing.optString("prompt")) && "0".equals(pricing.optString("completion")));
-                if (!free) continue;
+            JSONObject response = (JSONObject) http.request(address, "GET", headers, null);
+            JSONArray raw = response.optJSONArray(provider.equals("gemini") ? "models" : "data");
+            if (raw == null) throw new IllegalStateException("Provider returned no model catalogue");
+            for (int i = 0; i < raw.length(); i++) {
+                JSONObject item = raw.optJSONObject(i);
+                if (item == null) continue;
+                String id = item.optString("id");
+                if (provider.equals("gemini")) {
+                    String name = item.optString("name");
+                    if (!name.startsWith("models/")) continue;
+                    JSONArray methods = item.optJSONArray("supportedGenerationMethods");
+                    boolean generates = false;
+                    if (methods != null) for (int j=0; j<methods.length(); j++)
+                        if ("generateContent".equals(methods.optString(j))) generates = true;
+                    if (!generates) continue;
+                    id = name.substring(7);
+                }
+                if (id.isEmpty() || ids.contains(id)) continue;
+                boolean free = provider.equals("openrouter") && zeroCost(item);
+                if (provider.equals("openrouter") && !free) continue;
+                if (out.length() >= 500) { truncated = true; break; }
+                ids.add(id);
+                out.put(new JSONObject().put("id", id)
+                    .put("name", item.optString("displayName", item.optString("name", id))).put("free", free));
             }
-            out.put(new JSONObject().put("id", id)
-                .put("name", item.optString("name", item.optString("displayName", id)))
-                .put("free", free));
-        }
+            token = provider.equals("gemini") ? response.optString("nextPageToken") : "";
+            if (!token.isEmpty() && !tokens.add(token)) throw new IllegalStateException("Provider repeated a catalogue page");
+            if (!token.isEmpty() && (tokens.size() >= 10 || out.length() >= 500)) truncated = true;
+        } while (!token.isEmpty() && !truncated);
         return new JSONObject().put("provider", provider).put("models", out)
-            .put("freeVerified", provider.equals("openrouter"))
+            .put("freeVerified", provider.equals("openrouter")).put("truncated", truncated)
             .put("note", provider.equals("openrouter") ? "Showing provider-listed zero-cost models; quotas and availability may change."
                 : "Provider does not publish per-model free-tier eligibility here. Check your account quota and pricing.");
+    }
+    private boolean zeroCost(JSONObject item) {
+        JSONObject pricing = item.optJSONObject("pricing");
+        if (pricing == null) return item.optString("id").endsWith(":free");
+        if (!pricing.has("prompt") || !pricing.has("completion")) return false;
+        for (java.util.Iterator<String> keys = pricing.keys(); keys.hasNext();) {
+            String field = keys.next();
+            try {
+                if (new java.math.BigDecimal(pricing.optString(field)).signum() != 0) return false;
+            } catch (NumberFormatException invalid) { return false; }
+        }
+        return true;
+    }
+    public synchronized JSONObject clearKey(String provider) throws Exception {
+        endpoint(provider);
+        secrets.put("ai.key." + provider, "");
+        return config(provider);
     }
     public String suggest(String query, JSONArray history, String references) throws Exception {
         JSONObject settings = config(); String provider = settings.getString("provider");

@@ -484,7 +484,7 @@ function aiSettings(parent) {
         option.value=entry.id; models.append(option);
       }
       models.value=entries.some(entry=>entry.id===model.value) ? model.value : '';
-      catalogStatus.textContent=entries.length + ' models retrieved. ' + (result.note || '');
+      catalogStatus.textContent=entries.length + ' models retrieved. ' + (result.truncated ? 'Catalogue limit reached. ' : '') + (result.note || '');
     } catch(error) {
       if (request===generation) catalogStatus.textContent='Model refresh failed: '+error.message;
     } finally {
@@ -523,7 +523,7 @@ function aiSettings(parent) {
     if(!confirm('Remove the saved key for '+provider.value+'?')) return;
     fields.disabled=true;
     try {
-      await rpc('ai.save',{provider:provider.value,model:model.value.trim(),clearKey:true});
+      await rpc('ai.clearKey',{provider:provider.value});
       key.value=''; status.textContent='API key removed.';
     } catch(error) {status.textContent=error.message;}
     finally {fields.disabled=false;}

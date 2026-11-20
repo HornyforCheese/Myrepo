@@ -54,7 +54,7 @@ jobs:
           classes="$RUNNER_TEMP/native-fixtures"
           mkdir -p "$classes"
           javac --release 17 -cp "$jar" -d "$classes" app/src/main/java/app/mutiny/media/{Secrets,Accounts,AiClient,CloudStreamRepository,CloudStreamArchive,UrlPolicy}.java tests/*.java
-          for fixture in AccountSessionTest AiClientTest CloudStreamRepositoryTest app.mutiny.media.CloudStreamArchiveTest UrlPolicyTest; do
+          for fixture in AccountSessionTest AiClientTest ModelCatalogueTest CloudStreamRepositoryTest app.mutiny.media.CloudStreamArchiveTest UrlPolicyTest; do
             java -cp "$jar:$classes" "$fixture"
           done
       - name: Verify mobile UI with fixture providers

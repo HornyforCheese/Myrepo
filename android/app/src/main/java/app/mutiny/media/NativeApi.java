@@ -33,6 +33,7 @@ public final class NativeApi {
             case "account.bookmark": accounts.bookmark(args.getJSONObject("meta"), args.optBoolean("removed")); return true;
             case "ai.config": return args.has("provider") ? ai.config(args.getString("provider")) : ai.config();
             case "ai.models": return ai.models(args.getString("provider"), args.optString("key", ""));
+            case "ai.clearKey": return ai.clearKey(args.getString("provider"));
             case "ai.save": return ai.save(args);
             case "ai.suggest": return ai.suggest(args.getString("query"), args.optJSONArray("history"), args.optString("references"));
             case "torrent.add":
