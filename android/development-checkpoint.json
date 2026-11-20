@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "AI-CATALOG-PRICING: reject unpriced :free model claims",
-  "lastVerifiedImplementationCommit": "82f985426cba0e795632aec931ca9b9d35ebea83",
+  "currentChunk": "AI-CATALOG-PAGINATION: bounded Gemini tokens and provider key isolation fixtures",
+  "lastVerifiedImplementationCommit": "b35f3570f98e550d73ece96607b930f9cb3ce592",
   "completedChunks": [],
   "tasks": [
     {
@@ -109,7 +109,8 @@
     "Isolated javac/java backslash guard syntax and behaviour check passed in local environment; full CS3 archive fixtures and Android CI not verified",
     "Reviewed prior GitHub Actions run 44822049872: Android compile and native fixtures succeeded, UI fixture failed at library navigation due to open dialog intercepting clicks; historical run, not current branch CI",
     "CS3 control-character ZIP path rejection and negative fixtures committed; source re-read verified, test execution pending",
-    "AI OpenRouter free model price check and regression fixture source re-read confirmed; tests and Android CI not executed for these commits"
+    "AI OpenRouter free model price check and regression fixture source re-read confirmed; tests and Android CI not executed for these commits",
+    "Gemini page token bound and key-removal/pagination fixtures source re-read verified; fixture execution, Java compilation and current CI not run"
   ],
-  "nextAction": "AI second chunk: verify Gemini model pagination and per-provider key removal, then ANIME genre browsing and stream track preferences, then Windows UI parity; CS3 runtime remains queued."
+  "nextAction": "Run AiClientTest and Android Java compile in CI, repair failures; then proceed to ANIME genre discovery and track preferences, followed by Windows UI parity."
 }
