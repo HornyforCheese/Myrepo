@@ -2,7 +2,8 @@ package app.mutiny.media;
 
 import org.json.*;
 import java.time.Instant;
-import java.net.URLEncoder;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Android client for the same Stremio/Nuvio endpoints used by desktop Mutiny. */
 public final class Accounts {
@@ -32,28 +33,33 @@ public final class Accounts {
         long expiry = Long.parseLong(secrets.get("nuvio.expiry"));
         if (System.currentTimeMillis() / 1000 > expiry - 60) {
             JSONObject refresh = (JSONObject) http.request(NUVIO + "/auth/v1/token?grant_type=refresh_token", "POST", nuvioHeaders(false), new JSONObject().put("refresh_token", secrets.get("nuvio.refresh")));
-            storeNuvio(refresh);
+            secrets.putAll(nuvioSession(refresh, false));
         }
         return http.request(NUVIO + path, method, nuvioHeaders(true), body);
     }
-    private void storeNuvio(JSONObject session) throws Exception {
+    private Map<String,String> nuvioSession(JSONObject session, boolean login) throws Exception {
         String token = session.getString("access_token"), refresh = session.getString("refresh_token");
         if (token.isEmpty() || refresh.isEmpty()) throw new IllegalStateException("Invalid Nuvio session");
-        secrets.put("nuvio.token", token); secrets.put("nuvio.refresh", refresh);
-        secrets.put("nuvio.expiry", String.valueOf(System.currentTimeMillis() / 1000 + session.optLong("expires_in", 3600)));
+        Map<String,String> changes = new HashMap<>();
+        changes.put("nuvio.token", token); changes.put("nuvio.refresh", refresh);
+        changes.put("nuvio.expiry", String.valueOf(System.currentTimeMillis() / 1000 + session.optLong("expires_in", 3600)));
         JSONObject user = session.optJSONObject("user");
-        if (user != null) { secrets.put("nuvio.user", user.getString("id")); secrets.put("nuvio.email", user.optString("email")); }
+        if (login && (user == null || user.optString("id").isEmpty())) throw new IllegalStateException("Missing Nuvio account identity");
+        if (user != null) { changes.put("nuvio.user", user.getString("id")); changes.put("nuvio.email", user.optString("email")); }
+        return changes;
     }
     public synchronized JSONObject login(String provider, String email, String password) throws Exception {
         provider(provider);
         if (email.trim().isEmpty() || password.isEmpty()) throw new IllegalArgumentException("Enter email and password");
+        Map<String,String> changes = new HashMap<>();
         if (provider.equals("stremio")) {
             JSONObject response = stremio("login", new JSONObject().put("email", email.trim()).put("password", password).put("facebook", false)).getJSONObject("value");
             String token = response.getString("authKey"); if (token.isEmpty()) throw new IllegalStateException("Invalid Stremio session");
             JSONObject user = response.getJSONObject("user");
-            secrets.put("stremio.token", token); secrets.put("stremio.user", user.getString("_id")); secrets.put("stremio.email", user.optString("email", email));
-        } else storeNuvio((JSONObject) http.request(NUVIO + "/auth/v1/token?grant_type=password", "POST", nuvioHeaders(false), new JSONObject().put("email", email.trim()).put("password", password)));
-        secrets.put("account.active", provider); secrets.put("account.profile", "1");
+            changes.put("stremio.token", token); changes.put("stremio.user", user.getString("_id")); changes.put("stremio.email", user.optString("email", email));
+        } else changes = nuvioSession((JSONObject) http.request(NUVIO + "/auth/v1/token?grant_type=password", "POST", nuvioHeaders(false), new JSONObject().put("email", email.trim()).put("password", password)), true);
+        changes.put("account.active", provider); changes.put("account.profile", "1");
+        secrets.putAll(changes);
         return status();
     }
     public synchronized JSONObject status() throws Exception {
@@ -64,8 +70,10 @@ public final class Accounts {
     public synchronized void logout(String provider) throws Exception {
         provider(provider);
         try { if (provider.equals("stremio")) stremio("logout", auth()); else nuvio("/auth/v1/logout", "POST", new JSONObject()); } catch (Exception ignored) { /* Always permit local sign-out when offline. */ }
-        for (String suffix : new String[]{"token", "refresh", "expiry", "user", "email"}) secrets.put(provider + "." + suffix, "");
-        if (secrets.get("account.active").equals(provider)) secrets.put("account.active", "");
+        Map<String,String> changes = new HashMap<>();
+        for (String suffix : new String[]{"token", "refresh", "expiry", "user", "email"}) changes.put(provider + "." + suffix, "");
+        if (secrets.get("account.active").equals(provider)) changes.put("account.active", "");
+        secrets.putAll(changes);
     }
     public synchronized JSONObject sync(String provider, int profile) throws Exception {
         provider(provider); if (profile < 1 || profile > 6) throw new IllegalArgumentException("Profile must be 1–6");
@@ -101,7 +109,9 @@ public final class Accounts {
                 .put("addons", nuvio("/rest/v1/addons?profile_id=eq." + addonProfile + "&order=sort_order.asc", "GET", null))
                 .put("progress", nuvio("/rest/v1/watch_progress?profile_id=eq." + profile + "&order=last_watched.desc", "GET", null));
         }
-        secrets.put("account.active", provider); secrets.put("account.profile", String.valueOf(profile));
+        Map<String,String> changes = new HashMap<>();
+        changes.put("account.active", provider); changes.put("account.profile", String.valueOf(profile));
+        secrets.putAll(changes);
         return result.put("scope", provider + ":" + secrets.get(provider + ".user") + ":" + profile).put("provider", provider).put("profile", profile);
     }
     public synchronized void bookmark(JSONObject meta, boolean removed) throws Exception {

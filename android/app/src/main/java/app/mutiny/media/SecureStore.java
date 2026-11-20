@@ -34,10 +34,16 @@ public final class SecureStore implements Secrets {
         cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, Base64.decode(parts[0], Base64.NO_WRAP)));
         return new String(cipher.doFinal(Base64.decode(parts[1], Base64.NO_WRAP)), java.nio.charset.StandardCharsets.UTF_8);
     }
-    public synchronized void put(String name, String value) throws Exception {
-        if (value == null || value.isEmpty()) { preferences.edit().remove(name).commit(); return; }
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding"); cipher.init(Cipher.ENCRYPT_MODE, key);
-        byte[] encrypted = cipher.doFinal(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        if (!preferences.edit().putString(name, Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP) + ":" + Base64.encodeToString(encrypted, Base64.NO_WRAP)).commit()) throw new java.io.IOException("Could not save credentials");
+    public synchronized void putAll(java.util.Map<String,String> values) throws Exception {
+        SharedPreferences.Editor editor = preferences.edit();
+        for (java.util.Map.Entry<String,String> entry : values.entrySet()) {
+            String value = entry.getValue();
+            if (value == null || value.isEmpty()) { editor.remove(entry.getKey()); continue; }
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            byte[] encrypted = cipher.doFinal(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            editor.putString(entry.getKey(), Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP) + ":" + Base64.encodeToString(encrypted, Base64.NO_WRAP));
+        }
+        if (!editor.commit()) throw new java.io.IOException("Could not persist credential changes");
     }
 }

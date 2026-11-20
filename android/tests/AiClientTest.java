@@ -8,7 +8,7 @@ public class AiClientTest {
         HashMap<String,String> values = new HashMap<>();
         Secrets store = new Secrets() {
             public String get(String key) { return values.getOrDefault(key, ""); }
-            public void put(String key, String value) { values.put(key, value); }
+            public void putAll(java.util.Map<String,String> changes) { values.putAll(changes); }
         };
         AiClient ai = new AiClient(store, (url, method, headers, body) -> {
             if (!url.equals("https://api.groq.com/openai/v1/chat/completions") || !headers.getString("Authorization").equals("Bearer fixture"))

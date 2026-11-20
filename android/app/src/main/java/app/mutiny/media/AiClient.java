@@ -26,10 +26,12 @@ public final class AiClient {
     public synchronized JSONObject save(JSONObject input) throws Exception {
         String provider = input.getString("provider"); endpoint(provider);
         String model = input.optString("model").trim(); if (model.isEmpty() || model.length() > 160) throw new IllegalArgumentException("Enter a model ID from your provider");
-        secrets.put("ai.model." + provider, model);
-        if (input.optBoolean("clearKey")) secrets.put("ai.key." + provider, "");
-        else if (!input.optString("key").trim().isEmpty()) secrets.put("ai.key." + provider, input.getString("key").trim());
-        secrets.put("ai.provider", provider);
+        java.util.Map<String,String> changes = new java.util.HashMap<>();
+        changes.put("ai.model." + provider, model);
+        if (input.optBoolean("clearKey")) changes.put("ai.key." + provider, "");
+        else if (!input.optString("key").trim().isEmpty()) changes.put("ai.key." + provider, input.getString("key").trim());
+        changes.put("ai.provider", provider);
+        secrets.putAll(changes);
         return config();
     }
     /** Fetch provider-published model IDs. Only OpenRouter publishes a dependable free-price flag. */
