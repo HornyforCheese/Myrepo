@@ -374,6 +374,8 @@ function settingsBackup(parent) {
   }));
 }
 function settings() {
+  // Reset the view before rendering the settings index; otherwise Back duplicates every card.
+  main.replaceChildren();
   const heading = el('h1', 'Settings');
   main.append(heading);
   const panel = el('section', null, 'settings-panel');
