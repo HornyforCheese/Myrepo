@@ -76,3 +76,9 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Implementation `8d02b97c02fe14bf5625e0ed4d7cad656a76d9f5` and `86cae5bd9c46ed2ebccd1ab02dfa5a16c59c3e14`: make existing light/system theme settings control core background, text, navigation, hero, and settings panels with CSS variables; system mode respects `prefers-color-scheme:light`.
 - Fixture `fef47ecb613820cb30aee80d6f4df57abacdcced`: static appearance palette wiring assertions.
 - GitHub source re-read confirmed files. **Test execution, screenshots, live device theme changes and APK build not verified.** Further UI styling and functional Windows parity remain open.
+
+## Windows parity/UI chunk 2: live system appearance and Android status bar
+
+- Implementation `ac039eeb37da08e39b5b21780da3b6d7cc19e084`: app theme selection updates the `theme-color` meta tag, and System theme listens for device light/dark preference changes. Invalid stored theme values fall back to Dark.
+- Fixture `79a51f9a2e1c50d462c38294eb0a8b5cbf1ae6f2`: static assertions for appearance event and theme-colour wiring.
+- Re-fetched GitHub source and fixture to verify committed text. **npm/browser tests and Android status bar behaviour not executed; no APK built.**
