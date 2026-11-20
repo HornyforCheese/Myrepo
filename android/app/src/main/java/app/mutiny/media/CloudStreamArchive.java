@@ -64,7 +64,7 @@ final class CloudStreamArchive {
             while ((entry = zip.getNextEntry()) != null) {
                 String name = entry.getName();
                 // Reject ambiguous or traversal paths before any future DEX/resource extraction.
-                if (name.isEmpty() || name.startsWith("/") || name.indexOf('\\\\') >= 0 ||
+                if (name.isEmpty() || name.startsWith("/") || name.indexOf('\\') >= 0 ||
                     name.matches("^[A-Za-z]:.*"))
                     throw new IOException("Unsafe extension archive path");
                 String[] segments = name.split("/", -1);
