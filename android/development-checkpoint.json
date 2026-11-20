@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "PARITY workstream 7: Android settings import validation and scoped Windows parity audit",
-  "lastVerifiedImplementationCommit": "5c82a8cf5b8a6626f90026dc6e1d07c6bdb53114",
+  "currentChunk": "AI search and Stremio/Nuvio account-addon refresh fixes; Android build not executed",
+  "lastVerifiedImplementationCommit": "dcc8f0966b70e3a1fbdcf488265ad7e529ae3225",
   "completedChunks": [],
   "tasks": [
     {
@@ -124,7 +124,8 @@
     "Re-read NativeApi cs3.request digest gate, installed-package check and static fixture; Java/Android compilation, live IPC and StreamPlay provider execution not verified",
     "Local Python DEX parser found 81 CloudStream method-owner classes and 211 distinct method signatures in uploaded v715; Node reproducibility script committed and source re-read, but not executed from repository",
     "GitHub source re-read verifies descriptor IPC and worker SHA-256 verification code; no Android compilation, static fixtures, device IPC, provider execution or playback tests run",
-    "Windows/Android parity matrix authored from Android source and documented Windows requirements; exact Windows source not available at prior paths; no Android build/tests run"
+    "Windows/Android parity matrix authored from Android source and documented Windows requirements; exact Windows source not available at prior paths; no Android build/tests run",
+    "Source commits for AI validation and Stremio/Nuvio same-profile cached manifest fallback inspected; tests not run; Android SDK/Gradle unavailable in local container and remote desktop devices offline; existing APK predates changes"
   ],
-  "nextAction": "Find and pin Windows source, implement missing applicable parity features, execute tests and Android device QA; StreamPlay runtime still blocked."
+  "nextAction": "Run npm tests, Java AI fixtures and Android Gradle assembleDebug on connected Android SDK runner; fix any failures and verify live Stremio/Nuvio account sync and AI model providers; publish newly built APK only after build succeeds."
 }
