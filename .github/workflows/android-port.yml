@@ -20,8 +20,7 @@ jobs:
       - run: |
           mkdir app
           tar -xzf archive/*.tar.gz -C app
-          cd app
-          node -e "const fs=require('fs'),p='src-tauri/tauri.android.conf.json',c=require('./'+p); c.app.windows[0].url='index.html'; c.app.windows[0].title='Mutiny Media'; fs.writeFileSync(p,JSON.stringify(c,null,2))"
+          python3 tools/android-no-games.py app
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -50,10 +49,13 @@ jobs:
           p.write_text(s.replace(line, '', 1).replace(target, target + chr(10) + line, 1))
           PYTHON
           pnpm tauri android init --ci
+          main=src-tauri/gen/android/app/src/main
+          install -Dm644 docs/android/network_security_config.xml "$main/res/xml/network_security_config.xml"
+          sed -i 's/<application$/<application android:networkSecurityConfig="@xml\/network_security_config"/' "$main/AndroidManifest.xml"
           pnpm tauri android build --apk --debug --target aarch64
       - run: |
           apk=$(find app/src-tauri/gen/android -path '*/outputs/apk/*' -name '*.apk' | head -1)
-          cp "$apk" MutinyMedia-android-desktop.apk
-          gh release create android-desktop-ui-preview MutinyMedia-android-desktop.apk --target "$GITHUB_SHA" --prerelease --title 'Mutiny Media Android desktop UI preview' --notes 'ARM64 development build using the original customized Windows frontend and upstream Android runtime. Device testing pending.'
+          cp "$apk" MutinyMedia-android-no-games.apk
+          gh release create android-windows-ui-no-games MutinyMedia-android-no-games.apk --target "$GITHUB_SHA" --prerelease --title 'Mutiny Media Android — Windows UI without Games' --notes 'ARM64 development build using the original customized Windows frontend and upstream Android runtime. Device testing pending.'
         env:
           GH_TOKEN: ${{ github.token }}
