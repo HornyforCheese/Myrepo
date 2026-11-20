@@ -55,3 +55,12 @@ test('profile switch discards cached manifests and saved identities omit configu
   const next=await reconcileAccountAddons(initial.addons,{nuvio:{signedIn:true,user:'user',profile:2,error:'Offline'}},loader);
   assert.deepEqual(next.addons,[]);
 });
+
+test('refresh failure keeps same-account same-profile manifest but not another profile',async()=>{
+  const prior=await reconcileAccountAddons([],{nuvio:{signedIn:true,user:'owner',profile:2,addons:['https://working.example/manifest.json']}},loader);
+  const failed=await reconcileAccountAddons(prior.addons,{nuvio:{signedIn:true,user:'owner',profile:2,addons:['https://working.example/manifest.json']}},async()=>{throw Error('offline');},true);
+  assert.equal(failed.addons.length,1);
+  assert.equal(failed.addons[0].profile,2);
+  const other=await reconcileAccountAddons(prior.addons,{nuvio:{signedIn:true,user:'owner',profile:1,addons:['https://working.example/manifest.json']}},async()=>{throw Error('offline');},true);
+  assert.equal(other.addons.length,0);
+});
