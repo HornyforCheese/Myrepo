@@ -257,7 +257,11 @@ function renderSources() {
   const tabs = el('div', null, 'chips');
   const web = button('Web sources', () => { web.classList.add('selected'); addon.classList.remove('selected'); renderWeb(body); }, 'selected');
   const addon = button('Add-on providers', () => { addon.classList.add('selected'); web.classList.remove('selected'); renderStreams(body); });
-  tabs.append(web, addon); const body = el('div'); target.append(tabs, body); renderWeb(body);
+  tabs.append(web, addon); const body = el('div'); target.append(tabs, body);
+  if (isAnimeMeta(current)) {
+    web.classList.remove('selected'); addon.classList.add('selected');
+    renderStreams(body);
+  } else renderWeb(body);
 }
 function renderWeb(target) {
   streamToken++;
@@ -285,6 +289,13 @@ async function renderStreams(target) {
   target.replaceChildren(); let count = 0, failures = 0, unsupported = 0, filtered = 0;
   const animeMode = isAnimeMeta(current);
   const animePrefs = getPreferences();
+  if (animeMode) {
+    const panel = el('section', null, 'anime-stream-preferences');
+    panel.append(el('h3', 'Anime stream filters'));
+    preferenceChoice(panel, 'Audio', 'Filter explicitly labelled add-on streams', 'animeAudio', [['any','Any'],['dub','English dub'],['sub','Japanese with subtitles'],['dual','Dual audio']], 'any', () => renderStreams(target));
+    preferenceChoice(panel, 'Release', 'Only confirmed labels can be matched', 'animeRelease', [['any','Any'],['uncensored','Uncensored only']], 'any', () => renderStreams(target));
+    target.append(panel);
+  }
   if (animeMode && (animePrefs.animeAudio !== 'any' || animePrefs.animeRelease === 'uncensored')) {
     target.append(el('p', 'Anime preferences active: only explicitly labelled matching streams are shown. Unlabelled streams may be hidden.', 'note'));
   }
@@ -349,6 +360,9 @@ function renderPreferences(parent, id) {
     preferenceChoice(parent, 'Preferred video quality', 'Preference for compatible streams', 'quality', [['auto','Automatic'],['480','480p'],['720','720p'],['1080','1080p'],['2160','4K']], 'auto');
     preferenceChoice(parent, 'Preferred audio', 'Language preference for supported sources', 'audioLanguage', [['auto','Automatic'],['en','English'],['ja','Japanese']], 'auto');
     preferenceControl(parent, 'Prefer subtitles', 'Request subtitles when available', 'subtitles', false);
+    parent.append(el('h2', 'Anime stream preferences'));
+    preferenceChoice(parent, 'Anime audio', 'Used for explicitly labelled add-on streams', 'animeAudio', [['any','Any'],['dub','English dub'],['sub','Japanese with subtitles'],['dual','Dual audio']], 'any');
+    preferenceChoice(parent, 'Anime release', 'Require explicit uncensored labels when selected', 'animeRelease', [['any','Any'],['uncensored','Uncensored only']], 'any');
     preferenceControl(parent, 'Low-bandwidth preference', 'Prefer lower-bitrate sources where supported', 'lowBandwidth', false);
     parent.append(el('p', 'Playback preferences are saved locally. Stream selection and the native player do not yet honour every preference.', 'note'));
   } else if (id === 'general') {
