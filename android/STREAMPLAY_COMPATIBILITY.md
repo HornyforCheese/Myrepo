@@ -51,3 +51,24 @@ Key referenced classes and packages:
 - Other host APIs: `syncproviders/AccountManager`, `syncproviders/SyncAPI`, `syncproviders/providers/AniListApi`, `utils/DataStore`, `utils/AppUtils`, `CommonActivity`, `CloudStreamApp`
 
 **Engineering consequence:** the existing three-operation JSON IPC protocol alone cannot run this binary. The plugin expects a substantial CloudStream Android/Kotlin host ABI. A fabricated stub that merely makes class loading succeed would not meet the user's functional requirement. Next: resolve actual invoked method signatures and compatible dependency versions, then build and execute the isolated host against this pinned binary. Do not claim playback until verified.
+
+## Exact v715 DEX method-reference audit (2026-11-21)
+
+Parsed the uploaded `classes.dex` method-ID and prototype tables directly, without executing code. The DEX declares **211 distinct method references across 81 CloudStream-owned class descriptors** (the previous 99-class figure included class descriptors without method references). Method-ID entries do not prove runtime reachability; some are from bundled code.
+
+Representative signatures the host must satisfy include:
+
+```text
+Lcom/lagradost/cloudstream3/plugins/Plugin;-><init>()->V
+Lcom/lagradost/cloudstream3/MainAPI;-><init>()->V
+Lcom/lagradost/cloudstream3/MainAPI;->getName()->Ljava/lang/String;
+Lcom/lagradost/cloudstream3/APIHolder;->getUnixTimeMS()->J
+Lcom/lagradost/cloudstream3/APIHolder;->getCaptchaToken(Ljava/lang/String;,Ljava/lang/String;,Ljava/lang/String;,Lkotlin/coroutines/Continuation;)->Ljava/lang/Object;
+Lcom/lagradost/cloudstream3/utils/ExtractorApi;-><init>()->V
+Lcom/lagradost/cloudstream3/utils/ExtractorLink;->getUrl()->Ljava/lang/String;
+Lcom/lagradost/cloudstream3/utils/ExtractorLink;->getHeaders()->Ljava/util/Map;
+Lcom/lagradost/cloudstream3/utils/ExtractorLink;->getReferer()->Ljava/lang/String;
+Lcom/lagradost/cloudstream3/utils/ExtractorLink;->getType()->Lcom/lagradost/cloudstream3/utils/ExtractorLinkType;
+```
+
+**Runtime implication:** a handful of hand-written Java stubs is insufficient for confidence in StreamPlay v715. Compatibility requires Kotlin binary signatures, CloudStream host semantics, bundled dependencies, class resolution and device-level tests. A 90% success estimate is not supported by static inspection.
