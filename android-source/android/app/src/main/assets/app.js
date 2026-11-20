@@ -1,6 +1,10 @@
 import { controls, rpc } from './engines.js';
+import { getPreferences, applyPreferences, rankStreams, normalizeProviderList, renderPreferenceSettings } from './preferences.js';
+import { collectionPicker, collectionManager } from './collections.js';
+import { searchAcrossProviders } from './search.js';
 import { safeUrl, addonBase, sourcesFor, streamId, supportsStreams, jsonRequest } from './model.js';
 
+applyPreferences();
 const main = document.querySelector('#main');
 const dialog = document.querySelector('#detail');
 const detail = document.querySelector('#detail-body');
@@ -70,16 +74,23 @@ function search() {
     const query = input.value.trim();
     if (!query) return;
     const token = ++pageToken;
-    loadCatalog(results, `${API}/catalog/${type}/top/search=${encodeURIComponent(query)}.json`, token);
+    stateBox(results,'Searching Cinemeta and installed add-on catalogs…');
+    searchAcrossProviders(query,type,addons,saved).then(data=>{
+      if(token!==pageToken||page!=='search')return;
+      if(!data.metas.length)return stateBox(results,'No matching titles found. Try a different search or provider.');
+      results.replaceChildren(el('p',data.sources.length?'Results from '+data.sources.join(', '):'Results from your saved library','note'),grid(data.metas));
+      if(data.failed)results.append(el('p',data.failed+' catalog request(s) failed. Available results are shown.','note'));
+    }).catch(error=>{if(token===pageToken)stateBox(results,'Search failed: '+error.message,run);});
   };
   const chips = filters(() => { [...chips.children].forEach((node, i) => node.classList.toggle('selected', i === (type === 'movie' ? 0 : 1))); run(); });
   form.addEventListener('submit', event => { event.preventDefault(); run(); input.blur(); });
   main.append(form, chips, results); stateBox(results, 'Search the movie and series catalog by title.');
 }
 function library() {
-  main.append(el('span', 'Collected by you', 'eyebrow'), el('h1', 'My library'), el('p', 'Your saved titles stay on this device.'));
-  if (!saved.length) return main.append(el('p', 'Your library is waiting. Open a title and tap Save to library.', 'empty'), button('Discover titles', () => setPage('home'), 'primary'));
-  main.append(grid(saved));
+  main.append(el('span','Collected by you','eyebrow'),el('h1','My library'),el('p','Your saved titles and collections stay on this device. Cloud library imports are optional.'));
+  if (!saved.length) main.append(el('p','Your library is waiting. Save a title to build your library.','empty'),button('Discover titles',()=>setPage('home'),'primary'));
+  else main.append(el('h2','All saved titles'),grid(saved));
+  collectionManager(main,saved,grid,toast);
 }
 function closeTitle() { detailToken++; streamToken++; current = null; dialog.close(); if (page === 'library') setPage('library'); }
 document.querySelector('#close-detail').addEventListener('click', closeTitle);
@@ -113,6 +124,7 @@ function renderTitle() {
   });
   save.textContent = saved.some(item => item.id === meta.id && item.type === meta.type) ? '♥  Saved to library' : '♡  Save to library';
   detail.append(heading, save, el('p', meta.description || 'No description available.', 'overview'));
+  detail.append(collectionPicker(meta,toast));
   if (meta.type === 'series') episodePicker(meta);
   const sources = el('section', null, 'source-section'); sources.id = 'sources'; detail.append(sources); renderSources();
 }
@@ -147,7 +159,10 @@ function renderSources() {
 }
 function renderWeb(target) {
   streamToken++;
-  const available = sourcesFor(current, episode);
+  const prefs=getPreferences(), blocked=normalizeProviderList(prefs.blockedProviders);
+  const priority=normalizeProviderList(prefs.providerPriority);
+  const available=sourcesFor(current,episode).filter(item=>!blocked.some(word=>item.name.toLowerCase().includes(word)))
+    .sort((a,b)=>priority.indexOf(b.name.toLowerCase())-priority.indexOf(a.name.toLowerCase()));
   target.replaceChildren();
   if (!available.length) return target.append(el('p', 'No configured web source accepts this title’s identifiers. Try Add-on providers.', 'note'));
   const label = el('label', 'Provider'); label.htmlFor = 'provider';
@@ -160,38 +175,61 @@ function renderWeb(target) {
   target.append(label, select, el('p', `${available.length} sources configured for this title. Playback depends on each provider and has not been verified.`, 'note'), row, button('Open in browser ↗', () => native('external', available[sourceIndex].result.url)), el('p', 'Web sources may show third-party ads or require a browser. Pop-up windows are blocked in the app.', 'note'));
 }
 async function renderStreams(target) {
-  const token = ++streamToken;
-  const id = streamId(current, episode), mediaType = current.type === 'series' ? 'series' : 'movie';
-  const matching = addons.filter(addon => supportsStreams(addon.manifest, mediaType, id || ''));
+  const token=++streamToken, id=streamId(current,episode), mediaType=current.type==='series'?'series':'movie';
+  const matching=addons.filter(addon=>supportsStreams(addon.manifest,mediaType,id||''));
   target.replaceChildren();
-  if (!matching.length) return target.append(el('p', 'No installed add-on offers streams for this title. Add a Stremio-compatible HTTPS manifest in Settings.', 'note'));
-  stateBox(target, 'Asking add-on providers…');
-  const results = await Promise.allSettled(matching.map(async addon => ({ addon, data: await jsonRequest(`${addon.base}/stream/${mediaType}/${encodeURIComponent(id)}.json`) })));
-  if (token !== streamToken || !target.isConnected) return;
-  target.replaceChildren(); let count = 0, failures = 0, unsupported = 0;
-  for (const result of results) {
-    if (result.status !== 'fulfilled') { failures++; continue; }
-    const { addon, data } = result.value;
-    if (!Array.isArray(data.streams)) continue;
-    for (const stream of data.streams.slice(0, 80)) {
-      if(window.Mutiny && /^[a-f0-9]{40}$/i.test(stream.infoHash||'')){count++;target.append(button('Download '+(stream.title||stream.name||'torrent'),async()=>{try{await rpc('torrent.add',{magnet:'magnet:?xt=urn:btih:'+stream.infoHash,fileIndex:stream.fileIdx??-1,meta:current});closeTitle();setPage('settings')}catch(e){toast(e.message)}}));continue}
-      const url = stream.url || stream.externalUrl;
-      if (!safeUrl(url) || stream.behaviorHints?.proxyHeaders || stream.headers || stream.infoHash) { unsupported++; continue; }
-      count++;
-      const box = el('div', null, 'box'); box.append(el('strong', stream.name || addon.manifest.name || 'Stream'), el('p', stream.title || stream.description || '', 'small'));
-      box.append(button(stream.externalUrl ? 'Open source ↗' : '▶  Play video', () => window.Mutiny && !stream.externalUrl ? rpc('video.play',{url,meta:{...current,videos:undefined,videoId:streamId(current,episode),season:episode?.season,episode:episode?.episode}}).catch(e=>toast(e.message)) : native(stream.externalUrl ? 'external' : 'video', url), 'primary'));
-      if (!stream.externalUrl) box.append(button('Open in another app', () => native('external', url)));
-      target.append(box);
+  if(!matching.length)return target.append(el('p','No installed Stremio-compatible add-on offers streams for this title. Add a manifest in Settings.','note'));
+  stateBox(target,'Asking add-on providers…');
+  const results=await Promise.allSettled(matching.map(async addon=>({addon,data:await jsonRequest(`${addon.base}/stream/${mediaType}/${encodeURIComponent(id)}.json`)})));
+  if(token!==streamToken||!target.isConnected)return;
+  target.replaceChildren();
+  let failures=0,unsupported=0;
+  const collected=[];
+  for(const result of results){
+    if(result.status!=='fulfilled'){failures++;continue;}
+    const {addon,data}=result.value;
+    if(!Array.isArray(data.streams))continue;
+    for(const stream of data.streams.slice(0,80)){
+      if(!stream||typeof stream!=='object')continue;
+      const hash=String(stream.infoHash||''), url=stream.url||stream.externalUrl;
+      if(/^[a-f0-9]{40}$/i.test(hash)){collected.push({...stream,providerName:addon.manifest.name,kind:'torrent'});continue;}
+      if(!safeUrl(url)||stream.headers){unsupported++;continue;}
+      const headers=stream.behaviorHints?.proxyHeaders?.request||stream.behaviorHints?.proxyHeaders||{};
+      if(Object.keys(headers).some(key=>!['user-agent','referer'].includes(key.toLowerCase()))){unsupported++;continue;}
+      collected.push({...stream,providerName:addon.manifest.name,kind:stream.externalUrl?'external':'https',url,headers});
     }
   }
-  if (!count) target.append(el('p', 'No playable HTTPS streams were returned for this title.', 'note'));
-  if (failures) target.append(el('p', `${failures} provider request(s) failed. Check your connection or try again.`, 'note'));
-  if (unsupported) target.append(el('p', `${unsupported} stream(s) require torrent support, custom headers, or an unsupported protocol. These are unavailable in this preview.`, 'note'));
-  target.append(button('Refresh sources', () => renderStreams(target)));
+  const prefs=getPreferences(), ranked=rankStreams(collected,prefs,current);
+  const direct=ranked.filter(s=>s.kind==='https').map(s=>s.url);
+  if(!ranked.length)target.append(el('p','No streams match your preferences or the provider results. Adjust filters in Settings if needed.','note'));
+  ranked.forEach((stream,index)=>{
+    const box=el('div',null,'box');box.append(el('strong',stream.name||stream.providerName||'Stream'),el('p',stream.title||stream.description||'', 'small'));
+    const info=[stream.providerName,stream.kind==='torrent'?'Torrent':stream.kind==='external'?'External page':'Direct video'].filter(Boolean).join(' · ');
+    box.append(el('p',info,'note'));
+    if(stream.kind==='torrent'){
+      box.append(button('▶ Stream torrent',async()=>{try{await rpc('torrent.add',{magnet:'magnet:?xt=urn:btih:'+stream.infoHash,fileIndex:stream.fileIdx??-1,meta:{...current,videoId:id,season:episode?.season,episode:episode?.episode}});closeTitle();setPage('settings');toast('Torrent added. Open Media engines to select a file or play.')}catch(error){toast(error.message)}} ,'primary'));
+    }else if(stream.kind==='external'){
+      box.append(button('Open source ↗',()=>native('external',stream.url),'primary'));
+    }else{
+      box.append(button('▶ Play video',()=>{
+        if(!window.Mutiny)return native('video',stream.url);
+        const fallbackUrls=prefs.autoFallback?direct.filter(url=>url!==stream.url).slice(0,5):[];
+        return rpc('video.play',{url:stream.url,headers:stream.headers||{},fallbackUrls,meta:{...current,videos:undefined,videoId:id,season:episode?.season,episode:episode?.episode}}).catch(error=>toast(error.message));
+      },'primary'));
+      box.append(button('Open in another app',()=>native('external',stream.url)));
+    }
+    target.append(box);
+  });
+  if(failures)target.append(el('p',failures+' provider request(s) failed; working sources are still shown.','note'));
+  if(unsupported)target.append(el('p',unsupported+' stream(s) require unsupported headers or protocols.','note'));
+  if(prefs.lowBandwidth)target.append(el('p','Low-bandwidth mode prefers smaller streams when providers label their resolution. It cannot transcode remote videos.','note'));
+  target.append(button('Refresh sources',()=>renderStreams(target)));
 }
 function settings() {
+  main.append(el('span', 'Make it yours', 'eyebrow'),el('h1','Settings'));
+  renderPreferenceSettings(main,toast);
   controls(main,openTitle);
-  main.append(el('span', 'Make it yours', 'eyebrow'), el('h1', 'Settings'), el('h2', 'Add-on providers'), el('p', 'Connect a Stremio-compatible provider using its HTTPS manifest address.'));
+  main.append(el('h2', 'Add-on providers'), el('p', 'Connect a Stremio-compatible provider using its HTTPS manifest address.'));
   const form = el('form'), input = el('input'); input.type = 'url'; input.placeholder = 'https://provider.example/manifest.json'; input.setAttribute('aria-label', 'Add-on manifest URL'); input.required = true;
   const submit = el('button', 'Add', 'primary'); submit.type = 'submit'; form.append(input, submit); main.append(form);
   form.addEventListener('submit', async event => {
@@ -201,7 +239,7 @@ function settings() {
       if (addons.some(addon => addon.base === base)) throw Error('This add-on is already installed.');
       const manifest = await jsonRequest(base + '/manifest.json');
       if (!manifest || typeof manifest.id !== 'string' || typeof manifest.name !== 'string' || !Array.isArray(manifest.resources)) throw Error('This is not a valid add-on manifest.');
-      addons.push({ base, manifest: { id: manifest.id, name: manifest.name, resources: manifest.resources, types: manifest.types } });
+      addons.push({ base, manifest: { id: manifest.id, name: manifest.name, resources: manifest.resources, types: manifest.types, catalogs: manifest.catalogs } });
       write('mutiny.android.addons.v1', addons); toast('Add-on installed.'); if (page === 'settings' && pageToken === token) setPage('settings');
     } catch (error) { toast(error.name === 'AbortError' ? 'Provider timed out. Try again.' : error.message || 'Could not connect to this add-on.'); }
     finally { submit.disabled = false; }
@@ -215,9 +253,36 @@ function settings() {
   const directLabel = el('label', 'Play a direct HTTPS video address'); directLabel.htmlFor = 'direct-url';
   const direct = el('form'), address = el('input'); address.id = 'direct-url'; address.type = 'url'; address.placeholder = 'https://example.com/video.mp4'; address.required = true;
   const play = el('button', 'Play'); play.type = 'submit'; direct.append(address, play); direct.addEventListener('submit', event => { event.preventDefault(); native('video', address.value.trim()); }); main.append(directLabel, direct);
-  main.append(el('h2', 'About this preview'), el('p', 'Mutiny Media 1.0.1 · Android preview', 'note'), el('p', 'Android 8 or newer. Reuses the 42 configured web-source adapters from the linked Windows release. Metadata comes from Cinemeta. Local library and add-ons are stored on this device. Open Settings for accounts, torrents, AI and games.', 'note'), el('p', 'Source hosts and add-ons receive requests when used. Install only providers you trust. Some video codecs need an external player.', 'note'));
+  main.append(el('h2', 'About this preview'), el('p', 'Mutiny Media 1.0.1 · Android preview', 'note'), el('p', 'Android 8 or newer. Reuses the 42 configured web-source adapters from the linked Windows release. Metadata comes from Cinemeta. Local library and add-ons are stored on this device. Open Settings for accounts, torrents, appearance, anime preferences and AI.', 'note'), el('p', 'Source hosts and add-ons receive requests when used. Install only providers you trust. Some video codecs need an external player.', 'note'));
   main.append(button('Clear saved library', () => { saved = []; write('mutiny.android.library.v1', saved); toast('Saved library cleared.'); }));
 }
+window.addEventListener('mutiny-library-import', event=>{
+  for(const item of event.detail||[]){
+    if(!item?.id||!['movie','series'].includes(item.type))continue;
+    if(!saved.some(old=>old.id===item.id&&old.type===item.type))saved.push(item);
+  }
+  saved=saved.slice(0,2000);write('mutiny.android.library.v1',saved);
+  if(page==='library')setPage('library');else toast('Cloud library merged into My library.');
+});
+window.addEventListener('mutiny-addons-import',async event=>{
+  let imported=0,failed=0;
+  for(const item of (event.detail||[]).slice(0,100)){
+    try{
+      const raw=item.manifestUrl||item.manifest_url||item.url||item.transportUrl||item.transport_url;
+      const base=addonBase(String(raw||''));
+      if(addons.some(addon=>addon.base===base))continue;
+      const manifest=await jsonRequest(base+'/manifest.json');
+      if(!manifest||typeof manifest.id!=='string'||typeof manifest.name!=='string'||!Array.isArray(manifest.resources))throw Error('Invalid manifest');
+      addons.push({base,manifest:{id:manifest.id,name:manifest.name,resources:manifest.resources,types:manifest.types,catalogs:manifest.catalogs}});imported++;
+    }catch{failed++;}
+  }
+  write('mutiny.android.addons.v1',addons);toast(imported+' add-ons imported'+(failed?', '+failed+' skipped':''));
+});
+window.addEventListener('mutiny-search-title',event=>{
+  const query=String(event.detail||'').slice(0,150);if(!query)return;
+  setPage('search');const input=main.querySelector('input[type=search]');
+  if(input){input.value=query;input.closest('form')?.requestSubmit();}
+});
 document.querySelectorAll('nav button').forEach(node => node.addEventListener('click', () => setPage(node.dataset.page)));
 document.querySelector('#local').addEventListener('click', () => native('local'));
 document.querySelector('#brand').addEventListener('click', event => { event.preventDefault(); setPage('home'); });
