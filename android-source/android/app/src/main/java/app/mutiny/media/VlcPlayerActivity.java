@@ -20,6 +20,8 @@ public final class VlcPlayerActivity extends Activity {
     private TextView time;
     private SeekBar seek;
     private Button toggle;
+    private LinearLayout toolbar, playbackControls;
+    private boolean pipRequested;
     private boolean seeking, wasPlaying;
     private Uri uri;
     private JSONObject meta = new JSONObject();
@@ -61,17 +63,18 @@ public final class VlcPlayerActivity extends Activity {
         }
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(0xff000000);
         root.setOnApplyWindowInsetsListener((view, insets) -> { view.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets.consumeSystemWindowInsets(); });
-        LinearLayout toolbar = new LinearLayout(this); toolbar.setGravity(Gravity.CENTER_VERTICAL);
+        toolbar = new LinearLayout(this); toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.addView(control("← Back", () -> finish()));
         toolbar.addView(control("Tracks", () -> tracks()));
+        toolbar.addView(control("PiP", () -> startPictureInPicture()));
         toolbar.addView(control("More", () -> options())); root.addView(toolbar);
         surface = new VLCVideoLayout(this); root.addView(surface, new LinearLayout.LayoutParams(-1, 0, 1));
         time = new TextView(this); time.setTextColor(0xffffffff); time.setPadding(16, 0, 16, 0); root.addView(time);
         seek = new SeekBar(this); seek.setMax(1000); root.addView(seek);
-        LinearLayout controls = new LinearLayout(this); controls.setGravity(Gravity.CENTER);
-        controls.addView(control("−10s", () -> player.setTime(Math.max(0, player.getTime() - 10000))));
-        toggle = control("Pause", () -> { if (player.isPlaying()) player.pause(); else player.play(); }); controls.addView(toggle);
-        controls.addView(control("+30s", () -> player.setTime(player.getTime() + 30000))); root.addView(controls);
+        playbackControls = new LinearLayout(this); playbackControls.setGravity(Gravity.CENTER);
+        playbackControls.addView(control("−10s", () -> player.setTime(Math.max(0, player.getTime() - 10000))));
+        toggle = control("Pause", () -> { if (player.isPlaying()) player.pause(); else player.play(); }); playbackControls.addView(toggle);
+        playbackControls.addView(control("+30s", () -> player.setTime(player.getTime() + 30000))); root.addView(playbackControls);
         setContentView(root);
         try {
             int networkCacheMs = getIntent().getBooleanExtra("lowBandwidth", false) ? 5000 : 2000;
@@ -132,6 +135,28 @@ public final class VlcPlayerActivity extends Activity {
             .setPositiveButton("Open externally", (dialog, which) -> external())
             .setNegativeButton("Close", (dialog, which) -> finish()).show();
     }
+    private void startPictureInPicture() {
+        if (player == null || !getPackageManager().hasSystemFeature("android.software.picture_in_picture")) {
+            Toast.makeText(this, "Picture-in-picture is unavailable on this device", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            pipRequested = true;
+            if (!enterPictureInPictureMode(new PictureInPictureParams.Builder().build())) pipRequested = false;
+        } catch (RuntimeException error) {
+            pipRequested = false;
+            Toast.makeText(this, "Could not enter picture-in-picture", Toast.LENGTH_SHORT).show();
+        }
+    }
+    @Override public void onPictureInPictureModeChanged(boolean pip, android.content.res.Configuration configuration) {
+        super.onPictureInPictureModeChanged(pip, configuration);
+        pipRequested = pip;
+        int visibility = pip ? View.GONE : View.VISIBLE;
+        toolbar.setVisibility(visibility);
+        time.setVisibility(visibility);
+        seek.setVisibility(visibility);
+        playbackControls.setVisibility(visibility);
+    }
     private Button control(String name, Runnable action) { Button button = new Button(this); button.setText(name); button.setOnClickListener(view -> { if (player != null || name.equals("← Back")) action.run(); }); return button; }
     private String clock(long ms) { long seconds = Math.max(0, ms) / 1000; return String.format(Locale.ROOT, "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60); }
     private void tracks() {
@@ -173,7 +198,7 @@ public final class VlcPlayerActivity extends Activity {
         lastCloudSave = System.currentTimeMillis();
         sync.submit(() -> { try { NativeApi.get(this).accounts.progress(meta, position, duration); } catch (Exception ignored) { /* Local resume remains available when cloud sync is offline. */ } });
     }
-    @Override protected void onPause() { if (player != null) { saveProgress(); wasPlaying = player.isPlaying(); player.pause(); } super.onPause(); }
+    @Override protected void onPause() { if (player != null) { saveProgress(); wasPlaying = player.isPlaying(); if (!pipRequested && !isInPictureInPictureMode()) player.pause(); } super.onPause(); }
     @Override protected void onResume() { super.onResume(); if (player != null && wasPlaying) player.play(); }
     @Override protected void onSaveInstanceState(Bundle state) { super.onSaveInstanceState(state); if (player != null) state.putLong("position", player.getTime()); }
     @Override protected void onDestroy() { handler.removeCallbacks(tick); sync.shutdown(); if (player != null) { player.stop(); player.detachViews(); player.release(); } if (vlc != null) vlc.release(); super.onDestroy(); }
