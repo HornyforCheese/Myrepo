@@ -66,6 +66,24 @@ export function controls(main, openTitle) {
     const addons=Array.isArray(data.addons)?data.addons:[];
     if(addons.length)button(cloud,'Import '+addons.length+' cloud add-on(s)',async()=>{window.dispatchEvent(new CustomEvent('mutiny-addons-import',{detail:addons}));status.textContent='Valid add-on manifests will be checked before importing';});
   });
+  const cloudstream=group('CloudStream extension repositories');
+  add(cloudstream,'p','Discover packages from a trusted public CloudStream repository. This build can list .cs3 packages but cannot execute them. CloudStream extensions will not appear as playable providers until the binary host is integrated.','note');
+  const cloudRepo=field(cloudstream,'Repository index URL','url','https://example.org/repo.json');
+  const cloudResults=add(cloudstream,'div',null,'cloudstream-list');
+  button(cloudstream,'Discover extensions',async()=>{
+    const catalog=await rpc('cloudstream.discover',{url:cloudRepo.value.trim()});
+    cloudResults.replaceChildren();
+    const extensions=Array.isArray(catalog.extensions)?catalog.extensions:[];
+    add(cloudResults,'p',catalog.repository+': '+extensions.length+' extension(s) discovered.','note');
+    if(catalog.failedLists)add(cloudResults,'p',catalog.failedLists+' index list(s) could not be loaded.','note');
+    add(cloudResults,'p',catalog.warning||'This is discovery only. Extension execution is unavailable in this APK.','note');
+    for(const extension of extensions.slice(0,150)){
+      const line=add(cloudResults,'div',null,'box');
+      add(line,'strong',String(extension.name||'Extension'));
+      add(line,'p',[extension.description,extension.language,extension.version?'v'+extension.version:''].filter(Boolean).join(' · '),'small');
+      button(line,'View .cs3 package',()=>{location.href='mutiny://external?url='+encodeURIComponent(extension.downloadUrl);});
+    }
+  });
   const ai=group('Ask AI · media recommendations');
   const aiProvider=choose(ai,'AI provider',[['openrouter','OpenRouter'],['groq','Groq'],['gemini','Google Gemini']]);
   const model=field(ai,'Model ID','text','Use a model ID listed by your provider');
