@@ -74,7 +74,30 @@ function search() {
   };
   const chips = filters(() => { [...chips.children].forEach((node, i) => node.classList.toggle('selected', i === (type === 'movie' ? 0 : 1))); run(); });
   form.addEventListener('submit', event => { event.preventDefault(); run(); input.blur(); });
-  main.append(form, chips, results); stateBox(results, 'Search the movie and series catalog by title.');
+  const shortcuts = el('section', null, 'discover-shortcuts');
+  shortcuts.append(el('h2', 'Quick actions'));
+  const actions = el('div', null, 'grid');
+  actions.append(
+    button('Search with AI', () => { setPage('settings'); toast('AI configuration is not connected yet.'); }, 'box'),
+    button('Local video', () => native('local'), 'box'),
+    button('Stream URL', () => {
+      const url = prompt('Enter a direct HTTPS video URL');
+      if (url?.trim()) native('video', url.trim());
+    }, 'box'),
+    button('Magnet link', async () => {
+      const magnet = prompt('Enter a magnet link');
+      if (!magnet?.trim()) return;
+      if (!/^magnet:\\?xt=urn:btih:/i.test(magnet.trim())) return toast('Enter a valid BitTorrent magnet link.');
+      try { await rpc('torrent.add', {magnet:magnet.trim(),fileIndex:-1}); toast('Magnet link submitted.'); }
+      catch(e) { toast(e.message || 'Torrent service is unavailable.'); }
+    }, 'box'),
+    button('Search providers', () => { setPage('settings'); toast('Open Addons to manage providers.'); }, 'box')
+  );
+  shortcuts.append(actions);
+  const anime = el('section', null, 'anime-discovery');
+  anime.append(el('h2', 'Anime'), el('p', 'Search anime titles in the catalog. Dub, sub and uncensored filters require provider metadata.', 'note'));
+  anime.append(button('Find anime', () => { input.value = 'anime'; run(); }, 'box'));
+  main.append(shortcuts, form, chips, anime, results); stateBox(results, 'Search movies, series and anime by title.');
 }
 function library() {
   main.append(el('span', 'Collected by you', 'eyebrow'), el('h1', 'My library'), el('p', 'Your saved titles stay on this device.'));
