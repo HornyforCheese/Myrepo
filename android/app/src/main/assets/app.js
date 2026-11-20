@@ -190,8 +190,25 @@ async function renderStreams(target) {
   target.append(button('Refresh sources', () => renderStreams(target)));
 }
 function settings() {
-  controls(main,openTitle);
-  main.append(el('span', 'Make it yours', 'eyebrow'), el('h1', 'Settings'), el('h2', 'Add-on providers'), el('p', 'Connect a Stremio-compatible provider using its HTTPS manifest address.'));
+  const heading = el('h1', 'Settings');
+  main.append(heading);
+  const panel = el('section', null, 'settings-panel');
+  const sections = [
+    ['♧', 'Addons', 'Manage installed and community addons', 'addons'],
+    ['◉', 'General Settings', 'Accounts, sync, support, and account links', 'general'],
+    ['☁', 'Ask AI', 'OpenRouter, Groq, and Gemini', 'ai'],
+    ['✿', 'CloudStream', 'Repositories, extensions, and provider catalogs', 'cloudstream'],
+    ['◎', 'Interface Settings', 'Language preferences and UI toggles', 'interface'],
+    ['▷', 'Player Settings', 'Subtitles, hardware decoding, and playback tools', 'player'],
+    ['☁', 'Streaming Server', 'Configure connections, cache, and peer limits', 'server'],
+    ['♟', 'Android Settings', 'Auto-start, WakeLock, and foreground service', 'android'],
+    ['ⓘ', 'Info & About', 'App version, directories, and diagnostics', 'about']
+  ];
+  const back = button('‹  All settings', () => settings(), 'settings-back');
+  function openSection(id) {
+    main.replaceChildren(el('h1', sections.find(item => item[3] === id)?.[1] || 'Settings'), back);
+    if (id === 'addons') {
+      main.append(el('p', 'Connect a Stremio-compatible provider using its HTTPS manifest address.'));
   const form = el('form'), input = el('input'); input.type = 'url'; input.placeholder = 'https://provider.example/manifest.json'; input.setAttribute('aria-label', 'Add-on manifest URL'); input.required = true;
   const submit = el('button', 'Add', 'primary'); submit.type = 'submit'; form.append(input, submit); main.append(form);
   form.addEventListener('submit', async event => {
@@ -211,13 +228,29 @@ function settings() {
     const row = el('div', null, 'addon box'), text = el('div'); text.append(el('strong', addon.manifest.name), el('p', new URL(addon.base).host, 'small'));
     row.append(text, button('Remove', () => { addons = addons.filter(item => item.base !== addon.base); write('mutiny.android.addons.v1', addons); setPage('settings'); })); main.append(row);
   }
+
+    } else if (id === 'about') {
   main.append(el('h2', 'On this device'), button('Open local video', () => native('local')), el('p', 'Choose a video with Android’s file picker. No broad storage permission is needed.', 'note'));
   const directLabel = el('label', 'Play a direct HTTPS video address'); directLabel.htmlFor = 'direct-url';
   const direct = el('form'), address = el('input'); address.id = 'direct-url'; address.type = 'url'; address.placeholder = 'https://example.com/video.mp4'; address.required = true;
   const play = el('button', 'Play'); play.type = 'submit'; direct.append(address, play); direct.addEventListener('submit', event => { event.preventDefault(); native('video', address.value.trim()); }); main.append(directLabel, direct);
   main.append(el('h2', 'About this preview'), el('p', 'Mutiny Media 1.0.1 · Android preview', 'note'), el('p', 'Android 8 or newer. Reuses the 42 configured web-source adapters from the linked Windows release. Metadata comes from Cinemeta. Local library and add-ons are stored on this device. Open Settings for accounts, torrents, AI and games.', 'note'), el('p', 'Source hosts and add-ons receive requests when used. Install only providers you trust. Some video codecs need an external player.', 'note'));
   main.append(button('Clear saved library', () => { saved = []; write('mutiny.android.library.v1', saved); toast('Saved library cleared.'); }));
+    } else {
+      main.append(el('p', 'This section is not yet implemented in this Android build. Existing configuration has not been changed.', 'note'));
+    }
+  }
+  for (const [symbol, name, description, id] of sections) {
+    const card = button('', () => openSection(id), 'settings-card');
+    const symbolNode = el('span', symbol, 'settings-symbol');
+    const labels = el('span', null, 'settings-labels');
+    labels.append(el('strong', name), el('small', description));
+    card.append(symbolNode, labels, el('span', '›', 'settings-chevron'));
+    panel.append(card);
+  }
+  main.append(panel);
 }
+
 document.querySelectorAll('nav button').forEach(node => node.addEventListener('click', () => setPage(node.dataset.page)));
 document.querySelector('#local').addEventListener('click', () => native('local'));
 document.querySelector('#brand').addEventListener('click', event => { event.preventDefault(); setPage('home'); });
