@@ -106,7 +106,7 @@ public final class Accounts {
                 if (part.length() < 200) break;
                 if (offset >= 10000) throw new IllegalStateException("Nuvio library exceeds the Android sync limit");
             }
-            result.put("library", library).put("profiles", profiles)
+            result.put("library", library).put("profiles", profileChoices(profiles))
                 .put("addons", nuvio("/rest/v1/addons?profile_id=eq." + addonProfile + "&order=sort_order.asc", "GET", null))
                 .put("progress", nuvio("/rest/v1/watch_progress?profile_id=eq." + profile + "&order=last_watched.desc", "GET", null));
         }
@@ -165,6 +165,20 @@ public final class Accounts {
             if (season >= 0) entry.put("season", season).put("episode", episode);
             nuvio("/rest/v1/rpc/sync_push_watch_progress", "POST", new JSONObject().put("p_profile_id", profile()).put("p_entries", new JSONArray().put(entry)).put("p_origin_client_id", clientId()));
         }
+    }
+    public synchronized JSONArray profiles() throws Exception {
+        return profileChoices((JSONArray)nuvio("/rest/v1/profiles?order=profile_index.asc","GET",null));
+    }
+    private JSONArray profileChoices(JSONArray raw) throws Exception {
+        JSONArray choices = new JSONArray();
+        for (int i=0; i<raw.length(); i++) {
+            JSONObject row = raw.optJSONObject(i);
+            int index = row == null ? 0 : row.optInt("profile_index");
+            if (index < 1 || index > 6) continue;
+            choices.put(new JSONObject().put("index",index).put("name",row.optString("name","Profile " + index))
+                .put("locked",!Boolean.FALSE.equals(row.opt("pin_enabled"))));
+        }
+        return choices;
     }
     private JSONObject unlockedProfile(JSONArray profiles, int index) throws Exception {
         for (int i = 0; i < profiles.length(); i++) {

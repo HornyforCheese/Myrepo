@@ -14,7 +14,7 @@ public class AccountSessionTest {
         boolean[] locked = {true};
         int[] mutations = {0};
         Accounts accounts = new Accounts(store, (url,method,headers,body) -> {
-            if (url.contains("/profiles?")) return new JSONArray().put(new JSONObject().put("profile_index",1).put("pin_enabled", locked[0]));
+            if (url.contains("/profiles?")) return new JSONArray().put(new JSONObject().put("profile_index",1).put("pin_enabled", locked[0]).put("private_field","fixture"));
             if (url.contains("/rpc/")) mutations[0]++;
             return response;
         });
@@ -24,6 +24,8 @@ public class AccountSessionTest {
         response.put("user",new JSONObject().put("id","user1"));
         accounts.login("nuvio","user@example.com","fixture");
         if (writes[0] != 1 || !"1".equals(data.get("account.profile"))) throw new AssertionError("Split session");
+        JSONObject choice = accounts.profiles().getJSONObject(0);
+        if (!choice.getBoolean("locked") || choice.has("private_field")) throw new AssertionError("Profile disclosure");
         JSONObject meta = new JSONObject().put("id","tt1234567").put("scope", accounts.activeScope());
         try { accounts.bookmark(meta,false); throw new AssertionError("Protected profile"); }
         catch (IllegalStateException expected) {}

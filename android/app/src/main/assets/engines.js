@@ -56,14 +56,30 @@ export function controls(main,openTitle,sectionId,reloadAddons) {
     target.type = type; return target;
   };
   const email = input('Email','email'), pass = input('Password','password');
-  const profile = input('Nuvio profile number','number');
-  profile.value = 1; profile.min = 1; profile.max = 6;
+  const profile = node('select','',node('label','Nuvio profile',form));
+  let profileRequest = 0;
+  async function loadProfiles() {
+    const request = ++profileRequest;
+    profile.replaceChildren();
+    if (provider.value !== 'nuvio') return;
+    try {
+      const rows = await rpc('account.profiles');
+      if (request !== profileRequest || !form.isConnected) return;
+      for (const row of rows) {
+        const option = node('option', row.name + (row.locked ? ' · Locked' : ''),profile);
+        option.value = String(row.index); option.disabled = row.locked;
+      }
+      const available = rows.find(row => !row.locked);
+      profile.value = available ? String(available.index) : '';
+      status.textContent = available ? 'Choose a profile to sync.' : 'No unlocked profiles are available.';
+    } catch (error) { if (request === profileRequest) status.textContent = error.message; }
+  }
   const library = node('div','');
   function resetView() {
     pass.value = ''; library.replaceChildren(); status.textContent = '';
     profile.parentElement.hidden = provider.value !== 'nuvio';
   }
-  provider.onchange = resetView;
+  provider.onchange = () => { resetView(); loadProfiles(); };
   profile.oninput = () => library.replaceChildren();
   resetView();
   function accountAction(label, run) {
@@ -76,8 +92,13 @@ export function controls(main,openTitle,sectionId,reloadAddons) {
     await rpc('account.login',{provider:service,email:email.value,password:pass.value});
     pass.value=''; library.replaceChildren(); await reloadAddons();
     status.textContent='Signed in. Load cloud library to sync providers.';
+    if (service === 'nuvio') await loadProfiles();
   });
   accountAction('Load cloud library', async service => {
+    if (service === 'nuvio' && !profile.value) {
+      await loadProfiles();
+      if (!profile.value) throw Error('Select an unlocked Nuvio profile before syncing.');
+    }
     const data = await rpc('account.sync',{provider:service,profile:service === 'nuvio' ? Number(profile.value) : 1});
     library.replaceChildren();
     for (const item of data.library) {
@@ -90,6 +111,6 @@ export function controls(main,openTitle,sectionId,reloadAddons) {
   });
   accountAction('Sign out', async service => {
     await rpc('account.logout',{provider:service});
-    library.replaceChildren(); pass.value=''; await reloadAddons(); status.textContent='Signed out';
+    profileRequest++; profile.replaceChildren(); library.replaceChildren(); pass.value=''; await reloadAddons(); status.textContent='Signed out';
   });
 }
