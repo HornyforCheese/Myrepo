@@ -35,3 +35,10 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Commit `40d93778fa22637c18a0c061f5f5ceae26b7a2b0`: fixed the previously invalid Java character literal in the archive backslash path guard.
 - A standalone Java `javac` and `java` check compiled and exercised the corrected guard successfully. This **does not** verify the complete archive class, full regression fixtures, Android compilation or hosted CI. No APK was built.
 - Next: inspect hosted Android CI for the changed branch, then advance to isolated CS3 runtime and provider ABI.
+
+## Chunk 4: CS3 control-character path rejection and CI diagnosis
+
+- Implementation commit `2eb647a26b263b14e2666774c667379847751f19`: reject C0/DEL control characters in `.cs3` ZIP entry names, before future resource extraction.
+- Fixture commits `5f561647d57674920af944714e0ecfc7b3cc675a` and `c466d45e61de90e067af26ef3956514bd3e91fe5`: add control-character path cases without Java Unicode-escape source hazards.
+- Inspected historical GitHub Actions run `44822049872`: Android Java compilation and native fixtures succeeded, but UI fixture failed with a modal dialog intercepting a click on My library. This is an **older run**, not confirmation of current branch CI.
+- Source files were re-read after commit; new tests and current Android CI **not executed/verified**. No APK built. Next: verify current CI, repair modal/navigation test failure if reproducible, then CS3 isolated runtime work.
