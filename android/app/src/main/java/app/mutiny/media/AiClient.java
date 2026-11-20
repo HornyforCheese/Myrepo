@@ -36,9 +36,9 @@ public final class AiClient {
             throw new IllegalStateException("Enter and save an API key for " + provider + " before refreshing models");
         String url = provider.equals("openrouter") ? "https://openrouter.ai/api/v1/models"
             : provider.equals("groq") ? "https://api.groq.com/openai/v1/models"
-            : "https://generativelanguage.googleapis.com/v1beta/models?key=" + java.net.URLEncoder.encode(key, "UTF-8");
+            : "https://generativelanguage.googleapis.com/v1beta/models";
         JSONObject headers = new JSONObject();
-        if (!key.isEmpty() && !provider.equals("gemini")) headers.put("Authorization", "Bearer " + key);
+        if (!key.isEmpty()) { if (provider.equals("gemini")) headers.put("x-goog-api-key", key); else headers.put("Authorization", "Bearer " + key); }
         JSONObject response = (JSONObject) http.request(url, "GET", headers, null);
         JSONArray raw = response.optJSONArray("data");
         if (provider.equals("gemini")) raw = response.optJSONArray("models");
