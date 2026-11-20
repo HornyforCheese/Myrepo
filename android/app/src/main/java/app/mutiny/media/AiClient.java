@@ -82,6 +82,7 @@ public final class AiClient {
                     .put("name", item.optString("displayName", item.optString("name", id))).put("free", free));
             }
             token = provider.equals("gemini") ? response.optString("nextPageToken") : "";
+            if (token.length() > 2048) throw new IllegalStateException("Provider returned an oversized catalogue page token");
             if (!token.isEmpty() && !tokens.add(token)) throw new IllegalStateException("Provider repeated a catalogue page");
             if (!token.isEmpty() && (tokens.size() >= 10 || out.length() >= 500)) truncated = true;
         } while (!token.isEmpty() && !truncated);
