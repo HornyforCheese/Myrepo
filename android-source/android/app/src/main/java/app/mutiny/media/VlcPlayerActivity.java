@@ -9,6 +9,7 @@ import android.widget.*;
 import org.videolan.libvlc.*;
 import org.videolan.libvlc.util.VLCVideoLayout;
 import org.json.JSONObject;
+import org.json.JSONArray;
 import java.util.*;
 
 /** Bundled libVLC playback with software codec fallback, seeking and track selection. */
@@ -23,6 +24,8 @@ public final class VlcPlayerActivity extends Activity {
     private Uri uri;
     private JSONObject meta = new JSONObject();
     private long resume, lastCloudSave;
+    private final ArrayDeque<Uri> fallbackUris = new ArrayDeque<>();
+    private boolean tryingFallback;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final java.util.concurrent.ExecutorService sync = java.util.concurrent.Executors.newSingleThreadExecutor();
     private final Runnable tick = new Runnable() {
@@ -46,6 +49,16 @@ public final class VlcPlayerActivity extends Activity {
         if (uri == null || (!local && !torrent && !UrlPolicy.isPublicHttps(uri.toString()))) { finish(); return; }
         try { meta = new JSONObject(getIntent().getStringExtra("meta") == null ? "{}" : getIntent().getStringExtra("meta")); } catch (Exception ignored) { }
         resume = state == null ? getPreferences(MODE_PRIVATE).getLong(resumeKey(), getIntent().getLongExtra("resume", 0)) : state.getLong("position");
+        if (!local && !torrent) {
+            String candidates = getIntent().getStringExtra("fallbackUrls");
+            if (candidates != null) try {
+                JSONArray values = new JSONArray(candidates);
+                for (int i = 0; i < Math.min(values.length(), 5); i++) {
+                    String item = values.optString(i);
+                    if (UrlPolicy.isPublicHttps(item) && !item.equals(uri.toString())) fallbackUris.add(Uri.parse(item));
+                }
+            } catch (Exception ignored) { }
+        }
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(0xff000000);
         root.setOnApplyWindowInsetsListener((view, insets) -> { view.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets.consumeSystemWindowInsets(); });
         LinearLayout toolbar = new LinearLayout(this); toolbar.setGravity(Gravity.CENTER_VERTICAL);
@@ -61,11 +74,12 @@ public final class VlcPlayerActivity extends Activity {
         controls.addView(control("+30s", () -> player.setTime(player.getTime() + 30000))); root.addView(controls);
         setContentView(root);
         try {
-            vlc = new LibVLC(this, new ArrayList<>(Arrays.asList("--network-caching=2000", "--file-caching=1000", "--no-video-title-show")));
+            int networkCacheMs = getIntent().getBooleanExtra("lowBandwidth", false) ? 5000 : 2000;
+            vlc = new LibVLC(this, new ArrayList<>(Arrays.asList("--network-caching=" + networkCacheMs, "--file-caching=1000", "--no-video-title-show")));
             player = new MediaPlayer(vlc); player.attachViews(surface, null, true, false);
             player.setEventListener(event -> {
                 if (event.type == MediaPlayer.Event.Playing && resume > 0) { player.setTime(resume); resume = 0; }
-                if (event.type == MediaPlayer.Event.EncounteredError) new AlertDialog.Builder(this).setTitle("Playback failed").setMessage("The source may be unavailable or require a different playback setting.").setPositiveButton("Open externally", (dialog, which) -> external()).setNegativeButton("Close", (dialog, which) -> finish()).show();
+                if (event.type == MediaPlayer.Event.EncounteredError) handler.post(this::tryNextSource);
                 if (event.type == MediaPlayer.Event.EndReached) saveProgress();
             });
             Media media = local ? new Media(vlc, getContentResolver().openFileDescriptor(uri, "r").getFileDescriptor()) : new Media(vlc, uri);
@@ -89,6 +103,34 @@ public final class VlcPlayerActivity extends Activity {
             public void onStartTrackingTouch(SeekBar bar) { seeking = true; }
             public void onStopTrackingTouch(SeekBar bar) { if (player != null && player.getLength() > 0) player.setTime(player.getLength() * bar.getProgress() / 1000); seeking = false; }
         });
+    }
+    private void tryNextSource() {
+        if (tryingFallback || isFinishing() || isDestroyed()) return;
+        if (!fallbackUris.isEmpty()) {
+            tryingFallback = true;
+            uri = fallbackUris.removeFirst();
+            resume = 0;
+            Toast.makeText(this, "Source failed. Trying the next stream.", Toast.LENGTH_SHORT).show();
+            handler.post(() -> {
+                try {
+                    Media media = new Media(vlc, uri);
+                    media.setHWDecoderEnabled(true, false);
+                    player.stop();
+                    player.setMedia(media);
+                    media.release();
+                    tryingFallback = false;
+                    player.play();
+                } catch (Throwable failure) {
+                    tryingFallback = false;
+                    tryNextSource();
+                }
+            });
+            return;
+        }
+        new AlertDialog.Builder(this).setTitle("Playback failed")
+            .setMessage("All attempted sources failed or need different playback settings.")
+            .setPositiveButton("Open externally", (dialog, which) -> external())
+            .setNegativeButton("Close", (dialog, which) -> finish()).show();
     }
     private Button control(String name, Runnable action) { Button button = new Button(this); button.setText(name); button.setOnClickListener(view -> { if (player != null || name.equals("← Back")) action.run(); }); return button; }
     private String clock(long ms) { long seconds = Math.max(0, ms) / 1000; return String.format(Locale.ROOT, "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60); }
