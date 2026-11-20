@@ -1,4 +1,5 @@
 import { controls, rpc } from './engines.js';
+import {renderHomeActions, closeQuickDialog} from './home-actions.js';
 import { getPreferences, applyPreferences, rankStreams, normalizeProviderList, renderPreferenceSettings } from './preferences.js';
 import { collectionPicker, collectionManager } from './collections.js';
 import { searchAcrossProviders, metadataCandidates } from './search.js';
@@ -25,7 +26,12 @@ function stateBox(target, message, retry) { target.replaceChildren(el('p', messa
 function setPage(next) {
   page = next; pageToken++; detailToken++; streamToken++;
   if (dialog.open) dialog.close();
-  document.querySelectorAll('nav button').forEach(node => node.classList.toggle('active', node.dataset.page === page));
+  closeQuickDialog();
+  document.querySelectorAll('.header-nav').forEach(node => {
+    const selected=node.dataset.page===page;
+    node.classList.toggle('active',selected);
+    node.setAttribute('aria-current',selected?'page':'false');
+  });
   main.replaceChildren(); window.scrollTo(0, 0);
   if (page === 'home') home();
   if (page === 'search') search();
@@ -49,7 +55,13 @@ function grid(metas) {
 function home() {
   const hero = el('section', null, 'hero');
   hero.append(el('span', 'Your next great escape', 'eyebrow'), el('h1', 'A world of stories.\nOne place to start.'), el('p', 'Find something worth watching. Bring your sources. Make it your own.'), button('Explore the catalog  →', () => setPage('search'), 'primary'));
-  main.append(hero, filters(() => setPage('home')), el('h2', type === 'movie' ? 'Popular movies' : 'Popular series'));
+  const actions=renderHomeActions({
+    openWebSources: () => {setPage('search');toast('Search for a title and open Web Sources in its details.');},
+    openLocalVideo: () => native('local'),
+    openSettings: () => setPage('settings'),
+    onSearchTitle: query => window.dispatchEvent(new CustomEvent('mutiny-search-title',{detail:query})),
+  });
+  main.append(hero,actions,filters(() => setPage('home')), el('h2', type === 'movie' ? 'Popular movies' : 'Popular series'));
   const results = el('section'); main.append(results);
   loadCatalog(results, `${API}/catalog/${type}/top.json`, pageToken);
 }
@@ -95,7 +107,7 @@ function library() {
 function closeTitle() { detailToken++; streamToken++; current = null; dialog.close(); if (page === 'library') setPage('library'); }
 document.querySelector('#close-detail').addEventListener('click', closeTitle);
 dialog.addEventListener('cancel', event => { event.preventDefault(); closeTitle(); });
-window.mutinyBack = () => { if (dialog.open) { closeTitle(); return true; } if (page !== 'home') { setPage('home'); return true; } return false; };
+window.mutinyBack = () => { if (closeQuickDialog()) return true; if (dialog.open) { closeTitle(); return true; } if (page !== 'home') { setPage('home'); return true; } return false; };
 async function openTitle(meta) {
   const token = ++detailToken; streamToken++;
   current = { ...meta }; episode = null; sourceIndex = 0;
@@ -294,7 +306,6 @@ window.addEventListener('mutiny-search-title',event=>{
   setPage('search');const input=main.querySelector('input[type=search]');
   if(input){input.value=query;input.closest('form')?.requestSubmit();}
 });
-document.querySelectorAll('nav button').forEach(node => node.addEventListener('click', () => setPage(node.dataset.page)));
-document.querySelector('#local').addEventListener('click', () => native('local'));
+document.querySelectorAll('.header-nav').forEach(node => node.addEventListener('click', () => setPage(node.dataset.page)));
 document.querySelector('#brand').addEventListener('click', event => { event.preventDefault(); setPage('home'); });
 setPage('home');

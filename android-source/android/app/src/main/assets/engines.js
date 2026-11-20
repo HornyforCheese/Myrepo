@@ -84,7 +84,7 @@ export function controls(main, openTitle) {
       button(line,'View .cs3 package',()=>{location.href='mutiny://external?url='+encodeURIComponent(extension.downloadUrl);});
     }
   });
-  const ai=group('Ask AI · media recommendations');
+  const ai=group('Search with AI · media recommendations');
   const aiProvider=choose(ai,'AI provider',[['openrouter','OpenRouter'],['groq','Groq'],['gemini','Google Gemini']]);
   const model=field(ai,'Model ID','text','Use a model ID listed by your provider');
   const key=field(ai,'API key','password','Leave empty to keep the existing key');key.autocomplete='off';

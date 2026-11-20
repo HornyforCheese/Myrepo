@@ -116,7 +116,7 @@ function magnetPanel(launcher) {
   magnet.focus();
 }
 function aiPanel(launcher, onSearchTitle) {
-  const dialog = modal('Ask Mutiny Media', launcher);
+  const dialog = modal('Search with AI', launcher);
   dialog.append(element('p', 'Get movie, series and anime recommendations. Configure an AI provider and model before asking.', 'note'));
   const providerWrap = element('label', 'AI provider', 'quick-field');
   const provider = element('select');
@@ -176,7 +176,7 @@ export function renderHomeActions({openWebSources, openLocalVideo, openSettings,
     ['🎬', 'Local Video', 'Open a file on your device', openLocalVideo],
     ['🧲', 'Stream Magnet', 'Play a magnet link', () => magnetPanel(grid.querySelector('[data-quick-action="Stream Magnet"]'))],
     ['⚙️', 'Settings', 'Appearance and integrations', openSettings],
-    ['✨', 'Ask AI', 'Movie and anime recommendations', () => aiPanel(grid.querySelector('[data-quick-action="Ask AI"]'), onSearchTitle)],
+    ['✨', 'Search with AI', 'Find movies and anime with AI', () => aiPanel(grid.querySelector('[data-quick-action="Search with AI"]'), onSearchTitle)],
   ];
   for (const [symbol, name, description, handler] of buttons) {
     const item = action(grid, '', handler, 'quick-action');
