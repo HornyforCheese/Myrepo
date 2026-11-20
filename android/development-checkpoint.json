@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "CS3-RUNTIME 4: pinned StreamPlay v715 native-to-isolated-worker request bridge (provider execution still unsupported)",
-  "lastVerifiedImplementationCommit": "db8cefd0503606afbd4829e5bb2f6cfa8a63de02",
+  "currentChunk": "STREAMPLAY-V715 ABI discovery: exact binary method references audited; runtime compatibility not established",
+  "lastVerifiedImplementationCommit": "e335111c86785eab56699682b37218a55d699f83",
   "completedChunks": [],
   "tasks": [
     {
@@ -121,7 +121,8 @@
     "Re-read isolated worker, manifest, transport and static fixture from GitHub; no Java/Android compilation, IPC runtime test or provider execution verified",
     "Inspected public candidate StreamPlay Gradle config: Android-only, requires resources, CloudStream pre-release host and multiple build-time API/token fields; no matching user binary, execution or device verification.",
     "Uploaded StreamPlay.cs3 SHA-256 94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332; manifest v715 plugin com.phisher98.StreamPlayPlugin requiresResources=false, DEX035; static inspection only, no execution",
-    "Re-read NativeApi cs3.request digest gate, installed-package check and static fixture; Java/Android compilation, live IPC and StreamPlay provider execution not verified"
+    "Re-read NativeApi cs3.request digest gate, installed-package check and static fixture; Java/Android compilation, live IPC and StreamPlay provider execution not verified",
+    "Local Python DEX parser found 81 CloudStream method-owner classes and 211 distinct method signatures in uploaded v715; Node reproducibility script committed and source re-read, but not executed from repository"
   ],
-  "nextAction": "Implement actual StreamPlay v715 compatible host ABI and provider registration/extraction in isolated process; execute tests and device verification before claiming StreamPlay works."
+  "nextAction": "Use exact method-reference inventory to integrate compatible CloudStream Android/Kotlin runtime into isolated worker; verify class resolution and plugin registration, then search, metadata, link extraction, playback and Android CI. Confidence cannot be rated 90% until device tests pass."
 }
