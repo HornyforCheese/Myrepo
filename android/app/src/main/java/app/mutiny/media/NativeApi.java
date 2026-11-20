@@ -26,6 +26,13 @@ public final class NativeApi {
             case "cs3.install": return CloudStreamPackageStore.installFromUrl(context, args.getString("url"), args.optString("hash"));
             case "cs3.list": return CloudStreamPackageStore.list(context);
             case "cs3.remove": return CloudStreamPackageStore.remove(context, args.getString("sha256"));
+            case "cs3.request": {
+                String hash = args.getString("sha256");
+                if (!"94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332".equals(hash) ||
+                    !CloudStreamPackageStore.isInstalled(context, hash))
+                    throw new IllegalArgumentException("StreamPlay v715 must be imported and match the verified package digest");
+                return CloudStreamTransport.request(context, args.getJSONObject("request"));
+            }
             case "account.addons": return accounts.addonSnapshots();
             case "account.profiles": return accounts.profiles();
             case "account.status": return accounts.status();
