@@ -26,11 +26,11 @@ function hasCatalog(manifest,type,catalog) {
 }
 export async function searchAcrossProviders(query,type,addons=[],saved=[]) {
   const text=String(query||'').trim().slice(0,150);if(!text)return {metas:[],sources:[],failed:0};
-  const calls=[{name:'Cinemeta',url:`${CINEMETA}/catalog/${type}/top/search=${encodeURIComponent(text)}.json`}];
+  const calls=[{name:'Cinemeta',url:`${CINEMETA}/catalog/${type}/top/search=${encodeURIComponent(text)}.json`,base:''}];
   for(const addon of addons.slice(0,20)){
     if(!safeUrl(addon?.base)||!addon.manifest)continue;
     for(const catalog of (addon.manifest.catalogs||[]).filter(c=>hasCatalog(addon.manifest,type,c)).slice(0,3)) {
-      calls.push({name:String(addon.manifest.name||'Add-on'),url:`${addon.base}/catalog/${type}/${encodeURIComponent(catalog.id)}/search=${encodeURIComponent(text)}.json`});
+      calls.push({name:String(addon.manifest.name||'Add-on'),base:addon.base,url:`${addon.base}/catalog/${type}/${encodeURIComponent(catalog.id)}/search=${encodeURIComponent(text)}.json`});
     }
   }
   const results=await Promise.allSettled(calls.map(async call=>({name:call.name,data:await jsonRequest(call.url)})));
@@ -39,7 +39,35 @@ export async function searchAcrossProviders(query,type,addons=[],saved=[]) {
   results.forEach((result,index)=>{
     if(result.status!=='fulfilled'){errors.push(calls[index].name);return;}
     const data=result.value.data;
-    if(Array.isArray(data?.metas)) {metas.push(...data.metas.filter(item=>item?.type===type));sources.push(result.value.name);}
+    if(Array.isArray(data?.metas)) {metas.push(...data.metas.filter(item=>item?.type===type).map(item=>({...item,...(calls[index].base?{_sourceBase:calls[index].base}:{})})));sources.push(result.value.name);}
   });
   return {metas:dedupeMedia(metas),sources:[...new Set(sources)],failed:errors.length};
+}
+
+/** Resolve metadata from the catalog that supplied a title, then compatible add-ons.
+ * Cinemeta is used for IMDb identifiers only; it cannot resolve arbitrary plugin IDs.
+ */
+export function metadataCandidates(meta,addons=[]) {
+  const type=meta?.type==='series'?'series':'movie',id=String(meta?.id||'');
+  if(!id||id.length>200) return [];
+  const candidates=[],seen=new Set();
+  const add=base=> {
+    if(!safeUrl(base)||seen.has(base))return;
+    seen.add(base);candidates.push(`${base}/meta/${type}/${encodeURIComponent(id)}.json`);
+  };
+  if(/^tt\\d{5,12}$/i.test(id))add(CINEMETA);
+  const matching=addons.filter(addon=>{
+    if(!safeUrl(addon?.base)||!addon?.manifest)return false;
+    const manifest=addon.manifest;
+    if(Array.isArray(manifest.types)&&!manifest.types.includes(type))return false;
+    return Array.isArray(manifest.resources)&&manifest.resources.some(resource=>
+      resource==='meta'||(resource?.name==='meta'&&
+      (!Array.isArray(resource.types)||resource.types.includes(type))&&
+      (!Array.isArray(resource.idPrefixes)||resource.idPrefixes.some(prefix=>id.startsWith(prefix)))
+    ));
+  });
+  const preferred=matching.find(item=>item.base===meta?._sourceBase);
+  if(preferred)add(preferred.base);
+  matching.forEach(addon=>add(addon.base));
+  return candidates.slice(0,5);
 }
