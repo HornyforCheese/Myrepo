@@ -360,38 +360,75 @@ function aiSettings(parent) {
   parent.append(el('label','Provider'),provider,el('label','Model'),model,el('label','API key'),key,save,clear,status);
   load();
 }
+const aiHistory = [];
 function aiSearch() {
-  const returnPage = page === 'home' ? 'home' : 'search';
+  const returnPage = page === 'home' ? 'home' : page === 'ai' ? aiReturnPage : 'search';
   aiReturnPage = returnPage;
-  page='ai'; pageToken++; detailToken++; streamToken++;
-  if(dialog.open)dialog.close();
-  document.querySelectorAll('nav button').forEach(node=>node.classList.toggle('active',node.dataset.page===returnPage));
-  main.replaceChildren(el('h1','Search with AI'),el('p','Get AI-powered movie and series suggestions. Results are model-generated, not verified live web results.','note'));
-  main.append(button(returnPage === 'home' ? '‹ Back to Home' : '‹ Back to Discover',()=>setPage(returnPage)));
-  const chat=el('section',null,'ai-chat');
-  chat.style.minHeight='260px';chat.style.maxHeight='55vh';chat.style.overflowY='auto';
-  const form=el('form'),query=el('textarea');query.placeholder='Describe what you want to watch…';query.rows=3;query.maxLength=2000;query.setAttribute('aria-label','Ask AI');
-  const send=el('button','Ask AI','primary');send.type='submit';
-  form.append(query,send);
-  form.addEventListener('submit',async event=>{
-    event.preventDefault();const message=query.value.trim();if(!message)return;
-    chat.append(el('p','You: '+message));query.value='';send.disabled=true;
-    const reply=el('p','Pirate assistant: Searching for suggestions…','note');chat.append(reply);chat.scrollTop=chat.scrollHeight;
+  page = 'ai'; pageToken++; detailToken++; streamToken++;
+  const viewToken = pageToken;
+  if (dialog.open) dialog.close();
+  document.querySelectorAll('nav button').forEach(node => node.classList.toggle('active', node.dataset.page === returnPage));
+  main.replaceChildren(el('h1', 'Search with AI'), el('p', 'AI suggestions may be inaccurate. Web search opens a separate browser search and does not feed results to the model.', 'note'));
+  main.append(button(returnPage === 'home' ? '‹ Back to Home' : '‹ Back to Discover', () => setPage(returnPage)));
+  const companion = el('div', null, 'ai-companion');
+  const pirate = el('span', '🏴‍☠️', 'ai-pirate'); pirate.setAttribute('role', 'img'); pirate.setAttribute('aria-label', 'Animated pirate assistant');
+  const mood = el('span', 'Ready to find something to watch', 'ai-mood');
+  companion.append(pirate, mood);
+  const chat = el('section', null, 'ai-chat');
+  chat.setAttribute('role', 'log'); chat.setAttribute('aria-live', 'polite');
+  chat.style.minHeight = '300px'; chat.style.maxHeight = '55vh'; chat.style.overflowY = 'auto';
+  const appendMessage = (role, message) => {
+    const row = el('p', role + ': ' + message, role === 'You' ? 'ai-user' : 'ai-answer');
+    chat.append(row); chat.scrollTop = chat.scrollHeight; return row;
+  };
+  for (const entry of aiHistory) appendMessage(entry.role, entry.message);
+  const form = el('form'), query = el('textarea');
+  query.placeholder = 'Describe what you want to watch…'; query.rows = 5; query.maxLength = 2000; query.setAttribute('aria-label', 'Search with AI message');
+  const send = el('button', 'Send', 'primary'); send.type = 'submit';
+  const searchWeb = el('input'); searchWeb.type = 'checkbox'; searchWeb.id = 'ai-web-search';
+  const searchLabel = el('label', 'Open a web search for my question'); searchLabel.htmlFor = searchWeb.id;
+  const options = el('div', null, 'ai-search-options'); options.append(searchWeb, searchLabel);
+  form.append(query, options, send);
+  let busy = false;
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const message = query.value.trim(); if (!message || busy) return;
+    busy = true; send.disabled = true;
+    aiHistory.push({role:'You', message}); appendMessage('You', message); query.value = '';
+    if (searchWeb.checked) window.open('https://www.google.com/search?q=' + encodeURIComponent(message), '_blank', 'noopener,noreferrer');
+    companion.classList.add('thinking'); mood.textContent = 'Thinking…';
+    const reply = appendMessage('Pirate assistant', 'Finding suggestions…');
     try {
-      const raw=await rpc('ai.suggest',{query:message,kind:'media'});
-      reply.textContent='Pirate assistant:';
+      const raw = String(await rpc('ai.suggest', {query:message,kind:'media'}));
       let items;
-      try {items=JSON.parse(raw.slice(raw.indexOf('['),raw.lastIndexOf(']')+1));}catch{items=null;}
-      if(!Array.isArray(items)) reply.textContent+=' '+raw.slice(0,4000);
-      else for(const item of items.slice(0,8)){
-        const row=el('div',null,'box');row.append(el('strong',String(item.title||'Untitled')),el('p',[item.year,item.reason].filter(Boolean).join(' · '),'note'));
-        row.append(button('Find in catalog',()=>{setPage('search');const searchInput=main.querySelector('input[type=search]');if(searchInput){searchInput.value=String(item.title||'');searchInput.closest('form')?.requestSubmit();}}));
-        chat.append(row);
+      try { items = JSON.parse(raw.slice(raw.indexOf('['), raw.lastIndexOf(']') + 1)); } catch { items = null; }
+      const response = Array.isArray(items)
+        ? items.slice(0,8).map(item => [item.title, item.year, item.reason].filter(Boolean).join(' · ')).join('\n') || 'No suggestions returned.'
+        : raw.slice(0,4000);
+      aiHistory.push({role:'Pirate assistant',message:response});
+      if (page === 'ai' && pageToken === viewToken) {
+        reply.textContent = 'Pirate assistant: ' + response;
+        if (Array.isArray(items)) for (const item of items.slice(0,8)) {
+          chat.append(button('Find ' + String(item.title || 'title') + ' in catalog', () => {
+            setPage('search');
+            const searchInput = main.querySelector('input[type=search]');
+            if (searchInput) { searchInput.value = String(item.title || ''); searchInput.closest('form')?.requestSubmit(); }
+          }, 'box'));
+        }
+        mood.textContent = 'Found suggestions!';
       }
-    }catch(e){reply.textContent='Pirate assistant: '+e.message+' Configure your API key and model in Settings → Ask AI.';}
-    finally{send.disabled=false;chat.scrollTop=chat.scrollHeight;}
+    } catch (error) {
+      const response = 'Unable to search: ' + (error.message || 'Unknown error') + '. Check Settings → Ask AI.';
+      aiHistory.push({role:'Pirate assistant',message:response});
+      if (page === 'ai' && pageToken === viewToken) { reply.textContent = 'Pirate assistant: ' + response; mood.textContent = 'Something went wrong'; }
+    } finally {
+      busy = false;
+      if (page === 'ai' && pageToken === viewToken) { send.disabled = false; companion.classList.remove('thinking'); chat.scrollTop = chat.scrollHeight; }
+    }
   });
-  main.append(chat,form,button('Configure AI',()=>{setPage('settings');settings('ai');}));
+  main.append(companion, chat, form,
+    button('Configure AI', () => { setPage('settings'); settings('ai'); }),
+    button('Clear conversation', () => { aiHistory.length = 0; aiSearch(); }));
 }
 function settingsBackup(parent) {
   const backup = button('Export settings', () => {
