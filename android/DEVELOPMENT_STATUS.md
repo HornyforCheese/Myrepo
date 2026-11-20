@@ -49,3 +49,10 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Regression fixture `82f985426cba0e795632aec931ca9b9d35ebea83`: covers unpriced suffix, paid model, and explicitly zero-priced model.
 - GitHub source re-read verified both changes; **fixtures not executed, Android compilation/CI not checked**. No APK built.
 - Requested order: finish AI catalogue and credential verification, then anime discovery/preferences, then Windows parity and UI. Resume CloudStream runtime afterward.
+
+## AI chunk 2: Gemini catalogue pagination and provider-key isolation
+
+- Implementation `50bc7325d6b92071901bca3ed7248d82a774ff02`: reject oversized Gemini pagination tokens before reuse.
+- Fixtures `b35f3570f98e550d73ece96607b930f9cb3ce592`: cover two-page Gemini discovery and per-provider API key removal.
+- Source re-read verified both changes. **No fixture execution, Android compilation, CI result or APK build verified.** Live provider credentials and model eligibility remain untested.
+- Next: execute Java AI fixtures and compile, then anime discovery/stream preference chunks, then Windows UI parity.
