@@ -108,4 +108,37 @@ public final class AiClient {
         if (text.length() > 100000) throw new IllegalStateException("AI reply too large");
         return text;
     }
+    /** Conversational media-only chat with bounded device-supplied history. */
+    public String chat(JSONArray history) throws Exception {
+        JSONObject settings = config();
+        String provider = settings.getString("provider");
+        String key = secrets.get("ai.key." + provider);
+        String model = settings.getString("model");
+        if (key.isEmpty() || model.isEmpty()) throw new IllegalStateException("Configure an AI provider, model and API key in Settings first");
+        if (history == null || history.length() == 0) throw new IllegalArgumentException("Enter a message first");
+        JSONArray messages = new JSONArray().put(new JSONObject().put("role", "system")
+            .put("content", "You are Mutiny Media's media assistant. Help users discuss real films, TV and anime. Answer naturally, allow follow-ups and recommend titles when useful. Do not invent source availability or dubbing status. Avoid spoilers unless requested."));
+        int start = Math.max(0, history.length() - 12);
+        String lastRole = "";
+        for (int i = start; i < history.length(); i++) {
+            JSONObject item = history.optJSONObject(i);
+            if (item == null) continue;
+            String role = item.optString("role");
+            String content = item.optString("content").trim();
+            if (!("user".equals(role) || "assistant".equals(role)) || content.isEmpty() || content.length() > 4000) continue;
+            messages.put(new JSONObject().put("role", role).put("content", content));
+            lastRole = role;
+        }
+        if (!"user".equals(lastRole)) throw new IllegalArgumentException("The last chat message must be from the user");
+        JSONObject body = new JSONObject().put("model", model).put("max_tokens", 1200).put("messages", messages);
+        JSONObject headers = new JSONObject().put("Authorization", "Bearer " + key);
+        if ("openrouter".equals(provider)) headers.put("X-Title", "Mutiny Media Android");
+        JSONObject response = (JSONObject) http.request(endpoint(provider), "POST", headers, body);
+        JSONArray choices = response.optJSONArray("choices");
+        if (choices == null || choices.length() == 0) throw new IllegalStateException("AI chat returned no response. Check your model and quota.");
+        String answer = choices.getJSONObject(0).getJSONObject("message").getString("content");
+        if (answer.length() > 100000) throw new IllegalStateException("AI reply too large");
+        return answer;
+    }
+
 }
