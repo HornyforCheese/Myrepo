@@ -1,9 +1,24 @@
-# Mutiny Media for Android
+# Mutiny Media Android · Media-only feature branch
 
-Open Settings to load a magnet link, select a torrent file, sign in to Stremio or Nuvio, configure an AI provider, search Steam, or launch an installed Android game. Torrent transfers use device storage and continue in a foreground service until stopped. Tap Refresh torrent to see available files and progress. Steam Link requires the Steam Link app and a paired PC.
+This source was extracted from the **Android v1.0.1 Engines** release and is being developed independently of the Windows and CloudStream plugin-template branches. The 251 MiB released APK is unchanged. New commits in this branch are **not** included in that APK until a new build is published.
 
-Local and direct video playback uses libVLC. Web sources open in a separate WebView. Watch progress can be submitted for identified titles played with libVLC. A provider page controls its own playback history. Stremio and Nuvio bookmarks can be opened from Load cloud library. PIN-protected Nuvio profiles are unsupported. Credentials are stored with Android Keystore. AI requests go directly to the provider you configure and use your account quota.
+## Current source capabilities
 
-Build from this directory with JDK 17, Android SDK 35 and Node 24. Run npm ci, npm test, then ./gradlew :app:assembleDebug. The Gradle project fetches libVLC 3.6.5 (LGPL 2.1) and libtorrent4j 2.1.0-39 (MIT) from Maven Central. The development signing key is generated locally and is excluded from the source archive. Android 8 or newer and a current Android System WebView are required.
+- Cinemeta discovery, title details and season/episode selection.
+- Search across Cinemeta plus search-capable installed Stremio add-on catalogs, with duplicate removal.
+- Two playback tabs: configurable Web Sources and Stremio add-on streams.
+- Native libVLC video, audio/subtitle track choices, local media, external subtitles and resume progress.
+- Libtorrent magnet/torrent streaming through the native foreground service.
+- Stremio and Nuvio login, cloud-library import and provider sync; PIN-protected Nuvio profiles remain unsupported.
+- OpenRouter, Groq and Gemini API-key settings, with film/TV/anime suggestions.
+- Theme choices, colour randomiser, font and poster sizing, collection management, offline settings export/import.
+- User-defined source prioritisation, bitrate-conscious stream ranking, maximum labelled resolution, preferred codec and anime audio/subtitle filters.
 
-The Windows source catalog and branding come from commit 20b3a48881681f74df9dcf6dec1d615cd2e40f27. Live playback, cloud services and game launches require device testing.
+## Known unfinished work
+
+CloudStream binary plugin runtime compatibility, debrid services, downloadable upscaling engines, true player bitrate measurement and validation of individual Web Sources are not delivered by the changes above. Filters rely on provider stream labels; a low-bandwidth preference does not transcode video. UI/static tests are not evidence of successful device playback. Preserve all original Stremio functionality and add only media-related features. Gaming controls and app-discovery APIs were removed from this branch.
+
+## Build
+
+Android 8+, JDK 17, Android SDK 35 and Node 24. Inside this directory run `npm ci`, `npm test`, then `./gradlew :app:assembleDebug`. The resulting APK requires installation and device testing before release. LibVLC and libtorrent4j are fetched from their respective repositories by Gradle.
+
