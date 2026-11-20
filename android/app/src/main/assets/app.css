@@ -32,3 +32,14 @@
 .settings-back { background:#343238; color:#f7f5fa; border-radius:14px; }
 .settings-option input[type=checkbox]:focus-visible, .settings-choice select:focus-visible { outline:2px solid #9d79ee; outline-offset:3px; }
 @media (max-width:440px) { .settings-card { padding:15px; gap:12px; min-height:74px; } .settings-labels strong { font-size:15px; } .settings-labels small { font-size:12px; } }
+
+/* Search with AI companion and readable conversation */
+.ai-companion{display:flex;align-items:center;gap:14px;padding:14px 16px;margin:12px 0;border-radius:16px;background:rgba(120,150,190,.12)}
+.ai-pirate{display:inline-flex;font-size:52px;transform-origin:center bottom;animation:pirate-idle 3s ease-in-out infinite}
+.ai-companion.thinking .ai-pirate{animation:pirate-thinking .7s ease-in-out infinite alternate}
+.ai-mood{font-weight:600}.ai-chat{white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;border-radius:14px;background:rgba(120,150,190,.08)}
+.ai-user,.ai-answer{padding:12px;border-radius:12px;margin:8px 0}.ai-user{background:rgba(100,160,255,.14)}.ai-answer{background:rgba(100,200,155,.12)}
+.ai-search-options{display:flex;align-items:center;gap:10px;margin:10px 0}.ai-search-options input{width:auto}
+@keyframes pirate-idle{0%,100%{transform:rotate(-5deg) translateY(0)}50%{transform:rotate(5deg) translateY(-5px)}}
+@keyframes pirate-thinking{from{transform:rotate(-12deg) scale(.96)}to{transform:rotate(12deg) scale(1.07)}}
+@media(prefers-reduced-motion:reduce){.ai-pirate,.ai-companion.thinking .ai-pirate{animation:none}}
