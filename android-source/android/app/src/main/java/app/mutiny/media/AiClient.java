@@ -25,6 +25,7 @@ public final class AiClient {
         endpoint(provider); // Validate requested provider.
         JSONArray models = new JSONArray();
         String notice;
+        boolean liveCatalogue = false;
         if ("openrouter".equals(provider)) {
             notice = "Live OpenRouter zero-cost text models. Free models have rate limits and may be unavailable.";
             try {
@@ -32,6 +33,7 @@ public final class AiClient {
                 if (!(value instanceof JSONObject)) throw new IllegalStateException("Invalid model catalogue");
                 JSONArray catalog = ((JSONObject) value).optJSONArray("data");
                 if (catalog == null) throw new IllegalStateException("No models returned");
+                liveCatalogue = true;
                 java.util.HashSet<String> added = new java.util.HashSet<>();
                 // The free router is a stable zero-cost fallback, not a paid model.
                 models.put(new JSONObject().put("id", "openrouter/free").put("label", "Automatic free model (OpenRouter)"));
@@ -43,7 +45,11 @@ public final class AiClient {
                     JSONObject pricing = item.optJSONObject("pricing");
                     JSONObject architecture = item.optJSONObject("architecture");
                     JSONArray output = architecture == null ? null : architecture.optJSONArray("output_modalities");
-                    if (id.isEmpty() || id.length() > 160 || pricing == null ||
+                    // Only explicit :free variants are offered here. Zero-cost previews
+                    // without :free may still require a funded account, and some API
+                    // catalogue entries are non-chat endpoints.
+                    if (!id.endsWith(":free") || id.length() > 160 || pricing == null ||
+                        id.contains("/rerank") || id.contains("/recraft") ||
                         !zeroPrice(pricing.optString("prompt")) || !zeroPrice(pricing.optString("completion")) ||
                         (output != null && !contains(output, "text")) || !added.add(id)) continue;
                     String name = item.optString("name", id);
@@ -62,7 +68,9 @@ public final class AiClient {
             models.put(new JSONObject().put("id", "gemini-3.5-flash-lite").put("label", "Gemini 3.5 Flash-Lite"));
             models.put(new JSONObject().put("id", "gemini-3.1-flash-lite").put("label", "Gemini 3.1 Flash-Lite"));
         }
-        return new JSONObject().put("provider", provider).put("models", models).put("notice", notice);
+        return new JSONObject().put("provider", provider).put("models", models)
+            .put("catalogueStatus", "openrouter".equals(provider) ? (liveCatalogue ? "live" : "unavailable") : "curated")
+            .put("notice", notice);
     }
     private static boolean zeroPrice(String value) {
         try { return !value.isEmpty() && Double.parseDouble(value) == 0.0; }
