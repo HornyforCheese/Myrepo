@@ -29,9 +29,13 @@ public final class Accounts {
     }
     private Object nuvio(String path, String method, JSONObject body) throws Exception {
         if (secrets.get("nuvio.token").isEmpty()) throw new IllegalStateException("Sign in to Nuvio first");
-        long expiry = Long.parseLong(secrets.get("nuvio.expiry"));
+        long expiry;
+        try { expiry = Long.parseLong(secrets.get("nuvio.expiry")); }
+        catch (NumberFormatException invalid) { expiry = 0; }
         if (System.currentTimeMillis() / 1000 > expiry - 60) {
-            JSONObject refresh = (JSONObject) http.request(NUVIO + "/auth/v1/token?grant_type=refresh_token", "POST", nuvioHeaders(false), new JSONObject().put("refresh_token", secrets.get("nuvio.refresh")));
+            String refreshToken = secrets.get("nuvio.refresh");
+            if (refreshToken.isEmpty()) throw new IllegalStateException("Nuvio session expired. Sign in again.");
+            JSONObject refresh = (JSONObject) http.request(NUVIO + "/auth/v1/token?grant_type=refresh_token", "POST", nuvioHeaders(false), new JSONObject().put("refresh_token", refreshToken));
             storeNuvio(refresh);
         }
         return http.request(NUVIO + path, method, nuvioHeaders(true), body);

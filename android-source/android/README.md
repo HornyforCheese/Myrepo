@@ -22,3 +22,12 @@ CloudStream binary plugin runtime compatibility, debrid services, downloadable u
 
 Android 8+, JDK 17, Android SDK 35 and Node 24. Inside this directory run `npm ci`, `npm test`, then `./gradlew :app:assembleDebug`. The resulting APK requires installation and device testing before release. LibVLC and libtorrent4j are fetched from their respective repositories by Gradle.
 
+
+
+## Media-only provider/player development (1.0.2-dev)
+
+This feature branch includes the media-only interface, watchlist and collections, themes, low-bandwidth and anime filters, direct HTTPS downloads, Stremio/Nuvio account import, and the existing libVLC and torrent engines. Additional provider/player fixes: Stremio `stremio://` manifest URLs, third-party catalog metadata resolution, supported request headers and safer stream fallback, provider-name prioritization, picture-in-picture in libVLC, extension-aware subtitle files, and lazy torrent initialization for account/UI commands.
+
+**CloudStream is repository discovery only** in this branch: a public HTTPS index can list `.cs3` extensions, but no CloudStream binary plugins execute in this Android process yet. Do not call extensions installed or playable. PiP and physical-device playback still require hands-on testing. Web source results rely on external provider availability. No GPU/CPU upscaling or Real-Debrid account flow is implemented by these changes. Test with `npm ci && npm test` and `./gradlew :app:assembleDebug`.
+
+This is a development-signed preview. A different signing certificate may prevent installing it over the currently published APK; backup app data before replacing it.
