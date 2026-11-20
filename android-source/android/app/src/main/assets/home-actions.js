@@ -181,13 +181,14 @@ function aiPanel(launcher,onSearchTitle,openSettings) {
   show('chat');chatInput.focus();
 }
 /** Media-only Android quick actions. */
-export function renderHomeActions({openLocalVideo, openSettings, onSearchTitle}) {
+export function renderHomeActions({openWebSources, openLocalVideo, openSettings, onSearchTitle}) {
   const section = element('section', undefined, 'home-quick-actions');
   section.setAttribute('aria-label', 'Mutiny Media quick actions');
   section.append(element('h2', 'Quick actions'));
   const grid = element('div', undefined, 'quick-action-grid');
   const buttons = [
     ['✨','Search with AI','Chat or find media titles',()=>aiPanel(grid.querySelector('[data-quick-action="Search with AI"]'),onSearchTitle,openSettings)],
+    ['🌐','Web Sources','Browse available streaming sites',openWebSources],
     ['🎬','Local Video','Open a file on your device',openLocalVideo],
     ['🧲','Stream Magnet','Play a magnet link',()=>magnetPanel(grid.querySelector('[data-quick-action="Stream Magnet"]'))],
     ['⚙️','Settings','Personalise your media app',()=>openSettings()],
