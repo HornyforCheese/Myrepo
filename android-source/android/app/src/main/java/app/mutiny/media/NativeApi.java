@@ -46,7 +46,7 @@ public final class NativeApi {
                 return new JSONObject().put("downloadId", manager.enqueue(download));
             }
             case "torrent.add":
-                if (android.os.Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+                if (android.os.Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
                     activity.runOnUiThread(() -> activity.requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 20));
                 return torrent.add(args.getString("magnet"), args.optInt("fileIndex", -1), args.optJSONObject("meta"));
             case "torrent.status": return torrent.status();
