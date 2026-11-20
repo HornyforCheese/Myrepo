@@ -29,7 +29,7 @@ export function controls(main, openTitle) {
     node.onclick=async()=>{node.disabled=true;try{await fn()}catch(error){status.textContent=error.message||'Operation failed';}finally{node.disabled=false;}};return node;
   };
   add(root,'h2','Media engines');
-  add(root,'p','Open a section to configure torrents, account synchronisation or AI recommendations. No games or game services are included.','note');
+  add(root,'p','Open a section to configure torrent streaming, account synchronisation and CloudStream repositories. No games or game services are included.','note');
   const torrent=group('Torrent and magnet streaming');
   const magnet=field(torrent,'Magnet link or info hash','text','magnet:?xt=urn:btih:…');magnet.autocomplete='off';
   const torrentButtons=add(torrent,'div',null,'row'), torrentResult=add(torrent,'div',null,'torrent-result');
@@ -84,28 +84,7 @@ export function controls(main, openTitle) {
       button(line,'View .cs3 package',()=>{location.href='mutiny://external?url='+encodeURIComponent(extension.downloadUrl);});
     }
   });
-  const ai=group('Search with AI · media recommendations');
-  const aiProvider=choose(ai,'AI provider',[['openrouter','OpenRouter'],['groq','Groq'],['gemini','Google Gemini']]);
-  const model=field(ai,'Model ID','text','Use a model ID listed by your provider');
-  const key=field(ai,'API key','password','Leave empty to keep the existing key');key.autocomplete='off';
-  const aiConfig=add(ai,'p','', 'note');
-  async function loadAi(){const current=await rpc('ai.config');aiProvider.value=current.provider;model.value=current.model||'';aiConfig.textContent=current.hasKey?'An API key is saved securely.':'No API key saved.';}
-  button(ai,'Save AI settings',async()=>{await rpc('ai.save',{provider:aiProvider.value,model:model.value,key:key.value});key.value='';await loadAi();status.textContent='AI settings saved';});
-  const query=field(ai,'Describe a movie, series or anime','text','Mind-bending sci-fi, English-dubbed anime…');
-  const recommendations=add(ai,'div',null,'recommendations');
-  button(ai,'Find recommendations',async()=>{
-    const raw=await rpc('ai.suggest',{query:query.value,kind:'media'});
-    const start=raw.indexOf('['),end=raw.lastIndexOf(']');
-    if(start<0||end<=start)throw Error('AI did not return a recommendation list.');
-    const items=JSON.parse(raw.slice(start,end+1));if(!Array.isArray(items))throw Error('AI response was not a list.');
-    recommendations.replaceChildren();
-    for(const item of items.slice(0,8)){
-      const line=add(recommendations,'div',null,'box');
-      add(line,'strong',String(item.title||'Untitled'));add(line,'p',[item.year,item.reason].filter(Boolean).join(' · '),'small');
-      button(line,'Search for title',async()=>window.dispatchEvent(new CustomEvent('mutiny-search-title',{detail:String(item.title||'')})));
-    }
-  });
   root.append(status);main.append(root);
-  if(window.Mutiny){showAccount().catch(()=>{accountStatus.textContent='Account status unavailable';});loadAi().catch(()=>{aiConfig.textContent='AI settings unavailable';});}
+  if(window.Mutiny){showAccount().catch(()=>{accountStatus.textContent='Account status unavailable';});}
   return root;
 }
