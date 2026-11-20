@@ -30,7 +30,7 @@ Checkboxes remain unchecked until implementation, reproducible automated tests, 
 - [x] Obsolete Android SDK setup action removed; new SDK setup succeeded.
 - [x] AI/Accounts workflow Node 22 upgraded to Node 24 for `--test-isolation=none`; commit `fcfd4b76432217b34d722e095ee655f23e18ff6c`.
 - [x] **AI/Accounts APK workflow success:** run https://github.com/HornyforCheese/Myrepo/actions/runs/44834891634 ; artifact `MutinyMedia-Android-AI-Stremio-Nuvio-debug` (GitHub Actions ZIP, approximately 116 MB). JavaScript tests and Android APK assembly succeeded; no physical-device signoff implied.
-- [ ] **Engine workflow full green:** run https://github.com/HornyforCheese/Myrepo/actions/runs/44834725448 passed JS unit and Python CS3 ABI fixture steps; initial Android compile could not resolve Gradle dependencies due to Maven Central HTTP 429. Failed jobs were rerun. Confirm final result and investigate compiler/runtime errors after network resolves.
+- [x] **Engine workflow full green on failed-job rerun:** run https://github.com/HornyforCheese/Myrepo/actions/runs/44834725448 (attempt 2). JavaScript tests, Python CS3 ABI fixtures, Android Java compilation, Java native transport fixtures and Playwright mobile UI fixtures all passed. Attempt 1 had Maven Central HTTP 429 dependency rate limiting; retry resolved that infrastructure failure. This is not live plugin execution/device QA.
 
 ## Per-workstream completion record
 
