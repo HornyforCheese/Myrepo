@@ -54,7 +54,8 @@ public final class CloudStreamRepository {
                         .put("description", plugin.optString("description").substring(0, Math.min(350, plugin.optString("description").length())))
                         .put("version", plugin.optInt("version"))
                         .put("language", plugin.optString("language"))
-                        .put("downloadUrl", downloadUrl));
+                        .put("downloadUrl", downloadUrl)
+                        .put("fileHash", plugin.optString("fileHash", "")));
                 }
             } catch (Exception ignored) {
                 // A broken index should not hide working indexes from the same repository.
