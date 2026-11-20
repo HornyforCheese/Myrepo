@@ -1,0 +1,63 @@
+name: Build Mutiny Media Android 1.0.1 engines
+
+on:
+  push:
+    branches:
+      - android-v1.0.1-engines-development
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-engines-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and build Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Check out this branch
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: android/package-lock.json
+      - name: Set up Android SDK 35
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Install JavaScript dependencies
+        run: npm ci
+      - name: Run JavaScript unit tests
+        run: npm test
+      - name: Compile and package Android application
+        run: bash ./gradlew --no-daemon --stacktrace :app:assembleDebug
+      - name: Verify APK archive and record checksum
+        run: |
+          apk=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          unzip -t "$apk" > /dev/null
+          sha256sum "$apk" > app/build/outputs/apk/debug/SHA256SUMS.txt
+          ls -lh "$apk"
+          unzip -Z1 "$apk" | grep -Eq '^lib/.+\\.so$'
+      - name: Publish APK and checksum as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MutinyMedia-Android-1.0.1-engines-dev-debug
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/debug/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
