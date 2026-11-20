@@ -22,6 +22,7 @@ public final class NativeApi {
             case "capabilities": return new JSONObject().put("vlc", true).put("torrent", true).put("accounts", true).put("ai", true).put("cloudstreamDiscovery", true).put("cloudstreamExecution", false).put("cloudstreamImport", true).put("pictureInPicture", true);
             case "player.preferences": return PlayerPreferences.configure(context, args);
             case "account.status": return accounts.status();
+            case "account.addons": return accounts.syncedAddons();
             case "account.login": return accounts.login(args.getString("provider"), args.getString("email"), args.getString("password"));
             case "account.logout": accounts.logout(args.getString("provider")); return accounts.status();
             case "account.sync": return accounts.sync(args.getString("provider"), args.optInt("profile", 1));
