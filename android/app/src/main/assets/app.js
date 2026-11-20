@@ -247,6 +247,37 @@ function renderPreferences(parent, id) {
     parent.append(el('p', 'CloudStream CS3 installation and execution are not available in this branch yet.', 'note'));
   }
 }
+function settingsBackup(parent) {
+  const backup = button('Export settings', () => {
+    const data = JSON.stringify({ format:'mutiny-settings-v1', preferences:getPreferences(), addons }, null, 2);
+    const blob = new Blob([data], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = el('a'); anchor.href = url; anchor.download = 'mutiny-media-settings.json';
+    document.body.append(anchor); anchor.click(); anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  });
+  const picker = el('input'); picker.type='file'; picker.accept='.json,application/json'; picker.setAttribute('aria-label','Import settings JSON');
+  picker.addEventListener('change', async () => {
+    const file = picker.files?.[0]; if (!file) return;
+    if (file.size > 1024 * 1024) return toast('Settings file exceeds 1 MB.');
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (parsed?.format !== 'mutiny-settings-v1' || !parsed.preferences || typeof parsed.preferences !== 'object' || Array.isArray(parsed.preferences)) throw Error('Unsupported settings file.');
+      const allowed = ['language','theme','reduceMotion','compactCards','quality','audioLanguage','subtitles','lowBandwidth','mobileSync','rememberSection','aiProvider','keepAwake','networkMode'];
+      const preferences = Object.fromEntries(Object.entries(parsed.preferences).filter(([key,value]) => allowed.includes(key) && (typeof value === 'boolean' || typeof value === 'string')));
+      if (!confirm('Import preferences from this file? Current preferences will be replaced.')) return;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(preferences));
+      applySavedAppearance(); toast('Preferences imported.'); settings();
+    } catch (error) { toast(error.message || 'Unable to import settings.'); }
+    finally { picker.value=''; }
+  });
+  parent.append(el('h2','Backup & restore'),backup,picker);
+  parent.append(el('p','Export includes installed add-on addresses for reference. Import restores preferences only, not accounts, credentials or add-ons.', 'note'));
+  parent.append(button('Reset preferences', () => {
+    if (!confirm('Reset all Mutiny Media preferences to defaults? Your library and add-ons will remain.')) return;
+    localStorage.removeItem(SETTINGS_KEY); applySavedAppearance(); toast('Preferences reset.'); settings();
+  }));
+}
 function settings() {
   const heading = el('h1', 'Settings');
   main.append(heading);
@@ -292,10 +323,11 @@ function settings() {
   const directLabel = el('label', 'Play a direct HTTPS video address'); directLabel.htmlFor = 'direct-url';
   const direct = el('form'), address = el('input'); address.id = 'direct-url'; address.type = 'url'; address.placeholder = 'https://example.com/video.mp4'; address.required = true;
   const play = el('button', 'Play'); play.type = 'submit'; direct.append(address, play); direct.addEventListener('submit', event => { event.preventDefault(); native('video', address.value.trim()); }); main.append(directLabel, direct);
-  main.append(el('h2', 'About this preview'), el('p', 'Mutiny Media 1.0.1 · Android preview', 'note'), el('p', 'Android 8 or newer. Reuses the 42 configured web-source adapters from the linked Windows release. Metadata comes from Cinemeta. Local library and add-ons are stored on this device. Open Settings for accounts, torrents, AI and games.', 'note'), el('p', 'Source hosts and add-ons receive requests when used. Install only providers you trust. Some video codecs need an external player.', 'note'));
+  main.append(el('h2', 'About this preview'), el('p', 'Mutiny Media 1.0.1 · Android preview', 'note'), el('p', 'Android 8 or newer. Reuses the 42 configured web-source adapters from the linked Windows release. Metadata comes from Cinemeta. Local library and add-ons are stored on this device. Account, torrent and AI integrations remain under development.', 'note'), el('p', 'Source hosts and add-ons receive requests when used. Install only providers you trust. Some video codecs need an external player.', 'note'));
   main.append(button('Clear saved library', () => { saved = []; write('mutiny.android.library.v1', saved); toast('Saved library cleared.'); }));
     } else {
       renderPreferences(main, id);
+      if (id === 'general') settingsBackup(main);
     }
   }
   for (const [symbol, name, description, id] of sections) {
@@ -306,7 +338,12 @@ function settings() {
     card.append(symbolNode, labels, el('span', '›', 'settings-chevron'));
     panel.append(card);
   }
-  main.append(panel);
+  const filter = el('input'); filter.type = 'search'; filter.placeholder = 'Search settings'; filter.setAttribute('aria-label', 'Search settings');
+  filter.addEventListener('input', () => {
+    const query = filter.value.trim().toLowerCase();
+    for (const card of panel.children) card.hidden = !card.textContent.toLowerCase().includes(query);
+  });
+  main.append(filter, panel);
 }
 
 function applySavedAppearance() {
