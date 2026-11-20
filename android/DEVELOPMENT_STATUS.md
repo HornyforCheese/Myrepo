@@ -131,3 +131,7 @@ Static Python DEX method-ID parsing of user-uploaded v715 binary identified 211 
 ## StreamPlay pinned archive descriptor IPC
 
 `272ee89755405989d0bb58e343882146faf40bcc` passes pinned archive via read-only ParcelFileDescriptor to isolated worker, `37beff0038c60d842691dd29902f3f67aa44b54d` binds native API to digest-aware transport, `66da718066b6921786b021095c768f356dddff31` adds worker-thread SHA-256 verification before failing closed, and `c3a6406ce6716e9787039df921c5ae68e7c48c2e` updates static regression assertions. Source re-read only, no tests or APK. **StreamPlay still cannot execute; full CloudStream host ABI missing.**
+
+## Workstream 7 Windows parity audit pass
+
+`caee59f1cbc0f4620c85fbb70a156e4c0e14ce39` constrains settings import values; `5c82a8cf5b8a6626f90026dc6e1d07c6bdb53114` fixes anime audio enum; `6d4b89f1ae1a2ba19974248864b1b5c52de9e333` creates `android/WINDOWS_ANDROID_PARITY.md` covering known parity requirements and acceptance gaps. **Still PARTIAL:** actual Windows source revision not retrieved at prior paths, no Android compilation/tests or device validation; major StreamPlay, player, source-deck, UI and controller gaps remain.
