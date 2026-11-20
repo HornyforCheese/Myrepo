@@ -72,3 +72,14 @@ Lcom/lagradost/cloudstream3/utils/ExtractorLink;->getType()->Lcom/lagradost/clou
 ```
 
 **Runtime implication:** a handful of hand-written Java stubs is insufficient for confidence in StreamPlay v715. Compatibility requires Kotlin binary signatures, CloudStream host semantics, bundled dependencies, class resolution and device-level tests. A 90% success estimate is not supported by static inspection.
+
+## Method-level ABI inventory tooling
+
+A non-executing DEX scanner is now available in `android/tools/inspect_cs3_abi.py`.
+Run `python3 tools/inspect_cs3_abi.py /path/to/StreamPlay.cs3 --output streamplay-abi.json` from `android/`.
+By default it **rejects any binary other than the previously verified StreamPlay v715 SHA-256**, checks the manifest and size constraints, and inventories referenced CloudStream class names, exact method descriptors and field descriptors across primary/secondary DEX files. It does not execute bytecode or reveal API secrets.
+
+Synthetic DEX, digest rejection, corruption and archive path tests live in `android/tests/test_cs3_abi.py` and run in continuous integration. Their passing status cannot prove runtime compatibility. The original user-uploaded CS3 bytes are **not in this GitHub branch**, so a full actual-binary method-level report cannot be claimed until the pinned file is present in the analysis environment.
+
+**Unchanged blocker:** no CloudStream host ABI implementation, plugin registration or playable StreamPlay source has been verified; `CloudStreamWorker` still rejects requests.
+
