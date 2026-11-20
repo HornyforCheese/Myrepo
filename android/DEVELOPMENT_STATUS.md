@@ -19,3 +19,7 @@ Inspect the latest CI job first. Android pushes compile Java and run fixtures. O
 The CS3 foundation came from the separate feature branch; it had no executable host. Upstream CloudStream commit `b8450407714220db06fbfa8477bbdd4f7d3b99d1` separates Android Plugin.load(Context) from BasePlugin registration in APIHolder and the extractor registry. Model the isolated process and mediated input/output before loading third-party code. The separate account branch contains account-addons.js with an existing reconciliation fixture; verify user *and profile* scope before reuse. No branches were merged.
 
 Run npm ci and npm test under android. Java and browser fixture commands are in the workflow. Local Chromium startup hit an OS socket restriction. Hosted Chrome runs the UI fixtures. Check the actual hosted job result before citing these as passed.
+
+## Additional bounded security fix
+
+- Commit `bffd3cdb132f75dea8719d1799df15d9f51717ba`: CS3 package import now uses a `long` byte counter and a pre-addition size guard, preventing integer overflow from bypassing the 48 MiB compressed-file limit. Source re-read confirmed the guard. **Static source verification only**: Java compilation, runtime import tests and CI were not executed for this change. This does not implement CS3 execution or provider registration.
