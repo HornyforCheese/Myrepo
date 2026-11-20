@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "ANIME-LABEL-NEGATION: exclude explicitly negated dub, sub and dual-audio labels",
-  "lastVerifiedImplementationCommit": "c64984c8e33ac3c202047971cb9c91a6834b7aad",
+  "currentChunk": "PARITY-APPEARANCE: functional light/system theme palettes",
+  "lastVerifiedImplementationCommit": "86cae5bd9c46ed2ebccd1ab02dfa5a16c59c3e14",
   "completedChunks": [],
   "tasks": [
     {
@@ -112,7 +112,8 @@
     "AI OpenRouter free model price check and regression fixture source re-read confirmed; tests and Android CI not executed for these commits",
     "Gemini page token bound and key-removal/pagination fixtures source re-read verified; fixture execution, Java compilation and current CI not run",
     "Anime genre browse action and mocked UI fixture re-read from GitHub; test execution and live Cinemeta endpoint compatibility not verified",
-    "Anime label negation guard and regression fixtures re-read from GitHub; JS tests and Android device playback not executed"
+    "Anime label negation guard and regression fixtures re-read from GitHub; JS tests and Android device playback not executed",
+    "CSS theme palettes and appearance regression fixture re-read from GitHub; npm tests, browser screenshots and Android device not verified"
   ],
-  "nextAction": "Run stream-preferences.test.mjs and browser anime fixture, fix failures; then begin Windows feature parity/UI gap review and first bounded implementation."
+  "nextAction": "Run npm test including appearance.test.mjs and visual UI fixture; audit and implement next Windows parity gap without gaming features."
 }
