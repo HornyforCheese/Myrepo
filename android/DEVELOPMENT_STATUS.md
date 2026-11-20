@@ -119,3 +119,7 @@ User's sole required CS3 provider is StreamPlay. Candidate upstream `tpadev/phis
 ## Exact StreamPlay v715 binary received
 
 User uploaded `StreamPlay.cs3` (2,236,985 bytes, SHA-256 `94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332`). ZIP has `manifest.json` and `classes.dex`; manifest specifies `com.phisher98.StreamPlayPlugin`, version 715, `requiresResources=false`, contradicting candidate public source. Static DEX035 inspection found CloudStream API references. Compatibility gate updated in `986676c338dd661e37df9d9d7937e76948b2303d`. **No execution or runtime success.** Continue targeted host ABI work before CS3 chunk 4.
+
+## StreamPlay chunk 4: native bridge, not executable runtime
+
+`b8e741d6be481c2eddaa3f88c59e9b388905dd7d` and `0bb63eaa648bd0f4440293766a95bdb5e353e9af` add installed package hash lookup; `c72a15755332407f6dd2a39171d2958576f8d35b` adds `cs3.request` native dispatch pinned to uploaded StreamPlay v715 SHA-256 and existing isolated transport; `db8cefd0503606afbd4829e5bb2f6cfa8a63de02` adds static source assertions. No tests executed. Worker still rejects requests. **No working StreamPlay runtime or APK.**
