@@ -1,4 +1,5 @@
 import { animeStreamTags, animeStreamMatch, rankStreams } from './stream-preferences.js';
+import { combineProviderAddons, reconcileAccountAddons } from './account-addons.js';
 import { controls, rpc } from './engines.js';
 import { safeUrl, addonBase, sourcesFor, streamId, supportsStreams, jsonRequest } from './model.js';
 
@@ -9,6 +10,17 @@ import { CINEMETA as API, searchCatalogs, titleKey } from './catalog-search.js';
 let page = 'home', type = 'movie', pageToken = 0, detailToken = 0;
 let saved = read('mutiny.android.library.v1', []);
 let addons = read('mutiny.android.addons.v1', []);
+let cloudAddons = [], accountGeneration = 0;
+async function reloadAccountAddons() {
+  const generation = ++accountGeneration, previous = cloudAddons;
+  cloudAddons = [];
+  animeStreamCache.clear();
+  const snapshots = await rpc('account.addons');
+  const result = await reconcileAccountAddons(previous, snapshots, jsonRequest);
+  if (generation === accountGeneration) cloudAddons = result.addons;
+  return result.stats;
+}
+const availableAddons = () => combineProviderAddons(addons,cloudAddons);
 let current = null, episode = null, sourceIndex = 0, streamToken = 0;
 let toastTimer;
 let settingsSection = null;
@@ -93,7 +105,7 @@ function search() {
     const query = input.value.trim(), token = ++pageToken;
     if (!query) return stateBox(results, 'Enter a title to search.');
     stateBox(results, 'Searching catalogues…');
-    const {metas, failures, hydrated} = await searchCatalogs(type, query, addons, jsonRequest, () => token === pageToken);
+    const {metas, failures, hydrated} = await searchCatalogs(type, query, availableAddons(), jsonRequest, () => token === pageToken);
     if (token !== pageToken) return;
     let migrated = false;
     for (const addon of addons) {
@@ -205,12 +217,13 @@ async function openTitle(meta) {
   current = { ...meta }; episode = null; sourceIndex = 0;
   detail.replaceChildren(el('p', 'Loading title…')); if (!dialog.open) dialog.showModal();
   try {
-    const base = meta.catalogBase || API;
-    if (base !== API && !addons.some(addon => addon?.base === base)) throw Error('Provider removed');
+    const source = meta.catalogBase || API;
+    const base = source === API ? API : availableAddons().find(addon => (addon.catalogKey || addon.base) === source)?.base;
+    if (!base) throw Error('Provider removed');
     const data = await jsonRequest(`${base}/meta/${meta.type === 'series' ? 'series' : 'movie'}/${encodeURIComponent(meta.id)}.json`);
     if (token !== detailToken) return;
     if (!data.meta || data.meta.id !== meta.id || data.meta.type !== meta.type) throw Error('Metadata did not match.');
-    current = {...data.meta, catalogBase:base, sourceNames:meta.sourceNames};
+    current = {...data.meta, catalogBase:source, sourceNames:meta.sourceNames};
   } catch {
     if (token !== detailToken) return;
     toast('Full title details could not load. Some sources may be unavailable.');
@@ -299,7 +312,7 @@ function renderWeb(target) {
 async function renderStreams(target, forceRefresh = false) {
   const token = ++streamToken;
   const id = streamId(current, episode), mediaType = current.type === 'series' ? 'series' : 'movie';
-  const matching = addons.filter(addon => supportsStreams(addon.manifest, mediaType, id || ''));
+  const matching = availableAddons().filter(addon => supportsStreams(addon.manifest, mediaType, id || ''));
   const key = JSON.stringify([mediaType,id,matching.map(addon=>addon.base)]);
   target.replaceChildren();
   if (!matching.length) return target.append(el('p', 'No installed add-on offers streams for this title. Add a Stremio-compatible HTTPS manifest in Settings.', 'note'));
@@ -407,14 +420,14 @@ function renderPreferences(parent, id) {
     preferenceControl(parent, 'Low-bandwidth preference', 'Rank lower labelled resolutions first; actual bitrate varies', 'lowBandwidth', false);
     parent.append(el('p', 'Quality and low-bandwidth preferences order labelled add-on streams. Audio and subtitle tracks can be selected in the player.', 'note'));
   } else if (id === 'general') {
-    controls(parent, openTitle, id);
+    controls(parent, openTitle, id, reloadAccountAddons);
   } else if (id === 'ai') {
     aiSettings(parent);
   } else if (id === 'android') {
     preferenceControl(parent, 'Keep screen awake', 'Saved preference; native WakeLock integration pending', 'keepAwake', false);
     parent.append(el('p', 'Auto-start and background service permissions require native Android integration.', 'note'));
   } else if (id === 'server') {
-    controls(parent, openTitle, id);
+    controls(parent, openTitle, id, reloadAccountAddons);
   } else if (id === 'cloudstream') {
     cloudStreamSettings(parent);
   }
@@ -762,3 +775,5 @@ document.querySelectorAll('nav button').forEach(node => node.addEventListener('c
 document.querySelector('#local').addEventListener('click', () => native('local'));
 document.querySelector('#brand').addEventListener('click', event => { event.preventDefault(); setPage('home'); });
 setPage('home');
+
+if (window.Mutiny) reloadAccountAddons().catch(() => toast('Account providers could not be loaded. Retry from General Settings.'));

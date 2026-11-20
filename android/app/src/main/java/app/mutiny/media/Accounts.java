@@ -61,6 +61,7 @@ public final class Accounts {
             JSONObject user = response.getJSONObject("user");
             changes.put("stremio.token", token); changes.put("stremio.user", user.getString("_id")); changes.put("stremio.email", user.optString("email", email));
         } else changes = nuvioSession((JSONObject) http.request(NUVIO + "/auth/v1/token?grant_type=password", "POST", nuvioHeaders(false), new JSONObject().put("email", email.trim()).put("password", password)), true);
+        changes.put(provider + ".addonSnapshot", "");
         changes.put("account.active", provider); changes.put("account.profile", "1");
         secrets.putAll(changes);
         return status();
@@ -74,7 +75,7 @@ public final class Accounts {
         provider(provider);
         try { if (provider.equals("stremio")) stremio("logout", auth()); else nuvio("/auth/v1/logout", "POST", new JSONObject()); } catch (Exception ignored) { /* Always permit local sign-out when offline. */ }
         Map<String,String> changes = new HashMap<>();
-        for (String suffix : new String[]{"token", "refresh", "expiry", "user", "email"}) changes.put(provider + "." + suffix, "");
+        for (String suffix : new String[]{"token", "refresh", "expiry", "user", "email", "addonSnapshot"}) changes.put(provider + "." + suffix, "");
         if (secrets.get("account.active").equals(provider)) changes.put("account.active", "");
         secrets.putAll(changes);
     }
@@ -110,9 +111,23 @@ public final class Accounts {
                 .put("progress", nuvio("/rest/v1/watch_progress?profile_id=eq." + profile + "&order=last_watched.desc", "GET", null));
         }
         Map<String,String> changes = new HashMap<>();
+        JSONObject snapshot = new JSONObject().put("user",secrets.get(provider + ".user")).put("profile",profile)
+            .put("addons",result.getJSONArray("addons"));
+        changes.put(provider + ".addonSnapshot",snapshot.toString());
         changes.put("account.active", provider); changes.put("account.profile", String.valueOf(profile));
         secrets.putAll(changes);
         return result.put("scope", provider + ":" + secrets.get(provider + ".user") + ":" + profile).put("provider", provider).put("profile", profile);
+    }
+    public synchronized JSONObject addonSnapshots() throws Exception {
+        JSONObject result = new JSONObject();
+        for (String provider : new String[]{"stremio","nuvio"}) {
+            String user = secrets.get(provider + ".user");
+            String raw = secrets.get(provider + ".addonSnapshot");
+            if (raw.isEmpty() || user.isEmpty() || secrets.get(provider + ".token").isEmpty()) continue;
+            JSONObject snapshot = new JSONObject(raw);
+            if (user.equals(snapshot.getString("user"))) result.put(provider,snapshot.put("signedIn",true));
+        }
+        return result;
     }
     public synchronized void bookmark(JSONObject meta, boolean removed) throws Exception {
         String active = secrets.get("account.active"); if (active.isEmpty()) return;

@@ -33,7 +33,7 @@ export async function searchCatalogs(type, query, addons, request = jsonRequest,
     if (!Array.isArray(list)) continue;
     for (const catalog of list.filter(item => searchable(item, type))) {
       if (!catalogs.some(item => item.base === addon.base && item.id === catalog.id))
-        catalogs.push({base:addon.base, id:catalog.id, name:addon.manifest.name});
+        catalogs.push({base:addon.base, catalogKey:addon.catalogKey, id:catalog.id, name:addon.manifest.name});
     }
   }
   const found = new Map();
@@ -49,7 +49,7 @@ export async function searchCatalogs(type, query, addons, request = jsonRequest,
       const catalog = batch[index];
       for (const meta of result.value.slice(0,100)) {
         if (meta?.type !== type || typeof meta.id !== 'string' || !meta.id || typeof meta.name !== 'string') continue;
-        const entry = {...meta, catalogBase:catalog.base, sourceNames:[catalog.name]};
+        const entry = {...meta, catalogBase:catalog.catalogKey || catalog.base, sourceNames:[catalog.name]};
         const key = titleKey(entry), previous = found.get(key);
         if (!previous) found.set(key, entry);
         else if (!previous.sourceNames.includes(catalog.name)) previous.sourceNames.push(catalog.name);

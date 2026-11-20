@@ -6,7 +6,7 @@ export function safeUrl(value) {
   return host !== 'localhost' && !host.endsWith('.localhost') && !/^[\d.]+$/.test(host);
 }
 export function addonBase(raw) {
-  const url = new URL(raw.trim());
+  const url = new URL(raw.trim().replace(/^stremio:\/\//i,'https://'));
   if (!safeUrl(url.href) || url.search || url.hash || !url.pathname.endsWith('/manifest.json')) throw Error('Use a public HTTPS manifest.json URL without query parameters.');
   return url.href.slice(0, -'/manifest.json'.length);
 }
