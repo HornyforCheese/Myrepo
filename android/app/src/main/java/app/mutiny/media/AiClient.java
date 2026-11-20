@@ -122,7 +122,6 @@ public final class AiClient {
         if (query == null || query.trim().isEmpty() || query.length() > 2000) throw new IllegalArgumentException("Describe what you want in 1–2000 characters");
         String prompt = "Find up to 8 real movies or TV series matching the user. Return ONLY a JSON array of objects {\"title\":\"exact title\",\"year\":2000,\"type\":\"movie\" or \"series\",\"reason\":\"short reason\"}. For a specific episode also add numeric season and episode. Never invent IDs or URLs.";
         if (references == null) references = "";
-        if (references == null) references = "";
         if (references.length() > 6000) throw new IllegalArgumentException("Reference text is too long");
         JSONArray messages = new JSONArray().put(new JSONObject().put("role", "system").put("content", prompt));
         if (history != null) {
@@ -142,7 +141,12 @@ public final class AiClient {
         JSONObject response = (JSONObject) http.request(endpoint(provider), "POST", headers, body);
         JSONArray choices = response.optJSONArray("choices");
         if (choices == null || choices.length() == 0) throw new IllegalStateException("The AI provider returned no suggestions. Check the model and quota.");
-        String text = choices.getJSONObject(0).getJSONObject("message").getString("content");
+        JSONObject first = choices.optJSONObject(0);
+        JSONObject message = first == null ? null : first.optJSONObject("message");
+        if (message == null || !(message.opt("content") instanceof String))
+            throw new IllegalStateException("The AI provider returned an unsupported reply format. Try another model.");
+        String text = message.optString("content").trim();
+        if (text.isEmpty()) throw new IllegalStateException("The AI provider returned an empty reply. Try another model.");
         if (text.length() > 100000) throw new IllegalStateException("AI reply too large");
         return text;
     }
