@@ -1,4 +1,5 @@
 import {rpc} from './engines.js';
+import {freeModelOptions,setModelOptions} from './free-models.js';
 
 let activeDialog = null;
 export function closeQuickDialog() {
@@ -131,6 +132,46 @@ function aiPanel(launcher,onSearchTitle,openSettings) {
     }
   }
   dialog.append(tabs);
+  // Keep a compact free-model selector in the search dialog, sharing the same
+  // native provider configuration as Settings and the chat/title-search RPCs.
+  const modelPanel=element('section',undefined,'ai-model-picker');
+  const providerWrap=element('label','AI provider','setting-field');
+  const aiProvider=element('select');aiProvider.setAttribute('aria-label','AI provider');
+  for(const [id,name] of [['openrouter','OpenRouter'],['groq','Groq'],['gemini','Google Gemini']]){
+    const option=element('option',name);option.value=id;aiProvider.append(option);
+  }
+  providerWrap.append(aiProvider);
+  const modelWrap=element('label','Free LLM model','setting-field');
+  const aiModel=element('select');aiModel.setAttribute('aria-label','Free LLM model');
+  modelWrap.append(aiModel);
+  const modelFeedback=status(modelPanel);
+  modelPanel.append(providerWrap,modelWrap);
+  dialog.append(modelPanel);
+  let lookup=0;
+  async function loadFreeModels(preferred='') {
+    const provider=aiProvider.value,seq=++lookup;
+    setModelOptions(aiModel,freeModelOptions(provider),preferred);
+    try {
+      const live=window.Mutiny?await rpc('ai.freeModels',{provider}):null;
+      if(!dialog.isConnected||seq!==lookup||aiProvider.value!==provider)return;
+      setModelOptions(aiModel,freeModelOptions(provider,live),preferred||aiModel.value);
+      modelFeedback.textContent=live?.notice||'Free-tier models may change and have usage limits.';
+    } catch {
+      if(seq===lookup)modelFeedback.textContent='Live list unavailable. Showing recently free models.';
+    }
+  }
+  aiProvider.addEventListener('change',()=>loadFreeModels());
+  action(modelPanel,'Refresh free models',()=>loadFreeModels(aiModel.value));
+  async function saveSelection(){
+    if(window.Mutiny&&aiProvider.value&&aiModel.value)
+      await rpc('ai.save',{provider:aiProvider.value,model:aiModel.value});
+  }
+  if(window.Mutiny)rpc('ai.config').then(config=>{
+    if(!dialog.isConnected)return;
+    if(['openrouter','groq','gemini'].includes(config.provider))aiProvider.value=config.provider;
+    loadFreeModels(config.model||'');
+  }).catch(()=>loadFreeModels());
+  else loadFreeModels();
   chat.append(element('p','Ask about movies, series or anime and ask follow-up questions.','note'));
   const log=element('div',undefined,'ai-conversation');log.setAttribute('role','log');log.setAttribute('aria-live','polite');
   const chatForm=element('form',undefined,'ai-chat-form');
@@ -142,7 +183,7 @@ function aiPanel(launcher,onSearchTitle,openSettings) {
     send.disabled=true;chatFeedback.textContent='Thinking…';
     const next=[...messages.slice(-11),{role:'user',content}];
     try{
-      const answer=String(await rpc('ai.chat',{messages:next}));if(!dialog.isConnected)return;
+      await saveSelection();const answer=String(await rpc('ai.chat',{messages:next}));if(!dialog.isConnected)return;
       for(const [role,value] of [['user',content],['assistant',answer]]){
         const bubble=element('div',undefined,'ai-bubble ai-'+role);
         bubble.append(element('strong',role==='user'?'You':'Mutiny Media'),element('p',value));log.append(bubble);
@@ -164,7 +205,7 @@ function aiPanel(launcher,onSearchTitle,openSettings) {
     event.preventDefault();const query=titleInput.value.trim();if(!query||nativeRequired(titleFeedback))return;
     find.disabled=true;titleFeedback.textContent='Searching…';
     try{
-      const suggestions=parseAiSuggestions(await rpc('ai.suggest',{query,kind:'media'}));if(!dialog.isConnected)return;
+      await saveSelection();const suggestions=parseAiSuggestions(await rpc('ai.suggest',{query,kind:'media'}));if(!dialog.isConnected)return;
       results.replaceChildren();if(!suggestions.length)results.append(element('p','No titles returned.','note'));
       for(const item of suggestions)action(results,item.title,()=>{closeQuickDialog();onSearchTitle(item.title);},'ai-title-result');
       titleFeedback.textContent='';
