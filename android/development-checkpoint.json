@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "STREAMPLAY-V715: isolated archive descriptor and digest verification (provider execution still unavailable)",
-  "lastVerifiedImplementationCommit": "c3a6406ce6716e9787039df921c5ae68e7c48c2e",
+  "currentChunk": "PARITY workstream 7: Android settings import validation and scoped Windows parity audit",
+  "lastVerifiedImplementationCommit": "5c82a8cf5b8a6626f90026dc6e1d07c6bdb53114",
   "completedChunks": [],
   "tasks": [
     {
@@ -123,7 +123,8 @@
     "Uploaded StreamPlay.cs3 SHA-256 94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332; manifest v715 plugin com.phisher98.StreamPlayPlugin requiresResources=false, DEX035; static inspection only, no execution",
     "Re-read NativeApi cs3.request digest gate, installed-package check and static fixture; Java/Android compilation, live IPC and StreamPlay provider execution not verified",
     "Local Python DEX parser found 81 CloudStream method-owner classes and 211 distinct method signatures in uploaded v715; Node reproducibility script committed and source re-read, but not executed from repository",
-    "GitHub source re-read verifies descriptor IPC and worker SHA-256 verification code; no Android compilation, static fixtures, device IPC, provider execution or playback tests run"
+    "GitHub source re-read verifies descriptor IPC and worker SHA-256 verification code; no Android compilation, static fixtures, device IPC, provider execution or playback tests run",
+    "Windows/Android parity matrix authored from Android source and documented Windows requirements; exact Windows source not available at prior paths; no Android build/tests run"
   ],
-  "nextAction": "Build compatible CloudStream Android/Kotlin host API inside isolated process, load exact v715 DEX only after verification, register provider and run search/metadata/stream extraction/device playback tests. Do not claim success before passing."
+  "nextAction": "Find and pin Windows source, implement missing applicable parity features, execute tests and Android device QA; StreamPlay runtime still blocked."
 }
