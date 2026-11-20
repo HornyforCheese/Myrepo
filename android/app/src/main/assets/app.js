@@ -481,7 +481,7 @@ function cloudStreamSettings(parent) {
 }
 function aiSettings(parent) {
   parent.append(el('p', 'Choose a provider and refresh its live model catalogue. Keys are saved in Android secure storage. OpenRouter lists zero-cost models; Groq and Gemini eligibility depends on your account.', 'note'));
-  const provider = el('select');
+  const provider = el('select'); provider.setAttribute('aria-label','AI provider');
   for (const [id,name] of [['openrouter','OpenRouter'],['groq','Groq'],['gemini','Gemini']]) {
     const option = el('option',name); option.value=id; provider.append(option);
   }
@@ -521,6 +521,7 @@ function aiSettings(parent) {
     try {
       const config=await rpc('ai.config', selectedProvider ? {provider:selectedProvider} : {});
       provider.value=config.provider; model.value=config.model||'';
+      if (config.hasKey || config.provider === 'openrouter') queueMicrotask(() => { if (fields.isConnected) refresh.click(); });
       status.textContent=config.hasKey?'An API key is saved for this provider.':'No API key saved for this provider.';
     } catch(error) { status.textContent='AI settings unavailable: '+error.message; }
     finally { fields.disabled=false; }
@@ -665,8 +666,12 @@ function aiSearch() {
       if (page === 'ai' && pageToken === viewToken) { send.disabled = false; companion.classList.remove('thinking'); chat.scrollTop = chat.scrollHeight; }
     }
   });
-  main.append(companion, chat, form,
-    button('Configure AI', () => { setPage('settings'); settings('ai'); }),
+  const settingsPanel = el('details'), summary = el('summary','Provider and model');
+  settingsPanel.append(summary);
+  settingsPanel.addEventListener('toggle', () => {
+    if (settingsPanel.open && settingsPanel.childElementCount === 1) aiSettings(settingsPanel);
+  });
+  main.append(settingsPanel, companion, chat, form,
     button('Clear conversation', () => { aiHistory.length = 0; saveAiHistory(); aiSearch(); }));
 }
 function settingsBackup(parent) {

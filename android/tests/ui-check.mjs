@@ -104,13 +104,18 @@ try {
   const account = await browser.newContext();
   await account.addInitScript(() => {
     localStorage.setItem('mutiny.android.preferences.v1',JSON.stringify({audioLanguage:'ja',subtitles:true}));
-    let signedIn = true;
+    let signedIn = true, chosenModel = 'fixture:free';
     window.fixtureCalls = [];
     window.Mutiny = {postMessage(raw) {
       const {id,method,args} = JSON.parse(raw);
       window.fixtureCalls.push({method,args});
       if (method === 'account.logout') signedIn = false;
-      const result = method === 'account.addons' && signedIn
+      if (method === 'ai.save') chosenModel = args.model;
+      const result = method === 'ai.config' ? {provider:'openrouter',model:chosenModel,hasKey:true}
+        : method === 'ai.models' ? {models:[{id:'fixture:free',free:true},{id:'other:free',free:true}]}
+        : method === 'ai.save' ? {hasKey:true}
+        : method === 'ai.suggest' ? JSON.stringify([{title:'Fixture title',reason:'A fixture recommendation.'}])
+        : method === 'account.addons' && signedIn
         ? {stremio:{signedIn:true,user:'fixture',profile:1,addons:[{transportUrl:'https://cloud.example/config/manifest.json'}]}}
         : {};
       queueMicrotask(() => this.onmessage({data:JSON.stringify({id,result})}));
@@ -149,6 +154,17 @@ try {
   await page.getByLabel('Search titles',{exact:true}).fill('Account movie');
   await page.locator('main form button[type=submit]').click();
   await page.getByText('No matching titles found.').waitFor(); checks++;
+  await page.getByRole('button',{name:'Search with AI',exact:true}).click();
+  await page.getByText('Provider and model',{exact:true}).click();
+  await page.getByLabel('Available AI models').selectOption('other:free');
+  assert.equal(await page.getByLabel('AI model ID').inputValue(),'other:free'); checks++;
+  await page.getByRole('button',{name:'Save AI credentials'}).click();
+  await page.getByText('AI model and credentials saved securely.').waitFor();
+  const message = page.getByLabel('Search with AI message');
+  await message.fill('Suggest a film'); await page.getByRole('button',{name:'Send',exact:true}).click();
+  await page.getByRole('button',{name:/Find Fixture title/}).waitFor();
+  await message.fill('Another like that'); await page.getByRole('button',{name:'Send',exact:true}).click();
+  assert.ok(await page.evaluate(()=>window.fixtureCalls.some(c=>c.method==='ai.suggest' && c.args.history.some(h=>h.role==='assistant' && h.content.includes('Fixture title'))))); checks++;
   await account.close();
   assert.deepEqual(failures, []);
   console.log(`Mobile interface: ${checks} assertions passed at 360, 412, and 800px. API responses mocked; no live playback tested.`);
