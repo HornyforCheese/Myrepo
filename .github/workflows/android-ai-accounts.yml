@@ -24,11 +24,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - uses: android-actions/setup-android@v3
-      - name: Install Android SDK
+      - name: Prepare preinstalled Android SDK
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          test -n "$sdkmanager_bin"
+          "$sdkmanager_bin" --sdk_root="$ANDROID_HOME" --install 'platforms;android-35' 'build-tools;35.0.0'
       - name: Verify Android UI and account regression tests
         working-directory: android
         run: |

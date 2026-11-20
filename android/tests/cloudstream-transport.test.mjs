@@ -30,7 +30,7 @@ test('StreamPlay requests are pinned to an imported v715 package', () => {
   assert.match(api, /case "cs3\.request":/);
   assert.match(api, /94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332/);
   assert.match(api, /CloudStreamPackageStore\.isInstalled\(context, hash\)/);
-  assert.match(api, /CloudStreamTransport\.request\(context, args\.getJSONObject\("request"\)\)/);
+  assert.match(api, /CloudStreamTransport\.request\(context, hash, args\.getJSONObject\("request"\)\)/);
   assert.match(store, /static synchronized boolean isInstalled\(/);
   assert.match(store, /CloudStreamArchive\.hasFileHash\(new File\(directory\(context\), sha256 \+ "\.cs3"\), sha256, MAX_BYTES\)/);
   assert.match(java('CloudStreamArchive.java'), /MessageDigest\.getInstance\("SHA-256"\)/);
@@ -39,10 +39,10 @@ test('StreamPlay requests are pinned to an imported v715 package', () => {
 test('StreamPlay archive descriptor crosses IPC and is hashed in isolated worker', () => {
   const transport = java('CloudStreamTransport.java');
   const worker = java('CloudStreamWorker.java');
-  assert.match(transport, /ParcelFileDescriptor\\.open\\(archive, ParcelFileDescriptor\\.MODE_READ_ONLY\\)/);
-  assert.match(transport, /data\\.putParcelable\\("archive", archiveFd\\)/);
-  assert.match(worker, /HandlerThread\\("streamplay-archive-worker"\\)/);
-  assert.match(worker, /MessageDigest\\.getInstance\\("SHA-256"\\)/);
-  assert.match(worker, /expected\\.equals\\(CloudStreamArchive\\.asHex\\(digest\\.digest\\(\\)\\)\\)/);
+  assert.match(transport, /ParcelFileDescriptor\.open\(archive, ParcelFileDescriptor\.MODE_READ_ONLY\)/);
+  assert.match(transport, /data\.putParcelable\("archive", archiveFd\)/);
+  assert.match(worker, /HandlerThread\("streamplay-archive-worker"\)/);
+  assert.match(worker, /MessageDigest\.getInstance\("SHA-256"\)/);
+  assert.match(worker, /expected\.equals\(CloudStreamArchive\.asHex\(digest\.digest\(\)\)\)/);
   assert.doesNotMatch(worker, /DexClassLoader|InMemoryDexClassLoader/);
 });
