@@ -309,6 +309,13 @@ function settings() {
   main.append(panel);
 }
 
+function applySavedAppearance() {
+  const preferences = getPreferences();
+  document.documentElement.dataset.theme = preferences.theme || 'dark';
+  document.documentElement.classList.toggle('reduce-motion', !!preferences.reduceMotion);
+  document.documentElement.classList.toggle('compact-cards', !!preferences.compactCards);
+}
+applySavedAppearance();
 document.querySelectorAll('nav button').forEach(node => node.addEventListener('click', () => setPage(node.dataset.page)));
 document.querySelector('#local').addEventListener('click', () => native('local'));
 document.querySelector('#brand').addEventListener('click', event => { event.preventDefault(); setPage('home'); });
