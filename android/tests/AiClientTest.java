@@ -63,6 +63,17 @@ public class AiClientTest {
         JSONObject gemini = paged.models("gemini", "gemini-secret");
         if (pages[0] != 2 || gemini.getJSONArray("models").length() != 2 || gemini.getBoolean("truncated"))
             throw new AssertionError("Gemini pagination");
+        for (String malformed : new String[] {
+            "{choices:[]}",
+            "{choices:[{}]}",
+            "{choices:[{message:{content:null}}]}",
+            "{choices:[{message:{content:[]}}]}",
+            "{choices:[{message:{content:'   '}}]}"
+        }) {
+            AiClient invalid = new AiClient(store, (url, method, headers, body) -> new JSONObject(malformed));
+            try { invalid.suggest("film", null, ""); throw new AssertionError("Malformed reply accepted: " + malformed); }
+            catch (IllegalStateException expected) { }
+        }
         System.out.println("AI transport, history, routing and validation fixtures passed");
     }
 }
