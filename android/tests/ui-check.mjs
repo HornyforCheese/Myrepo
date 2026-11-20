@@ -46,6 +46,7 @@ try {
     await page.getByRole('button', { name: /Game of Thrones/ }).waitFor();
     assert.equal(await page.getByRole('button', { name: /The Matrix/ }).count(), 0); checks++;
     await page.getByRole('button', { name: 'Browse Anime genre' }).click();
+    await page.getByRole('button', { name: /Game of Thrones/ }).waitFor();
     assert.equal(await page.getByRole('button', { name: /Game of Thrones/ }).count(), 1); checks++;
     await page.locator('nav [data-page=settings]').click();
     await page.getByRole('button', { name: /General Settings/ }).click();
