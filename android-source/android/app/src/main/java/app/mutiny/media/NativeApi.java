@@ -29,6 +29,7 @@ public final class NativeApi {
             case "ai.config": return ai.config();
             case "ai.freeModels": return ai.freeModels(args.getString("provider"));
             case "ai.save": return ai.save(args);
+            case "ai.chat": return ai.chat(args.getJSONArray("messages"));
             case "ai.suggest": return ai.suggest(args.getString("query"), "media");
             case "cloudstream.discover": return CloudStreamRepository.discover(args.getString("url"), http);
             case "public.get": return http.request(args.getString("url"), "GET", new JSONObject(), null);
