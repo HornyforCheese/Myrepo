@@ -698,7 +698,18 @@ function settingsBackup(parent) {
       const parsed = JSON.parse(await file.text());
       if (parsed?.format !== 'mutiny-settings-v1' || !parsed.preferences || typeof parsed.preferences !== 'object' || Array.isArray(parsed.preferences)) throw Error('Unsupported settings file.');
       const allowed = ['language','theme','reduceMotion','compactCards','quality','audioLanguage','subtitles','lowBandwidth','mobileSync','rememberSection','aiProvider','keepAwake','networkMode','animeAudio','animeRelease','accountSources'];
-      const preferences = Object.fromEntries(Object.entries(parsed.preferences).filter(([key,value]) => allowed.includes(key) && (typeof value === 'boolean' || typeof value === 'string')));
+      const booleanKeys = new Set(['reduceMotion','compactCards','subtitles','lowBandwidth','mobileSync','rememberSection','keepAwake','accountSources']);
+      const choices = {
+        language:['en'], theme:['dark','light','system'], quality:['auto','480','720','1080','2160'],
+        audioLanguage:['auto','en','ja'], animeAudio:['any','english','japanese','dual'],
+        animeRelease:['any','uncensored'], networkMode:['auto','wifi','mobile']
+      };
+      const preferences = Object.fromEntries(Object.entries(parsed.preferences).filter(([key,value]) =>
+        allowed.includes(key) && (
+          booleanKeys.has(key) ? typeof value === 'boolean' :
+          Object.hasOwn(choices,key) ? typeof value === 'string' && choices[key].includes(value) :
+          typeof value === 'string' && value.length <= 128 && !/[\\x00-\\x1f\\x7f]/.test(value)
+        )));
       if (!confirm('Import preferences from this file? Current preferences will be replaced.')) return;
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(preferences));
       applySavedAppearance(); toast('Preferences imported.'); settings();
