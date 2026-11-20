@@ -42,7 +42,14 @@ public class MainActivity extends Activity {
             WebViewCompat.addWebMessageListener(web, "Mutiny", java.util.Collections.singleton(ORIGIN), (view, message, origin, mainFrame, reply) -> {
                 if (!mainFrame || !ORIGIN.equals(origin.toString()) || message.getData() == null || message.getData().length() > 150000) return;
                 String raw = message.getData();
-                if (pending.incrementAndGet() > 16) { pending.decrementAndGet(); return; }
+                if (pending.incrementAndGet() > 16) {
+                    pending.decrementAndGet();
+                    try {
+                        String id = new JSONObject(raw).getString("id");
+                        reply.postMessage(new JSONObject().put("id",id).put("error","Native commands are busy. Try again shortly.").toString());
+                    } catch (JSONException ignored) {}
+                    return;
+                }
                 commands.execute(() -> {
                     JSONObject response = new JSONObject();
                     try {

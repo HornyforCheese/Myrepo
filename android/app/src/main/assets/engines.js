@@ -6,18 +6,30 @@ export function playbackPreferences() {
 }
 export function rpc(method,args={}) {
   if (method === 'torrent.play' || method === 'video.play') args = {...args, ...playbackPreferences()};
-  if (!window.Mutiny) return Promise.reject(Error('Update Android System WebView to use native features.'));
-  window.Mutiny.onmessage = event => {
-    const message = JSON.parse(event.data), task = pending.get(message.id);
-    if (!task) return;
-    pending.delete(message.id); clearTimeout(task.timer);
-    if (message.error) task.reject(Error(message.error)); else task.resolve(message.result);
-  };
-  return new Promise((resolve,reject)=>{
-    const id=crypto.randomUUID();
-    const timer=setTimeout(()=>{pending.delete(id); reject(Error('Request timed out'));},120000);
-    pending.set(id,{resolve,reject,timer}); window.Mutiny.postMessage(JSON.stringify({id,method,args}));
+  const bridge = window.Mutiny;
+  if (!bridge) return Promise.reject(Error('Update Android System WebView to use native features.'));
+  bridge.onmessage = receiveReply;
+  return new Promise((resolve,reject) => {
+    if (pending.size >= 16) throw Error('Native commands are busy. Try again shortly.');
+    const id = crypto.randomUUID();
+    const raw = JSON.stringify({id,method,args});
+    if (raw.length > 150000) throw Error('Request exceeds the native message limit.');
+    const timer = setTimeout(() => { pending.delete(id); reject(Error('Request timed out')); },120000);
+    pending.set(id,{resolve,reject,timer});
+    try { bridge.postMessage(raw); }
+    catch (error) { pending.delete(id); clearTimeout(timer); reject(error); }
   });
+}
+function receiveReply(event) {
+  let message;
+  try { message = JSON.parse(event.data); } catch { return; }
+  const task = pending.get(message?.id);
+  if (!task) return;
+  pending.delete(message.id);
+  clearTimeout(task.timer);
+  if (message.error) task.reject(Error(message.error));
+  else if (!Object.prototype.hasOwnProperty.call(message,'result')) task.reject(Error('Invalid native response'));
+  else task.resolve(message.result);
 }
 export function controls(main,openTitle,sectionId,reloadAddons) {
   const section=document.createElement('section'); main.prepend(section);
