@@ -66,12 +66,12 @@ export function controls(main, openTitle) {
       try{await rpc('account.login',{provider,email:email.value,password:password.value});}
       finally{password.value='';}
       await showAccount();
-      window.dispatchEvent(new CustomEvent('mutiny-account-changed'));
+      window.dispatchEvent(new CustomEvent('mutiny-account-changed',{detail:{provider}}));
       status.textContent=label+' signed in. Updating combined providers…';
     });
     button(actions,'Sign out of '+label,async()=>{
       await rpc('account.logout',{provider});await showAccount();
-      window.dispatchEvent(new CustomEvent('mutiny-account-changed'));
+      window.dispatchEvent(new CustomEvent('mutiny-account-changed',{detail:{provider}}));
       status.textContent=label+' signed out. Other account providers remain available.';
     });
     const profile=provider==='nuvio'?field(panel,'Nuvio profile number (1–6)','number'):null;
