@@ -135,3 +135,7 @@ Static Python DEX method-ID parsing of user-uploaded v715 binary identified 211 
 ## Workstream 7 Windows parity audit pass
 
 `caee59f1cbc0f4620c85fbb70a156e4c0e14ce39` constrains settings import values; `5c82a8cf5b8a6626f90026dc6e1d07c6bdb53114` fixes anime audio enum; `6d4b89f1ae1a2ba19974248864b1b5c52de9e333` creates `android/WINDOWS_ANDROID_PARITY.md` covering known parity requirements and acceptance gaps. **Still PARTIAL:** actual Windows source revision not retrieved at prior paths, no Android compilation/tests or device validation; major StreamPlay, player, source-deck, UI and controller gaps remain.
+
+## AI search + Stremio/Nuvio before APK (2026-11-21)
+
+AI input validation `84fc0a8af6515bff0f02fea259931823b2762d24`, regression fixture corrected in `dcc8f0966b70e3a1fbdcf488265ad7e529ae3225`. Account-scoped add-on manifest refresh fallback `04d33cdeec01b8179b3004920ff18964ea47e954`, fixture `de9a424ee79dee3db6c794d8c863ec6714414b7e`. These are bounded improvements, **not full AI or account workstream completion**. Tests/Android compilation not run. Local environment has Java/Node but no Android SDK or Gradle; connected remote desktop devices offline. The existing 110 MB `/mnt/data/MutinyMedia-Android-arm64-debug.apk` was dated Nov 20 and predates these changes; do not present it as a new build.
