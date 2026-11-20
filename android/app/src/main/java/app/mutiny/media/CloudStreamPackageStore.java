@@ -110,7 +110,7 @@ public final class CloudStreamPackageStore {
             if (size < 100) throw new IOException("Invalid or empty CloudStream extension");
             String hash = CloudStreamArchive.asHex(digest.digest());
             CloudStreamArchive.verifyHash(hash, expectedHash);
-            JSONObject info = CloudStreamArchive.inspect(stage).put("sha256", hash).put("bytes", size)
+            JSONObject info = CloudStreamInspector.inspect(context, stage).put("sha256", hash).put("bytes", size)
                 .put("source", source.equals("Local document") ? source : new URI(source).getHost()).put("importedAt", System.currentTimeMillis())
                 .put("status", "imported-inactive").put("executionSupported", false);
             JSONArray old = index(context);

@@ -13,16 +13,20 @@ public class CloudStreamArchiveTest {
             zip.write(manifest.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             if (dex) {
                 zip.putNextEntry(new ZipEntry("classes.dex"));
-                zip.write(new byte[]{1});
+                zip.write(new byte[]{'d','e','x',10,'0','3','5',0});
+                zip.write(new byte[104]);
             }
         }
         return file;
     }
+    static org.json.JSONObject inspect(File file) throws Exception {
+        try (InputStream in = new FileInputStream(file)) { return CloudStreamArchive.inspect(in); }
+    }
     public static void main(String[] args) throws Exception {
         String manifest = "{pluginClassName:'fixture.Demo',name:'Fixture'}";
-        if (!CloudStreamArchive.inspect(archive(manifest,true)).getString("name").equals("Fixture")) throw new AssertionError();
+        if (!inspect(archive(manifest,true)).getString("name").equals("Fixture")) throw new AssertionError();
         for (File invalid : new File[]{archive(manifest,false), archive("{}",true), archive("a".repeat(70000),true)}) {
-            try { CloudStreamArchive.inspect(invalid); throw new AssertionError("Invalid package accepted"); }
+            try { inspect(invalid); throw new AssertionError("Invalid package accepted"); }
             catch (IOException expected) {}
         }
         String hash = "ab".repeat(32);

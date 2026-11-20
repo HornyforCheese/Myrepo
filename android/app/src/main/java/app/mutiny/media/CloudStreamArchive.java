@@ -4,10 +4,10 @@ import org.json.JSONObject;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 
 final class CloudStreamArchive {
     static final int MAX_BYTES = 48 * 1024 * 1024;
@@ -53,33 +53,39 @@ final class CloudStreamArchive {
         return hex.toString();
     }
 
-    static JSONObject inspect(File archive) throws Exception {
-        try (ZipFile zip = new ZipFile(archive)) {
-            ZipEntry manifest = zip.getEntry("manifest.json");
-            if (manifest == null || manifest.isDirectory() || manifest.getSize() > MAX_MANIFEST)
-                throw new IOException("Not a CloudStream package: manifest.json is missing or too large");
+    static JSONObject inspect(InputStream archive) throws Exception {
+        try (ZipInputStream zip = new ZipInputStream(new BufferedInputStream(archive))) {
+            HashSet<String> names = new HashSet<>();
+            ByteArrayOutputStream manifest = new ByteArrayOutputStream();
             boolean dex = false;
-            int count = 0;
-            java.util.HashSet<String> names = new java.util.HashSet<>();
-            Enumeration<? extends ZipEntry> entries = zip.entries();
-            while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-                if (!names.add(entry.getName())) throw new IOException("Ambiguous duplicate archive entry");
-                if (++count > 256) throw new IOException("Extension has too many ZIP entries");
-                if (entry.getName().matches("classes(\\d+)?\\.dex") && !entry.isDirectory()
-                    && entry.getSize() > 0 && entry.getSize() <= MAX_BYTES) dex = true;
-            }
-            if (!dex) throw new IOException("Not an executable CloudStream package: classes.dex is missing");
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            try (InputStream in = zip.getInputStream(manifest)) {
-                byte[] bytes = new byte[4096];
-                int n;
-                while ((n = in.read(bytes)) != -1) {
-                    if (out.size() + n > MAX_MANIFEST) throw new IOException("Manifest is too large");
-                    out.write(bytes, 0, n);
+            long total = 0;
+            byte[] block = new byte[16384];
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                String name = entry.getName();
+                if (!names.add(name) || names.size() > 256) throw new IOException("Invalid or excessive archive entries");
+                boolean isManifest = "manifest.json".equals(name);
+                boolean primaryDex = "classes.dex".equals(name);
+                byte[] magic = new byte[8];
+                int size = 0, n;
+                while ((n = zip.read(block)) != -1) {
+                    total += n;
+                    if (total > 2L * MAX_BYTES || size + n > MAX_BYTES) throw new IOException("Expanded extension exceeds size limit");
+                    if (isManifest) {
+                        if (size + n > MAX_MANIFEST) throw new IOException("Manifest is too large");
+                        manifest.write(block,0,n);
+                    }
+                    if (primaryDex && size < magic.length)
+                        System.arraycopy(block,0,magic,size,Math.min(n,magic.length - size));
+                    size += n;
+                }
+                if (primaryDex) {
+                    dex = size >= 112 && magic[0] == 'd' && magic[1] == 'e' && magic[2] == 'x' && magic[3] == '\n' && magic[7] == 0;
+                    for (int i = 4; i <= 6; i++) dex &= magic[i] >= '0' && magic[i] <= '9';
                 }
             }
-            JSONObject data = new JSONObject(out.toString(StandardCharsets.UTF_8.name()));
+            if (!dex || manifest.size() == 0) throw new IOException("Missing manifest or valid primary DEX header");
+            JSONObject data = new JSONObject(manifest.toString(StandardCharsets.UTF_8.name()));
             String className = data.optString("pluginClassName", "").trim();
             if (!className.matches("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)+"))
                 throw new IOException("CloudStream manifest has no valid pluginClassName");
@@ -88,6 +94,7 @@ final class CloudStreamArchive {
             return new JSONObject()
                 .put("name", name.substring(0, Math.min(120, name.length())))
                 .put("pluginClassName", className)
+                .put("requiresResources",data.optBoolean("requiresResources"))
                 .put("version", data.optInt("version", data.optInt("versionCode", 0)));
         }
     }
