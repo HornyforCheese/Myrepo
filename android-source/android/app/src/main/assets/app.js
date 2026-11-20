@@ -1,7 +1,7 @@
 import { controls, rpc } from './engines.js';
 import { getPreferences, applyPreferences, rankStreams, normalizeProviderList, renderPreferenceSettings } from './preferences.js';
 import { collectionPicker, collectionManager } from './collections.js';
-import { searchAcrossProviders } from './search.js';
+import { searchAcrossProviders, metadataCandidates } from './search.js';
 import { safeUrl, addonBase, sourcesFor, streamId, supportsStreams, jsonRequest } from './model.js';
 
 applyPreferences();
@@ -100,15 +100,18 @@ async function openTitle(meta) {
   const token = ++detailToken; streamToken++;
   current = { ...meta }; episode = null; sourceIndex = 0;
   detail.replaceChildren(el('p', 'Loading title…')); if (!dialog.open) dialog.showModal();
-  try {
-    const data = await jsonRequest(`${API}/meta/${meta.type === 'series' ? 'series' : 'movie'}/${encodeURIComponent(meta.id)}.json`);
-    if (token !== detailToken) return;
-    if (!data.meta || data.meta.id !== meta.id || data.meta.type !== meta.type) throw Error('Metadata did not match.');
-    current = data.meta;
-  } catch {
-    if (token !== detailToken) return;
-    toast('Full title details could not load. Some sources may be unavailable.');
+  let resolved = false;
+  for(const url of metadataCandidates(meta,addons)) {
+    try {
+      const data = await jsonRequest(url);
+      if(token !== detailToken)return;
+      if(!data?.meta || data.meta.id !== meta.id || data.meta.type !== meta.type) continue;
+      current = {...meta,...data.meta};
+      resolved = true; break;
+    } catch { /* Try the next provider without losing the catalog's metadata. */ }
   }
+  if(token !== detailToken)return;
+  if(!resolved && metadataCandidates(meta,addons).length)toast('Full title details unavailable. Showing catalog metadata.');
   renderTitle();
 }
 function renderTitle() {
@@ -193,14 +196,18 @@ async function renderStreams(target) {
       if(!stream||typeof stream!=='object')continue;
       const hash=String(stream.infoHash||''), url=stream.url||stream.externalUrl;
       if(/^[a-f0-9]{40}$/i.test(hash)){collected.push({...stream,providerName:addon.manifest.name,kind:'torrent'});continue;}
-      if(!safeUrl(url)||stream.headers){unsupported++;continue;}
-      const headers=stream.behaviorHints?.proxyHeaders?.request||stream.behaviorHints?.proxyHeaders||{};
-      if(Object.keys(headers).some(key=>!['user-agent','referer'].includes(key.toLowerCase()))){unsupported++;continue;}
+      if(!safeUrl(url)){unsupported++;continue;}
+      const rawHeaders=stream.behaviorHints?.proxyHeaders?.request??stream.headers??{};
+      const headers={};let invalidHeaders=rawHeaders===null||typeof rawHeaders!=='object'||Array.isArray(rawHeaders);
+      if(!invalidHeaders)for(const [key,value] of Object.entries(rawHeaders)){
+        if(!['user-agent','referer'].includes(key.toLowerCase())||typeof value!=='string'||value.length>512||/[\r\n]/.test(value)){invalidHeaders=true;break;}
+        headers[key]=value;
+      }
+      if(invalidHeaders){unsupported++;continue;}
       collected.push({...stream,providerName:addon.manifest.name,kind:stream.externalUrl?'external':'https',url,headers});
     }
   }
   const prefs=getPreferences(), ranked=rankStreams(collected,prefs,current);
-  const direct=ranked.filter(s=>s.kind==='https').map(s=>s.url);
   if(!ranked.length)target.append(el('p','No streams match your preferences or the provider results. Adjust filters in Settings if needed.','note'));
   ranked.forEach((stream,index)=>{
     const box=el('div',null,'box');box.append(el('strong',stream.name||stream.providerName||'Stream'),el('p',stream.title||stream.description||'', 'small'));
@@ -213,7 +220,8 @@ async function renderStreams(target) {
     }else{
       box.append(button('▶ Play video',()=>{
         if(!window.Mutiny)return native('video',stream.url);
-        const fallbackUrls=prefs.autoFallback?direct.filter(url=>url!==stream.url).slice(0,5):[];
+        const signature=value=>JSON.stringify(Object.entries(value.headers||{}).sort(([a],[b])=>a.localeCompare(b)));
+        const fallbackUrls=prefs.autoFallback?ranked.filter(other=>other.kind==='https'&&other.url!==stream.url&&signature(other)===signature(stream)&&(Object.keys(stream.headers||{}).length===0||new URL(other.url).origin===new URL(stream.url).origin)).map(other=>other.url).slice(0,5):[];
         return rpc('video.play',{url:stream.url,headers:stream.headers||{},fallbackUrls,lowBandwidth:prefs.lowBandwidth,meta:{...current,videos:undefined,videoId:id,season:episode?.season,episode:episode?.episode}}).catch(error=>toast(error.message));
       },'primary'));
       if (/\.(mp4|mkv|webm|mov|m4v|avi)$/i.test(new URL(stream.url).pathname) && !Object.keys(stream.headers||{}).length) {
