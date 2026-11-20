@@ -1,5 +1,18 @@
 # StreamPlay compatibility gate (before CS3 chunk 4)
 
+## Verified user-supplied StreamPlay CS3 binary (2026-11-21)
+
+- Filename: `StreamPlay.cs3`, 2,236,985 bytes.
+- SHA-256: `94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332`.
+- ZIP entries: `manifest.json` and `classes.dex` only.
+- Manifest: `{"pluginClassName":"com.phisher98.StreamPlayPlugin","name":"StreamPlay","version":715,"requiresResources":false}`.
+- Primary DEX header: `dex\\n035\\0`; uncompressed DEX length 5,922,668 bytes.
+- Static byte inspection found references to CloudStream `SearchResponse`, `CloudflareKiller`, `APIHolder`, `ExtractorApi`, and numerous `com.phisher98` classes.
+- **Important correction:** The previously reviewed public StreamPlay Gradle source declares `requiresResources=true`, but **this actual user-supplied v715 binary declares `requiresResources=false`**. Prior public source may be a different revision. Treat the binary as authoritative for its own manifest.
+- Inspection was static only; the DEX was not loaded, executed, or verified against Android. Exact source revision and external API availability remain unknown.
+- Required acceptance: run this exact hash through the isolated compatible host, register `com.phisher98.StreamPlayPlugin`, verify provider registration, search, metadata, episode resolution, extraction and player handoff. **Currently not working**.
+
+
 Target: **StreamPlay**, the user's only required CloudStream extension. Do not treat generic CS3 import as success.
 
 ## Inspected reference
