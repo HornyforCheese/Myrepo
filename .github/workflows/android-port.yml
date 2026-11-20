@@ -52,10 +52,13 @@ jobs:
           main=src-tauri/gen/android/app/src/main
           install -Dm644 docs/android/network_security_config.xml "$main/res/xml/network_security_config.xml"
           sed -i 's/<application$/<application android:networkSecurityConfig="@xml\/network_security_config"/' "$main/AndroidManifest.xml"
+          python3 ../tools/android-media.py .
+          bash ../tools/android-ffmpeg.sh "$main/jniLibs/arm64-v8a"
           pnpm tauri android build --apk --debug --target aarch64
       - run: |
           apk=$(find app/src-tauri/gen/android -path '*/outputs/apk/*' -name '*.apk' | head -1)
           cp "$apk" MutinyMedia-android-no-games.apk
+          unzip -Z1 MutinyMedia-android-no-games.apk | grep -Fx 'lib/arm64-v8a/libmutiny_ffmpeg.so'
           gh release create android-windows-ui-no-games MutinyMedia-android-no-games.apk --target "$GITHUB_SHA" --prerelease --title 'Mutiny Media Android — Windows UI without Games' --notes 'ARM64 development build using the original customized Windows frontend and upstream Android runtime. Device testing pending.'
         env:
           GH_TOKEN: ${{ github.token }}
