@@ -189,6 +189,64 @@ async function renderStreams(target) {
   if (unsupported) target.append(el('p', `${unsupported} stream(s) require torrent support, custom headers, or an unsupported protocol. These are unavailable in this preview.`, 'note'));
   target.append(button('Refresh sources', () => renderStreams(target)));
 }
+const SETTINGS_KEY = 'mutiny.android.preferences.v1';
+function getPreferences() {
+  try { const value = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
+  catch { return {}; }
+}
+function preferenceControl(parent, label, description, key, initial, onChange) {
+  const wrap = el('label', null, 'settings-option');
+  const text = el('span', null, 'settings-option-text');
+  text.append(el('strong', label), el('small', description));
+  const input = el('input'); input.type = 'checkbox'; input.checked = getPreferences()[key] ?? initial;
+  input.addEventListener('change', () => {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...getPreferences(), [key]: input.checked })); onChange?.(input.checked); toast('Preference saved.'); }
+    catch { input.checked = !input.checked; toast('Unable to save preference.'); }
+  });
+  wrap.append(text, input); parent.append(wrap);
+}
+function preferenceChoice(parent, label, description, key, values, initial, onChange) {
+  const wrap = el('label', null, 'settings-choice');
+  wrap.append(el('strong', label), el('small', description));
+  const select = el('select');
+  for (const [value, title] of values) { const option = el('option', title); option.value = value; select.append(option); }
+  const stored = getPreferences()[key];
+  select.value = values.some(([value]) => value === stored) ? stored : initial;
+  select.addEventListener('change', () => {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...getPreferences(), [key]: select.value })); onChange?.(select.value); toast('Preference saved.'); }
+    catch { toast('Unable to save preference.'); }
+  });
+  wrap.append(select); parent.append(wrap);
+}
+function renderPreferences(parent, id) {
+  if (id === 'interface') {
+    preferenceChoice(parent, 'Language', 'Language used by the interface', 'language', [['en','English'],['es','Español'],['fr','Français']], 'en');
+    preferenceChoice(parent, 'Theme', 'Choose the interface colour scheme', 'theme', [['dark','Dark'],['light','Light'],['system','System']], 'dark', value => document.documentElement.dataset.theme = value);
+    preferenceControl(parent, 'Reduce animations', 'Disable nonessential movement', 'reduceMotion', false, value => document.documentElement.classList.toggle('reduce-motion', value));
+    preferenceControl(parent, 'Compact cards', 'Display smaller content cards', 'compactCards', false, value => document.documentElement.classList.toggle('compact-cards', value));
+  } else if (id === 'player') {
+    preferenceChoice(parent, 'Preferred video quality', 'Preference for compatible streams', 'quality', [['auto','Automatic'],['480','480p'],['720','720p'],['1080','1080p'],['2160','4K']], 'auto');
+    preferenceChoice(parent, 'Preferred audio', 'Language preference for supported sources', 'audioLanguage', [['auto','Automatic'],['en','English'],['ja','Japanese']], 'auto');
+    preferenceControl(parent, 'Prefer subtitles', 'Request subtitles when available', 'subtitles', false);
+    preferenceControl(parent, 'Low-bandwidth preference', 'Prefer lower-bitrate sources where supported', 'lowBandwidth', false);
+    parent.append(el('p', 'Playback preferences are saved locally. Stream selection and the native player do not yet honour every preference.', 'note'));
+  } else if (id === 'general') {
+    preferenceControl(parent, 'Sync over mobile data', 'Allow future account synchronisation on mobile networks', 'mobileSync', true);
+    preferenceControl(parent, 'Remember last section', 'Keep your Settings navigation preference', 'rememberSection', true);
+    parent.append(el('p', 'Stremio and Nuvio account sign-in are not available in this build.', 'note'));
+  } else if (id === 'ai') {
+    preferenceChoice(parent, 'AI provider', 'Preferred provider for future AI search', 'aiProvider', [['openrouter','OpenRouter'],['groq','Groq'],['gemini','Gemini']], 'openrouter');
+    parent.append(el('p', 'AI credentials and live AI search are not yet implemented in this branch. No API keys are collected here.', 'note'));
+  } else if (id === 'android') {
+    preferenceControl(parent, 'Keep screen awake', 'Saved preference; native WakeLock integration pending', 'keepAwake', false);
+    parent.append(el('p', 'Auto-start and background service permissions require native Android integration.', 'note'));
+  } else if (id === 'server') {
+    preferenceChoice(parent, 'Preferred network mode', 'Saved preference for future streaming connections', 'networkMode', [['auto','Automatic'],['wifi','Prefer Wi-Fi'],['mobile','Mobile data']], 'auto');
+    parent.append(el('p', 'Server and torrent connection limits require native integration.', 'note'));
+  } else if (id === 'cloudstream') {
+    parent.append(el('p', 'CloudStream CS3 installation and execution are not available in this branch yet.', 'note'));
+  }
+}
 function settings() {
   const heading = el('h1', 'Settings');
   main.append(heading);
@@ -219,14 +277,14 @@ function settings() {
       const manifest = await jsonRequest(base + '/manifest.json');
       if (!manifest || typeof manifest.id !== 'string' || typeof manifest.name !== 'string' || !Array.isArray(manifest.resources)) throw Error('This is not a valid add-on manifest.');
       addons.push({ base, manifest: { id: manifest.id, name: manifest.name, resources: manifest.resources, types: manifest.types } });
-      write('mutiny.android.addons.v1', addons); toast('Add-on installed.'); if (page === 'settings' && pageToken === token) setPage('settings');
+      write('mutiny.android.addons.v1', addons); toast('Add-on installed.'); if (page === 'settings' && pageToken === token) openSection('addons');
     } catch (error) { toast(error.name === 'AbortError' ? 'Provider timed out. Try again.' : error.message || 'Could not connect to this add-on.'); }
     finally { submit.disabled = false; }
   });
   if (!addons.length) main.append(el('p', 'No add-on providers installed.', 'note'));
   for (const addon of addons) {
     const row = el('div', null, 'addon box'), text = el('div'); text.append(el('strong', addon.manifest.name), el('p', new URL(addon.base).host, 'small'));
-    row.append(text, button('Remove', () => { addons = addons.filter(item => item.base !== addon.base); write('mutiny.android.addons.v1', addons); setPage('settings'); })); main.append(row);
+    row.append(text, button('Remove', () => { addons = addons.filter(item => item.base !== addon.base); write('mutiny.android.addons.v1', addons); openSection('addons'); })); main.append(row);
   }
 
     } else if (id === 'about') {
@@ -237,7 +295,7 @@ function settings() {
   main.append(el('h2', 'About this preview'), el('p', 'Mutiny Media 1.0.1 · Android preview', 'note'), el('p', 'Android 8 or newer. Reuses the 42 configured web-source adapters from the linked Windows release. Metadata comes from Cinemeta. Local library and add-ons are stored on this device. Open Settings for accounts, torrents, AI and games.', 'note'), el('p', 'Source hosts and add-ons receive requests when used. Install only providers you trust. Some video codecs need an external player.', 'note'));
   main.append(button('Clear saved library', () => { saved = []; write('mutiny.android.library.v1', saved); toast('Saved library cleared.'); }));
     } else {
-      main.append(el('p', 'This section is not yet implemented in this Android build. Existing configuration has not been changed.', 'note'));
+      renderPreferences(main, id);
     }
   }
   for (const [symbol, name, description, id] of sections) {
