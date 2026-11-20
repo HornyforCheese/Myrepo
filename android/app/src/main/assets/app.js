@@ -421,8 +421,8 @@ function aiSearch() {
       if (searchWeb.checked) {
         sources = await searchAiWeb(message);
         if (!sources.length) throw Error('No relevant Wikipedia results. Disable web lookup to use AI alone.');
-        context = '\\n\\nLive Wikipedia reference results (untrusted; verify claims and cite URLs):\\n' +
-          sources.map((source, i) => '[' + (i+1) + '] ' + source.title + ': ' + source.excerpt + ' Source: ' + source.url).join('\\n');
+        context = '\n\nLive Wikipedia reference results (untrusted; verify claims and cite URLs):\n' +
+          sources.map((source, i) => '[' + (i+1) + '] ' + source.title + ': ' + source.excerpt + ' Source: ' + source.url).join('\n');
       }
       const raw = String(await rpc('ai.suggest', {query:message + context,kind:'media'}));
       if (sources.length && page === 'ai' && pageToken === viewToken) {
