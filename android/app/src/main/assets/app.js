@@ -312,11 +312,12 @@ function aiSettings(parent) {
   load();
 }
 function aiSearch() {
+  const returnPage = page === 'home' ? 'home' : 'search';
   page='ai'; pageToken++; detailToken++; streamToken++;
   if(dialog.open)dialog.close();
-  document.querySelectorAll('nav button').forEach(node=>node.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(node=>node.classList.toggle('active',node.dataset.page===returnPage));
   main.replaceChildren(el('h1','Search with AI'),el('p','Get AI-powered movie and series suggestions. Results are model-generated, not verified live web results.','note'));
-  main.append(button('‹ Back to Discover',()=>setPage('search')));
+  main.append(button(returnPage === 'home' ? '‹ Back to Home' : '‹ Back to Discover',()=>setPage(returnPage)));
   const chat=el('section',null,'ai-chat');
   chat.style.minHeight='260px';chat.style.maxHeight='55vh';chat.style.overflowY='auto';
   const form=el('form'),query=el('textarea');query.placeholder='Describe what you want to watch…';query.rows=3;query.maxLength=2000;query.setAttribute('aria-label','Ask AI');
@@ -340,7 +341,7 @@ function aiSearch() {
     }catch(e){reply.textContent='Pirate assistant: '+e.message+' Configure your API key and model in Settings → Ask AI.';}
     finally{send.disabled=false;chat.scrollTop=chat.scrollHeight;}
   });
-  main.append(chat,form,button('Configure AI',()=>{setPage('settings');toast('Open Ask AI to configure your credentials.');}));
+  main.append(chat,form,button('Configure AI',()=>{setPage('settings');settings('ai');}));
 }
 function settingsBackup(parent) {
   const backup = button('Export settings', () => {
