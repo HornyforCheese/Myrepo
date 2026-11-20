@@ -187,13 +187,15 @@ function animeDiscover() {
     for (const [value, name] of [['series', 'Series'], ['movie', 'Films']])
       typeRow.append(button(name, () => { animeType = value; updateType(); run(); }, animeType === value ? 'selected' : ''));
   };
-  const run = async () => {
+  const run = async (browse = false) => {
     const query = input.value.trim();
-    if (!query) return stateBox(results, 'Enter an anime title or keyword.');
+    if (!browse && !query) return stateBox(results, 'Enter an anime title or keyword.');
     const request = ++token, pageRequest = pageToken;
-    stateBox(results, 'Searching anime titles…');
+    stateBox(results, browse ? 'Browsing anime titles…' : 'Searching anime titles…');
     try {
-      const data = await jsonRequest(`${API}/catalog/${animeType}/top/search=${encodeURIComponent(query)}.json`);
+      const url = browse ? `${API}/catalog/${animeType}/top/genre=Anime.json`
+        : `${API}/catalog/${animeType}/top/search=${encodeURIComponent(query)}.json`;
+      const data = await jsonRequest(url);
       if (request !== token || page !== 'anime' || pageRequest !== pageToken) return;
       if (!Array.isArray(data.metas) || !data.metas.length) return stateBox(results, 'No matching titles found.');
       const anime = data.metas.filter(isAnimeMeta);
@@ -203,10 +205,11 @@ function animeDiscover() {
       if (request === token && page === 'anime') stateBox(results, 'Anime search failed. Check your connection and retry.', run);
     }
   };
-  form.addEventListener('submit', event => { event.preventDefault(); run(); });
+  form.addEventListener('submit', event => { event.preventDefault(); run(false); });
+  const browse = button('Browse Anime genre', () => run(true), 'box');
   updateType();
-  main.append(form, typeRow, preferencePanel, results);
-  run();
+  main.append(form, browse, typeRow, preferencePanel, results);
+  run(true);
 }
 function library() {
   main.append(el('span', 'Collected by you', 'eyebrow'), el('h1', 'My library'), el('p', 'Your saved titles stay on this device.'));
