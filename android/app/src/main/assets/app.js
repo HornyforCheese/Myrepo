@@ -120,8 +120,31 @@ function search() {
   anime.append(button('Browse anime', () => setPage('anime'), 'box'));
   main.append(shortcuts, form, chips, anime, results); stateBox(results, 'Search movies, series and anime by title.');
 }
+function isAnimeMeta(meta) {
+  return Array.isArray(meta?.genres) && meta.genres.some(genre => /^anime$/i.test(String(genre)));
+}
+function animeStreamTags(stream) {
+  const label = [stream.name, stream.title, stream.description].filter(Boolean).join(' ');
+  const tags = {
+    dub: /\\b(english[ ._-]*dub(?:bed)?|eng[ ._-]*dub(?:bed)?|dubbed[ ._-]*english)\\b/i.test(label),
+    sub: /\\b(english[ ._-]*sub(?:bed|titles?)?|eng[ ._-]*sub(?:bed)?|japanese[ ._-]*audio|jpn[ ._-]*audio|subbed)\\b/i.test(label),
+    dual: /\\b(dual[ ._-]*audio|multi[ ._-]*audio)\\b/i.test(label),
+    uncensored: /\\buncensored\\b/i.test(label),
+    censored: /\\bcensored\\b/i.test(label)
+  };
+  return tags;
+}
+function animeStreamMatch(stream, preferences) {
+  const tags = animeStreamTags(stream);
+  const audio = preferences.animeAudio || 'any';
+  const release = preferences.animeRelease || 'any';
+  const audioMatch = audio === 'any' || (audio === 'dub' && (tags.dub || tags.dual)) ||
+    (audio === 'sub' && (tags.sub || tags.dual)) || (audio === 'dual' && tags.dual);
+  const releaseMatch = release !== 'uncensored' || tags.uncensored;
+  return {matches:audioMatch && releaseMatch, tags};
+}
 function animeDiscover() {
-  main.append(el('span', 'Anime discovery', 'eyebrow'), el('h1', 'Anime'), el('p', 'Search anime films and series. Catalog results are title matches, not a verified anime-only index.', 'note'));
+  main.append(el('span', 'Anime discovery', 'eyebrow'), el('h1', 'Anime'), el('p', 'Search titles tagged Anime in the catalogue. Untagged titles are excluded.', 'note'));
   main.append(button('‹ Back to Discover', () => setPage('search')));
   const form = el('form'), input = el('input');
   input.type = 'search'; input.placeholder = 'Anime title or keyword'; input.value = 'anime'; input.maxLength = 150;
@@ -129,9 +152,9 @@ function animeDiscover() {
   const submit = el('button', 'Search anime', 'primary'); submit.type = 'submit'; form.append(input, submit);
   const preferencePanel = el('section', null, 'anime-preferences');
   preferencePanel.append(el('h2', 'Anime preferences'));
-  preferenceChoice(preferencePanel, 'Audio preference', 'Saved for future source selection; catalog results do not identify audio tracks.', 'animeAudio', [['any','Any'],['dub','English dub'],['sub','Japanese with subtitles'],['dual','Dual audio']], 'any');
-  preferenceChoice(preferencePanel, 'Release preference', 'Saved preference; uncensored availability cannot be confirmed without provider metadata.', 'animeRelease', [['any','Any'],['uncensored','Prefer uncensored']], 'any');
-  preferencePanel.append(el('p', 'These preferences are saved locally. They do not filter catalog titles or guarantee a matching stream until provider metadata and playback selection are integrated.', 'note'));
+  preferenceChoice(preferencePanel, 'Audio preference', 'Filter provider streams using explicit audio labels. Unlabelled streams are excluded when filtering.', 'animeAudio', [['any','Any'],['dub','English dub'],['sub','Japanese with subtitles'],['dual','Dual audio']], 'any');
+  preferenceChoice(preferencePanel, 'Release preference', 'Only show explicitly labelled uncensored streams when enabled.', 'animeRelease', [['any','Any'],['uncensored','Prefer uncensored']], 'any');
+  preferencePanel.append(el('p', 'Preferences filter stream labels supplied by add-ons. Unknown or incorrectly labelled streams cannot be verified.', 'note'));
   const typeRow = el('div', null, 'chips'), results = el('section');
   let animeType = 'series', token = 0;
   const updateType = () => {
@@ -148,7 +171,9 @@ function animeDiscover() {
       const data = await jsonRequest(`${API}/catalog/${animeType}/top/search=${encodeURIComponent(query)}.json`);
       if (request !== token || page !== 'anime' || pageRequest !== pageToken) return;
       if (!Array.isArray(data.metas) || !data.metas.length) return stateBox(results, 'No matching titles found.');
-      results.replaceChildren(grid(data.metas), el('p', 'Dub, sub, dual-audio and uncensored availability depends on each stream provider and cannot be confirmed from these catalog results.', 'note'));
+      const anime = data.metas.filter(isAnimeMeta);
+      if (!anime.length) return stateBox(results, 'No titles explicitly tagged Anime were found. The catalogue may omit genre tags.');
+      results.replaceChildren(grid(anime), el('p', 'Only titles with an Anime genre tag are shown. Stream language and release labels depend on the installed providers.', 'note'));
     } catch (error) {
       if (request === token && page === 'anime') stateBox(results, 'Anime search failed. Check your connection and retry.', run);
     }
@@ -257,12 +282,18 @@ async function renderStreams(target) {
   stateBox(target, 'Asking add-on providers…');
   const results = await Promise.allSettled(matching.map(async addon => ({ addon, data: await jsonRequest(`${addon.base}/stream/${mediaType}/${encodeURIComponent(id)}.json`) })));
   if (token !== streamToken || !target.isConnected) return;
-  target.replaceChildren(); let count = 0, failures = 0, unsupported = 0;
+  target.replaceChildren(); let count = 0, failures = 0, unsupported = 0, filtered = 0;
+  const animeMode = isAnimeMeta(current);
+  const animePrefs = getPreferences();
+  if (animeMode && (animePrefs.animeAudio !== 'any' || animePrefs.animeRelease === 'uncensored')) {
+    target.append(el('p', 'Anime preferences active: only explicitly labelled matching streams are shown. Unlabelled streams may be hidden.', 'note'));
+  }
   for (const result of results) {
     if (result.status !== 'fulfilled') { failures++; continue; }
     const { addon, data } = result.value;
     if (!Array.isArray(data.streams)) continue;
     for (const stream of data.streams.slice(0, 80)) {
+      if (animeMode && !animeStreamMatch(stream, animePrefs).matches) { filtered++; continue; }
       if(window.Mutiny && /^[a-f0-9]{40}$/i.test(stream.infoHash||'')){count++;target.append(button('Download '+(stream.title||stream.name||'torrent'),async()=>{try{await rpc('torrent.add',{magnet:'magnet:?xt=urn:btih:'+stream.infoHash,fileIndex:stream.fileIdx??-1,meta:current});closeTitle();setPage('settings')}catch(e){toast(e.message)}}));continue}
       const url = stream.url || stream.externalUrl;
       if (!safeUrl(url) || stream.behaviorHints?.proxyHeaders || stream.headers || stream.infoHash) { unsupported++; continue; }
@@ -273,7 +304,8 @@ async function renderStreams(target) {
       target.append(box);
     }
   }
-  if (!count) target.append(el('p', 'No playable HTTPS streams were returned for this title.', 'note'));
+  if (!count) target.append(el('p', filtered ? 'No streams matched the selected anime preferences. Change the preferences to show unlabelled sources.' : 'No playable HTTPS streams were returned for this title.', 'note'));
+  if (filtered) target.append(el('p', filtered + ' stream(s) excluded by anime preferences.', 'note'));
   if (failures) target.append(el('p', `${failures} provider request(s) failed. Check your connection or try again.`, 'note'));
   if (unsupported) target.append(el('p', `${unsupported} stream(s) require torrent support, custom headers, or an unsupported protocol. These are unavailable in this preview.`, 'note'));
   target.append(button('Refresh sources', () => renderStreams(target)));
