@@ -288,7 +288,7 @@ function settings() {
     const originLabel = addon.origins.map(source => ({stremio:'Stremio',nuvio:'Nuvio',device:'On device'})[source] || source).join(' + ');
     text.append(el('strong', addon.manifest.name), el('p', new URL(addon.base).host + ' · ' + originLabel, 'small'));
     row.append(text);
-    if (addon.origins.includes('device')) row.append(button('Remove from device', () => {
+    if (addon.origins.includes('device')) row.append(button('Remove', () => {
       addons = addons.filter(item => item.base !== addon.base);
       write('mutiny.android.addons.v1', addons);
       setPage('settings');
