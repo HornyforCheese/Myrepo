@@ -423,7 +423,7 @@ function preferenceChoice(parent, label, description, key, values, initial, onCh
 function renderPreferences(parent, id) {
   if (id === 'interface') {
     preferenceChoice(parent, 'Language', 'Language used by the interface', 'language', [['en','English'],['es','Español'],['fr','Français']], 'en');
-    preferenceChoice(parent, 'Theme', 'Choose the interface colour scheme', 'theme', [['dark','Dark'],['light','Light'],['system','System']], 'dark', value => document.documentElement.dataset.theme = value);
+    preferenceChoice(parent, 'Theme', 'Choose the interface colour scheme', 'theme', [['dark','Dark'],['light','Light'],['system','System']], 'dark', () => applySavedAppearance());
     preferenceControl(parent, 'Reduce animations', 'Disable nonessential movement', 'reduceMotion', false, value => document.documentElement.classList.toggle('reduce-motion', value));
     preferenceControl(parent, 'Compact cards', 'Display smaller content cards', 'compactCards', false, value => document.documentElement.classList.toggle('compact-cards', value));
   } else if (id === 'player') {
@@ -801,11 +801,19 @@ function settings(initialSection) {
 
 function applySavedAppearance() {
   const preferences = getPreferences();
-  document.documentElement.dataset.theme = preferences.theme || 'dark';
+  const theme = ['dark', 'light', 'system'].includes(preferences.theme) ? preferences.theme : 'dark';
+  document.documentElement.dataset.theme = theme;
+  const light = theme === 'light' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  if (themeColor) themeColor.content = light ? '#f7f8fa' : '#101319';
   document.documentElement.classList.toggle('reduce-motion', !!preferences.reduceMotion);
   document.documentElement.classList.toggle('compact-cards', !!preferences.compactCards);
 }
 applySavedAppearance();
+const systemAppearance = window.matchMedia('(prefers-color-scheme: light)');
+systemAppearance.addEventListener('change', () => {
+  if (getPreferences().theme === 'system') applySavedAppearance();
+});
 document.querySelectorAll('nav button').forEach(node => node.addEventListener('click', () => setPage(node.dataset.page)));
 document.querySelector('#local').addEventListener('click', () => native('local'));
 document.querySelector('#brand').addEventListener('click', event => { event.preventDefault(); setPage('home'); });
