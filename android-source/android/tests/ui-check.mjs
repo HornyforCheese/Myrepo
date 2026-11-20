@@ -48,6 +48,10 @@ try {
     const modelChoice = page.getByRole('dialog').getByRole('combobox',{name:'Free LLM model'});
     await modelChoice.waitFor();
     assert.equal(await modelChoice.inputValue(),'openrouter/free'); checks++;
+    assert.ok(await modelChoice.locator('option').count()>=10,'OpenRouter should expose recently free models'); checks++;
+    await page.getByRole('dialog').getByRole('button',{name:'Refresh free models'}).click();
+    assert.ok(await modelChoice.locator('option').count()>=10); checks++;
+
     await page.getByRole('dialog').getByRole('combobox',{name:'AI provider'}).selectOption('groq');
     assert.equal(await modelChoice.inputValue(),'openai/gpt-oss-120b'); checks++;
     await modelChoice.selectOption('openai/gpt-oss-20b');
