@@ -56,7 +56,7 @@ public final class CloudStreamPackageStore {
         for (int i = 0; i < installed.length(); i++) {
             JSONObject row = installed.optJSONObject(i);
             if (row != null && sha256.equals(row.optString("sha256")) &&
-                new File(directory(context), sha256 + ".cs3").isFile()) return true;
+                CloudStreamArchive.hasFileHash(new File(directory(context), sha256 + ".cs3"), sha256, MAX_BYTES)) return true;
         }
         return false;
     }
