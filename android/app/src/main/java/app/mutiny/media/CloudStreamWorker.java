@@ -10,7 +10,6 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
-import java.io.InputStream;
 import java.security.MessageDigest;
 import org.json.JSONObject;
 
@@ -38,6 +37,7 @@ public final class CloudStreamWorker extends Service {
         Bundle reply = new Bundle();
         try {
             Bundle input = message.getData();
+            if (input == null) throw new IllegalArgumentException("Missing IPC request");
             input.setClassLoader(ParcelFileDescriptor.class.getClassLoader());
             String encoded = input.getString("request");
             String expected = input.getString("sha256");
@@ -46,11 +46,12 @@ public final class CloudStreamWorker extends Service {
             CloudStreamRequest.validate(new JSONObject(encoded));
             if (!"94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332".equals(expected))
                 throw new IllegalArgumentException("Unexpected plugin version");
-            try (ParcelFileDescriptor descriptor = input.getParcelable("archive")) {
-                if (descriptor == null) throw new IllegalArgumentException("Missing archive descriptor");
+            ParcelFileDescriptor descriptor = input.getParcelable("archive");
+            if (descriptor == null) throw new IllegalArgumentException("Missing archive descriptor");
+            try (ParcelFileDescriptor.AutoCloseInputStream stream = new ParcelFileDescriptor.AutoCloseInputStream(descriptor)) {
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 long total = 0;
-                try (InputStream stream = new ParcelFileDescriptor.AutoCloseInputStream(descriptor)) {
+                {
                     byte[] block = new byte[16384];
                     int n;
                     while ((n = stream.read(block)) != -1) {
