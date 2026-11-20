@@ -50,9 +50,9 @@ public class CloudStreamArchiveTest {
             try { inspect(archiveWithPath(unsafe)); throw new AssertionError("Unsafe path accepted: " + unsafe); }
             catch (IOException expected) {}
         }
-        for (String unsafe : new String[]{"control\\u0000name", "control\\u0001name",
-                "control\\u001fname", "control\\u007fname"}) {
-            try { inspect(archiveWithPath(unsafe)); throw new AssertionError("Control character accepted"); }
+        for (int code : new int[]{0, 1, 31, 127}) {
+            String unsafe = "control" + (char) code + "name";
+            try { inspect(archiveWithPath(unsafe)); throw new AssertionError("Control character accepted: " + code); }
             catch (IOException expected) {}
         }
         String hash = "ab".repeat(32);
