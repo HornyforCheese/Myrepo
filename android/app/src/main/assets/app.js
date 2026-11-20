@@ -419,28 +419,70 @@ function renderPreferences(parent, id) {
   }
 }
 function aiSettings(parent) {
-  parent.append(el('p', 'Keys are stored in Android secure storage, not browser preferences. A provider account and API key are required.', 'note'));
+  parent.append(el('p', 'Choose a provider and refresh its live model catalogue. Keys are saved in Android secure storage. OpenRouter lists zero-cost models; Groq and Gemini eligibility depends on your account.', 'note'));
   const provider = el('select');
-  for (const id of ['openrouter','groq','gemini']) { const opt = el('option', id === 'openrouter' ? 'OpenRouter' : id === 'groq' ? 'Groq' : 'Gemini'); opt.value=id; provider.append(opt); }
-  const model = el('input'); model.placeholder='Model ID (from your provider)'; model.setAttribute('aria-label','AI model ID');
-  const key = el('input'); key.type='password'; key.placeholder='API key (leave blank to retain saved key)'; key.setAttribute('aria-label','AI API key');
+  for (const [id,name] of [['openrouter','OpenRouter'],['groq','Groq'],['gemini','Gemini']]) {
+    const option = el('option',name); option.value=id; provider.append(option);
+  }
+  const models = el('select'); models.setAttribute('aria-label','Available AI models');
+  const model = el('input'); model.placeholder='Model ID (editable)'; model.setAttribute('aria-label','AI model ID');
+  const key = el('input'); key.type='password'; key.placeholder='API key (blank retains saved key)'; key.setAttribute('aria-label','AI API key');
   const status = el('p','Loading AI configuration…','note');
+  const catalogStatus = el('p','Refresh to retrieve current models.','note');
+  let generation = 0;
+  const refresh = button('Refresh available models', async () => {
+    const request = ++generation, selectedProvider = provider.value;
+    refresh.disabled = true; catalogStatus.textContent='Fetching provider models…';
+    try {
+      const result = await rpc('ai.models',{provider:selectedProvider,key:key.value.trim()});
+      if (request !== generation || selectedProvider !== provider.value) return;
+      models.replaceChildren();
+      const entries = Array.isArray(result.models) ? result.models : [];
+      const manual = el('option','Manual model ID'); manual.value=''; models.append(manual);
+      for (const entry of entries) {
+        if (!entry || typeof entry.id !== 'string') continue;
+        const option = el('option', (entry.name || entry.id) + (entry.free ? ' · Free listed' : ''));
+        option.value=entry.id; models.append(option);
+      }
+      models.value=entries.some(entry=>entry.id===model.value) ? model.value : '';
+      catalogStatus.textContent=entries.length + ' models retrieved. ' + (result.note || '');
+    } catch(error) {
+      if (request===generation) catalogStatus.textContent='Model refresh failed: '+error.message;
+    } finally {
+      if (request===generation) refresh.disabled=false;
+    }
+  });
+  models.addEventListener('change',()=>{ if(models.value) model.value=models.value; });
   const load = async () => {
-    try { const config=await rpc('ai.config'); provider.value=config.provider; model.value=config.model||''; status.textContent=config.hasKey?'An API key is saved for this provider.':'No API key saved for this provider.'; }
-    catch(e) { status.textContent='AI settings unavailable: '+e.message; }
+    try {
+      const config=await rpc('ai.config');
+      provider.value=config.provider; model.value=config.model||'';
+      status.textContent=config.hasKey?'An API key is saved for this provider.':'No API key saved for this provider.';
+    } catch(error) { status.textContent='AI settings unavailable: '+error.message; }
   };
-  provider.addEventListener('change', () => { model.value=''; key.value=''; status.textContent='Enter the model ID and key for '+provider.value+'.'; });
+  provider.addEventListener('change',()=>{
+    generation++; refresh.disabled=false; models.replaceChildren();
+    model.value=''; key.value='';
+    catalogStatus.textContent='Refresh to load '+provider.value+' models.';
+    status.textContent='Select a model and save credentials for '+provider.value+'.';
+  });
   const save = button('Save AI credentials', async () => {
     save.disabled=true;
-    try { const result=await rpc('ai.save',{provider:provider.value,model:model.value.trim(),key:key.value.trim()}); key.value='';status.textContent=result.hasKey?'AI credentials saved securely.':'Model saved; add an API key to use AI search.'; }
-    catch(e){status.textContent='Unable to save: '+e.message;}
+    try {
+      const result=await rpc('ai.save',{provider:provider.value,model:model.value.trim(),key:key.value.trim()});
+      key.value='';
+      status.textContent=result.hasKey?'AI model and credentials saved securely.':'Model saved; add an API key to use AI search.';
+    } catch(error) {status.textContent='Unable to save: '+error.message;}
     finally {save.disabled=false;}
   },'primary');
   const clear = button('Remove saved API key', async () => {
-    if(!confirm('Remove the saved key for '+provider.value+'?'))return;
-    try {await rpc('ai.save',{provider:provider.value,model:model.value.trim(),clearKey:true});key.value='';status.textContent='API key removed.';}catch(e){status.textContent=e.message;}
+    if(!confirm('Remove the saved key for '+provider.value+'?')) return;
+    try {
+      await rpc('ai.save',{provider:provider.value,model:model.value.trim(),clearKey:true});
+      key.value=''; status.textContent='API key removed.';
+    } catch(error) {status.textContent=error.message;}
   });
-  parent.append(el('label','Provider'),provider,el('label','Model'),model,el('label','API key'),key,save,clear,status);
+  parent.append(el('label','Provider'),provider,el('label','Available models'),models,refresh,catalogStatus,el('label','Selected model ID'),model,el('label','API key'),key,save,clear,status);
   load();
 }
 const AI_HISTORY_KEY = 'mutiny.android.ai.history.v1';
