@@ -29,9 +29,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - name: Install Android SDK 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Prepare preinstalled Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          MANAGER=$(find "$SDK/cmdline-tools" -name sdkmanager -type f | head -1)
+          test -n "$MANAGER"
+          yes | "$MANAGER" --licenses >/dev/null || true
+          "$MANAGER" "platforms;android-35" "build-tools;35.0.0"
       - name: Unit tests
         run: |
           npm ci
