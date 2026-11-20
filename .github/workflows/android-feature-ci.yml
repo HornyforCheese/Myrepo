@@ -1,7 +1,7 @@
-name: Test Mutiny Media Android media-only branch
+name: Validate Mutiny Android provider and player improvements
 on:
   push:
-    branches: [mutiny-android-feature-parity]
+    branches: [fix/android-providers-player-next]
     paths:
       - 'android-source/android/**'
       - '.github/workflows/android-feature-ci.yml'
@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: mutiny-android-feature-parity
+  group: mutiny-android-providers-player-next
   cancel-in-progress: true
 jobs:
   test-and-build:
