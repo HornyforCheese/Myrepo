@@ -59,6 +59,12 @@ public class AiClientTest {
         JSONObject gemini = paged.models("gemini", "gemini-secret");
         if (pages[0] != 2 || gemini.getJSONArray("models").length() != 2 || gemini.getBoolean("truncated"))
             throw new AssertionError("Gemini pagination");
+        try { ai.suggest(null, history, ""); throw new AssertionError("Null query accepted"); }
+        catch (IllegalArgumentException expected) { }
+        try { ai.suggest("film", history, "x".repeat(6001)); throw new AssertionError("Oversized references accepted"); }
+        catch (IllegalArgumentException expected) { }
+        // A missing reference must behave as an empty reference, not crash.
+        if (!"fixture reply".equals(ai.suggest("film", history, null))) throw new AssertionError("Null reference handling");
         System.out.println("AI transport, history, routing and validation fixtures passed");
     }
 }
