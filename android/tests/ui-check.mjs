@@ -100,6 +100,55 @@ try {
     await page.screenshot({ path: `app/build/preview/ui-${width}.png`, fullPage: true });
     await context.close();
   }
+  // Exercise the origin bridge contract with account fixtures. All provider traffic is intercepted.
+  const account = await browser.newContext();
+  await account.addInitScript(() => {
+    let signedIn = true;
+    window.fixtureCalls = [];
+    window.Mutiny = {postMessage(raw) {
+      const {id,method,args} = JSON.parse(raw);
+      window.fixtureCalls.push({method,args});
+      if (method === 'account.logout') signedIn = false;
+      const result = method === 'account.addons' && signedIn
+        ? {stremio:{signedIn:true,user:'fixture',profile:1,addons:[{transportUrl:'https://cloud.example/config/manifest.json'}]}}
+        : {};
+      queueMicrotask(() => this.onmessage({data:JSON.stringify({id,result})}));
+    }};
+  });
+  const page = await account.newPage();
+  page.on('pageerror', e => failures.push(e.message));
+  const meta = {id:'fixture:item',type:'movie',name:'Account movie'};
+  await page.route('https://v3-cinemeta.strem.io/**',route => route.fulfill({json:{metas:[]}}));
+  await page.route('https://cloud.example/**',route => {
+    const path = new URL(route.request().url()).pathname;
+    const json = path.endsWith('manifest.json')
+      ? {id:'fixture',name:'Account add-on',resources:['meta','stream','catalog'],types:['movie'],catalogs:[{id:'catalog',type:'movie',extra:[{name:'search'}]}]}
+      : path.includes('/catalog/') ? {metas:[meta]} : path.includes('/meta/') ? {meta}
+      : {streams:[{name:'Fixture video',url:'https://video.example/fixture.mp4'}]};
+    return route.fulfill({json});
+  });
+  const manifest = page.waitForResponse(r => r.url().endsWith('/config/manifest.json'));
+  await page.goto(`http://127.0.0.1:${port}/`); await manifest;
+  await page.locator('nav [data-page=search]').click();
+  await page.getByLabel('Search titles',{exact:true}).fill('Account movie');
+  await page.locator('main form button[type=submit]').click();
+  await page.getByRole('button',{name:/Account movie.*Account add-on/}).click();
+  await page.getByRole('button',{name:/Save to library/}).click();
+  const saved = await page.evaluate(() => localStorage.getItem('mutiny.android.library.v1'));
+  assert.ok(saved.includes('addon:') && !saved.includes('/config')); checks++;
+  await page.getByRole('button',{name:'Add-on providers',exact:true}).click();
+  await page.getByRole('button',{name:/Play video/}).click();
+  assert.ok(await page.evaluate(()=>window.fixtureCalls.some(c=>c.method==='video.play' && c.args.meta.id==='fixture:item'))); checks++;
+  await page.getByRole('button',{name:'Close title'}).click();
+  await page.locator('nav [data-page=settings]').click();
+  await page.getByRole('button',{name:/General Settings/}).click();
+  await page.getByRole('button',{name:'Sign out'}).click();
+  await page.getByText('Signed out',{exact:true}).waitFor();
+  await page.locator('nav [data-page=search]').click();
+  await page.getByLabel('Search titles',{exact:true}).fill('Account movie');
+  await page.locator('main form button[type=submit]').click();
+  await page.getByText('No matching titles found.').waitFor(); checks++;
+  await account.close();
   assert.deepEqual(failures, []);
   console.log(`Mobile interface: ${checks} assertions passed at 360, 412, and 800px. API responses mocked; no live playback tested.`);
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
