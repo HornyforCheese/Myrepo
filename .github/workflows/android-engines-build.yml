@@ -53,8 +53,8 @@ jobs:
           echo "3ea61b2a06e31edf1c91134fe9106b0ebb16628be169f3db75bc7a2b06b45796  $jar" | sha256sum -c -
           classes="$RUNNER_TEMP/native-fixtures"
           mkdir -p "$classes"
-          javac --release 17 -cp "$jar" -d "$classes" app/src/main/java/app/mutiny/media/{Secrets,Accounts,AiClient,CloudStreamRepository,CloudStreamArchive,MagnetUri,UrlPolicy}.java tests/*.java
-          for fixture in AccountSessionTest AiClientTest ModelCatalogueTest CloudStreamRepositoryTest app.mutiny.media.CloudStreamArchiveTest app.mutiny.media.MagnetUriTest UrlPolicyTest; do
+          javac --release 17 -cp "$jar" -d "$classes" app/src/main/java/app/mutiny/media/{Secrets,Accounts,AiClient,CloudStreamRepository,CloudStreamArchive,CloudStreamRequest,MagnetUri,UrlPolicy}.java tests/*.java
+          for fixture in AccountSessionTest AiClientTest ModelCatalogueTest CloudStreamRepositoryTest app.mutiny.media.CloudStreamArchiveTest app.mutiny.media.CloudStreamRequestTest app.mutiny.media.MagnetUriTest UrlPolicyTest; do
             java -cp "$jar:$classes" "$fixture"
           done
       - name: Verify mobile UI with fixture providers
