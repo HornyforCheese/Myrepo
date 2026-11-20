@@ -10,6 +10,8 @@ let saved = read('mutiny.android.library.v1', []);
 let addons = read('mutiny.android.addons.v1', []);
 let current = null, episode = null, sourceIndex = 0, streamToken = 0;
 let toastTimer;
+let settingsSection = null;
+let aiReturnPage = 'search';
 function read(key, fallback) { try { const data = JSON.parse(localStorage.getItem(key)); return Array.isArray(data) ? data : fallback; } catch { return fallback; } }
 function write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { toast('Unable to save. Your device storage may be full.'); } }
 function el(tag, text, className) { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; }
@@ -20,6 +22,7 @@ function picture(url, title) { const img = el('img'); img.alt = title || ''; img
 function stateBox(target, message, retry) { target.replaceChildren(el('p', message, 'empty')); if (retry) target.append(button('Try again', retry)); }
 function setPage(next) {
   page = next; pageToken++; detailToken++; streamToken++;
+  settingsSection = null;
   if (dialog.open) dialog.close();
   document.querySelectorAll('nav button').forEach(node => node.classList.toggle('active', node.dataset.page === page));
   main.replaceChildren(); window.scrollTo(0, 0);
@@ -105,7 +108,7 @@ function search() {
     button('Magnet link', async () => {
       const magnet = prompt('Enter a magnet link');
       if (!magnet?.trim()) return;
-      if (!/^magnet:\\?xt=urn:btih:/i.test(magnet.trim())) return toast('Enter a valid BitTorrent magnet link.');
+      if (!/^magnet:\?xt=urn:btih:/i.test(magnet.trim())) return toast('Enter a valid BitTorrent magnet link.');
       try { await rpc('torrent.add', {magnet:magnet.trim(),fileIndex:-1}); toast('Magnet link submitted.'); }
       catch(e) { toast(e.message || 'Torrent service is unavailable.'); }
     }, 'box'),
@@ -163,7 +166,14 @@ function library() {
 function closeTitle() { detailToken++; streamToken++; current = null; dialog.close(); if (page === 'library') setPage('library'); }
 document.querySelector('#close-detail').addEventListener('click', closeTitle);
 dialog.addEventListener('cancel', event => { event.preventDefault(); closeTitle(); });
-window.mutinyBack = () => { if (dialog.open) { closeTitle(); return true; } if (page !== 'home') { setPage('home'); return true; } return false; };
+window.mutinyBack = () => {
+  if (dialog.open) { closeTitle(); return true; }
+  if (page === 'settings' && settingsSection) { settings(); return true; }
+  if (page === 'ai') { setPage(aiReturnPage); return true; }
+  if (page === 'anime') { setPage('search'); return true; }
+  if (page !== 'home') { setPage('home'); return true; }
+  return false;
+};
 async function openTitle(meta) {
   const token = ++detailToken; streamToken++;
   current = { ...meta }; episode = null; sourceIndex = 0;
@@ -352,6 +362,7 @@ function aiSettings(parent) {
 }
 function aiSearch() {
   const returnPage = page === 'home' ? 'home' : 'search';
+  aiReturnPage = returnPage;
   page='ai'; pageToken++; detailToken++; streamToken++;
   if(dialog.open)dialog.close();
   document.querySelectorAll('nav button').forEach(node=>node.classList.toggle('active',node.dataset.page===returnPage));
@@ -414,7 +425,8 @@ function settingsBackup(parent) {
   }));
 }
 function settings(initialSection) {
-  // Reset the view before rendering the settings index; otherwise Back duplicates every card.
+  // Clear the old category and record whether a subsection is open.
+  settingsSection = initialSection || null;
   main.replaceChildren();
   const heading = el('h1', 'Settings');
   main.append(heading);
@@ -432,6 +444,7 @@ function settings(initialSection) {
   ];
   const back = button('‹  All settings', () => settings(), 'settings-back');
   function openSection(id) {
+    settingsSection = id;
     main.replaceChildren(el('h1', sections.find(item => item[3] === id)?.[1] || 'Settings'), back);
     if (id === 'addons') {
       main.append(el('p', 'Connect a Stremio-compatible provider using its HTTPS manifest address.'));
