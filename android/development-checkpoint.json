@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "STREAMPLAY-GATE: StreamPlay-specific CS3 compatibility required before chunk 4",
-  "lastVerifiedImplementationCommit": "b90b7797a88f5901380d40ff4a37142f596bf9a8",
+  "currentChunk": "STREAMPLAY-V715: exact uploaded binary inspected, compatibility gate updated",
+  "lastVerifiedImplementationCommit": "986676c338dd661e37df9d9d7937e76948b2303d",
   "completedChunks": [],
   "tasks": [
     {
@@ -119,7 +119,8 @@
     "Re-read secondary DEX validation and malformed DEX fixture from GitHub; Java tests, plugin runtime and provider dispatch not executed",
     "GitHub source re-read confirms request contract and fixtures; Android compilation, Java fixtures and isolated provider dispatch not executed",
     "Re-read isolated worker, manifest, transport and static fixture from GitHub; no Java/Android compilation, IPC runtime test or provider execution verified",
-    "Inspected public candidate StreamPlay Gradle config: Android-only, requires resources, CloudStream pre-release host and multiple build-time API/token fields; no matching user binary, execution or device verification."
+    "Inspected public candidate StreamPlay Gradle config: Android-only, requires resources, CloudStream pre-release host and multiple build-time API/token fields; no matching user binary, execution or device verification.",
+    "Uploaded StreamPlay.cs3 SHA-256 94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332; manifest v715 plugin com.phisher98.StreamPlayPlugin requiresResources=false, DEX035; static inspection only, no execution"
   ],
-  "nextAction": "Obtain exact StreamPlay CS3 binary/version and source revision; implement and test required CloudStream Android host ABI, resources, provider registration, search, metadata, extraction and playback in isolated process before resuming generic CS3 chunk 4."
+  "nextAction": "Implement isolated CloudStream host ABI against exact StreamPlay v715 DEX; validate plugin registration, search, metadata and links, and Android player handoff; keep CS3 chunk 4 blocked until StreamPlay works."
 }
