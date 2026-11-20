@@ -4,10 +4,13 @@ function description(stream) {
 
 export function animeStreamTags(stream) {
   const label = description(stream);
-  const dual = /\bdual[ ._-]*audio\b/i.test(label);
-  const english = /\b(?:eng(?:lish)?[ ._-]*(?:dub(?:bed)?|audio)|dubbed[ ._-]*english)\b/i.test(label);
-  const japanese = /\b(?:japanese|jpn)[ ._-]*(?:audio|dub)\b/i.test(label);
-  const subtitles = /\b(?:eng(?:lish)?[ ._-]*(?:sub(?:s|bed|titles?)?)|subbed|subtitles?)\b/i.test(label);
+  const dual = /\bdual[ ._-]*audio\b/i.test(label) && !/\b(?:no|not|without)[ ._-]+dual[ ._-]*audio\b/i.test(label);
+  const english = /\b(?:eng(?:lish)?[ ._-]*(?:dub(?:bed)?|audio)|dubbed[ ._-]*english)\b/i.test(label)
+    && !/\b(?:no|not|without)[ ._-]+(?:eng(?:lish)?[ ._-]*(?:dub(?:bed)?|audio)|dubbed[ ._-]*english)\b/i.test(label);
+  const japanese = /\b(?:japanese|jpn)[ ._-]*(?:audio|dub)\b/i.test(label)
+    && !/\b(?:no|not|without)[ ._-]+(?:japanese|jpn)[ ._-]*(?:audio|dub)\b/i.test(label);
+  const subtitles = /\b(?:eng(?:lish)?[ ._-]*(?:sub(?:s|bed|titles?)?)|subbed|subtitles?)\b/i.test(label)
+    && !/\b(?:no|not|without)[ ._-]+(?:eng(?:lish)?[ ._-]*(?:sub(?:s|bed|titles?)?)|subbed|subtitles?)\b/i.test(label);
   const dub = english;
   const sub = japanese && subtitles;
   const uncensored = /\buncensored\b/i.test(label) && !/\bnot[ ._-]+uncensored\b/i.test(label);
