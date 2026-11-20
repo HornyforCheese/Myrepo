@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "CloudStream package management and runtime",
-  "lastVerifiedImplementationCommit": "95281a2baa103525a19ba7ffed199a7fd1a0a37a",
+  "currentChunk": "CS3-ARCHIVE-PATHS: reject unsafe ZIP entry paths",
+  "lastVerifiedImplementationCommit": "033b72a7682be160c50153f83dffd88aa913e0b3",
   "completedChunks": [],
   "tasks": [
     {
@@ -104,7 +104,8 @@
     "npm test: 9 passed",
     "Java fixtures: accounts, AI, URL policy, CS3 repository and archive parsing",
     "DOM fixtures: home, account/torrent navigation, AI context and clear race",
-    "GitHub run 44822049872: Android Java compilation and native transport fixtures succeeded"
+    "GitHub run 44822049872: Android Java compilation and native transport fixtures succeeded",
+    "CS3 archive path hardening: source re-read verified; negative-path fixtures added but not executed; Java compilation/CI pending"
   ],
-  "nextAction": "Check latest hosted UI result, then implement and fixture-test isolated CS3 provider registration against pinned upstream signatures. Keep incomplete providers inactive."
+  "nextAction": "Run CS3 archive fixture and Android Java compilation in CI; then implement isolated CS3 provider registration against pinned CloudStream signatures. Plugin execution remains disabled."
 }
