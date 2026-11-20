@@ -1,6 +1,6 @@
 /** Android native-engine controls. All remote operations use the origin-scoped RPC bridge. */
 const pending = new Map();
-window.addEventListener('mutiny-cs3-updated',()=>window.mutinyRefreshCs3?.());
+if (typeof window !== 'undefined') window.addEventListener('mutiny-cs3-updated',()=>window.mutinyRefreshCs3?.());
 export function rpc(method, args = {}) {
   if (!window.Mutiny) return Promise.reject(Error('Native features need a current Android System WebView.'));
   window.Mutiny.onmessage = event => {
