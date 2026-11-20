@@ -103,3 +103,11 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - `32e56c043cb5440eed20f9b459d7f6abe1fd4e38`: request contract negative fixtures. Follow-up checked-JSON exception signature fixes `adf76a64ec201924088b61dba1e9dc8f4988a834`, `6f2852678f4749fcf452a8c2cd1aca5ecb6800ca`, `faa875fc886c1f890693b1d53795e7cf76b09b63`.
 - GitHub source re-read confirmed files. **No Java/Android compilation or test execution; no isolated request transport or provider code execution; no APK built.**
 - Next: isolated request/reply transport with deadlines, then mediated CloudStream ABI/provider registration and dispatch. Stremio/Nuvio integration follows requested CS3 sequence.
+
+## CloudStream runtime sequence, chunk 3: isolated worker transport
+
+- `d375da884c218f067c4c81323a01d8237179d99d`: `CloudStreamWorker` permissionless worker service endpoint, validates request and fails closed until actual provider ABI exists.
+- `7c36c694518e26bc8db8739c3ffc5a7f3ef90986`: register worker non-exported with `isolatedProcess=true`.
+- `2442f1c1aa6d045c50611b8b16f9d7bd63232e85`: `CloudStreamTransport` with main-thread guard, 8-second timeout, disconnect/binder-death failure and bounded response; currently not exposed through `NativeApi`.
+- `b90b7797a88f5901380d40ff4a37142f596bf9a8`: static contract fixture, not executed.
+- Source re-read confirmed commits. **No Java/Android compilation, tests, live IPC, actual CS3 loading, provider execution or APK build.**
