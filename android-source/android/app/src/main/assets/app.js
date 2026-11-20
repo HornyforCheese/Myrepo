@@ -162,7 +162,7 @@ function renderWeb(target) {
   const prefs=getPreferences(), blocked=normalizeProviderList(prefs.blockedProviders);
   const priority=normalizeProviderList(prefs.providerPriority);
   const available=sourcesFor(current,episode).filter(item=>!blocked.some(word=>item.name.toLowerCase().includes(word)))
-    .sort((a,b)=>priority.indexOf(b.name.toLowerCase())-priority.indexOf(a.name.toLowerCase()));
+    .sort((a,b)=>{const score=x=>{const n=priority.indexOf(x.name.toLowerCase());return n===-1?0:priority.length-n;};return score(b)-score(a);});
   target.replaceChildren();
   if (!available.length) return target.append(el('p', 'No configured web source accepts this title’s identifiers. Try Add-on providers.', 'note'));
   const label = el('label', 'Provider'); label.htmlFor = 'provider';
@@ -214,7 +214,7 @@ async function renderStreams(target) {
       box.append(button('▶ Play video',()=>{
         if(!window.Mutiny)return native('video',stream.url);
         const fallbackUrls=prefs.autoFallback?direct.filter(url=>url!==stream.url).slice(0,5):[];
-        return rpc('video.play',{url:stream.url,headers:stream.headers||{},fallbackUrls,meta:{...current,videos:undefined,videoId:id,season:episode?.season,episode:episode?.episode}}).catch(error=>toast(error.message));
+        return rpc('video.play',{url:stream.url,headers:stream.headers||{},fallbackUrls,lowBandwidth:prefs.lowBandwidth,meta:{...current,videos:undefined,videoId:id,season:episode?.season,episode:episode?.episode}}).catch(error=>toast(error.message));
       },'primary'));
       box.append(button('Open in another app',()=>native('external',stream.url)));
     }
