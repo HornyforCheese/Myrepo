@@ -92,7 +92,7 @@ public final class AiClient {
     }
     private boolean zeroCost(JSONObject item) {
         JSONObject pricing = item.optJSONObject("pricing");
-        if (pricing == null) return item.optString("id").endsWith(":free");
+        if (pricing == null) return false; // A :free suffix alone is not verified pricing.
         if (!pricing.has("prompt") || !pricing.has("completion")) return false;
         for (java.util.Iterator<String> keys = pricing.keys(); keys.hasNext();) {
             String field = keys.next();
