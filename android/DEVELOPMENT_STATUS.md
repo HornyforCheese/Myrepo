@@ -111,3 +111,7 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - `2442f1c1aa6d045c50611b8b16f9d7bd63232e85`: `CloudStreamTransport` with main-thread guard, 8-second timeout, disconnect/binder-death failure and bounded response; currently not exposed through `NativeApi`.
 - `b90b7797a88f5901380d40ff4a37142f596bf9a8`: static contract fixture, not executed.
 - Source re-read confirmed commits. **No Java/Android compilation, tests, live IPC, actual CS3 loading, provider execution or APK build.**
+
+## StreamPlay compatibility hold
+
+User's sole required CS3 provider is StreamPlay. Candidate upstream `tpadev/phiser-streamplay/StreamPlay/build.gradle.kts` declares Android-only, `requiresResources=true`, CloudStream pre-release dependency and build-time API/token fields. These imply requirements beyond ZIP/DEX validation and generic IPC. Exact installed binary/version not yet known. Added `android/STREAMPLAY_COMPATIBILITY.md` in `4aff33618dc0d2af5f35427d942e00c8074ac88a` with acceptance gate. **StreamPlay does not yet execute in Mutiny; no live tests performed.** Hold generic chunk 4 until compatibility is verified.
