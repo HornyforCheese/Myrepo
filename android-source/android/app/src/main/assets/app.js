@@ -338,10 +338,10 @@ async function refreshAccountProviders() {
   if (token !== accountRefreshToken) return;
   accountAddons = updated.addons;
   write('mutiny.android.account.addons.v1', accountAddons);
+  if (page === 'settings') setPage('settings');
   window.dispatchEvent(new CustomEvent('mutiny-account-providers-synced', {
     detail: {count: activeAddons().length, stats: updated.stats}
   }));
-  if (page === 'settings') setPage('settings');
 }
 window.addEventListener('mutiny-account-changed', () => {
   refreshAccountProviders().catch(error => toast('Provider sync: ' + error.message));
