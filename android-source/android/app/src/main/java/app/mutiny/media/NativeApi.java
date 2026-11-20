@@ -20,6 +20,7 @@ public final class NativeApi {
     public Object call(Activity activity, String method, JSONObject args) throws Exception {
         switch (method) {
             case "capabilities": return new JSONObject().put("vlc", true).put("torrent", true).put("accounts", true).put("ai", true).put("cloudstreamDiscovery", true).put("cloudstreamExecution", false).put("pictureInPicture", true);
+            case "player.preferences": return PlayerPreferences.configure(context, args);
             case "account.status": return accounts.status();
             case "account.login": return accounts.login(args.getString("provider"), args.getString("email"), args.getString("password"));
             case "account.logout": accounts.logout(args.getString("provider")); return accounts.status();
