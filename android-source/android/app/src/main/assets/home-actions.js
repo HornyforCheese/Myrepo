@@ -1,4 +1,5 @@
 import {rpc} from './engines.js';
+import {freeModelOptions, setModelOptions} from './free-models.js';
 
 let activeDialog = null;
 export function closeQuickDialog() {
@@ -124,7 +125,30 @@ function aiPanel(launcher, onSearchTitle) {
     const option = element('option', name); option.value = id; provider.append(option);
   }
   providerWrap.append(provider); dialog.append(providerWrap);
-  const model = field(dialog, 'Model ID', 'text', 'Model ID provided by your AI service');
+  const modelWrap = element('label', 'Free / free-tier LLM model', 'quick-field');
+  const model = element('select');
+  model.setAttribute('aria-label', 'Free LLM model');
+  modelWrap.append(model); dialog.append(modelWrap);
+  const modelNotice = status(dialog);
+  let modelRequest = 0;
+  async function loadModels(preferred = '') {
+    const selectedProvider = provider.value, request = ++modelRequest;
+    setModelOptions(model, freeModelOptions(selectedProvider), preferred);
+    model.disabled = true;
+    modelNotice.textContent = 'Checking free model catalogue…';
+    try {
+      const response = window.Mutiny ? await rpc('ai.freeModels', {provider: selectedProvider}) : null;
+      if (!dialog.isConnected || request !== modelRequest || provider.value !== selectedProvider) return;
+      setModelOptions(model, freeModelOptions(selectedProvider, response), preferred || model.value);
+      modelNotice.textContent = response?.notice || 'Preview catalogue only. Free-tier eligibility, quotas and availability vary by account.';
+    } catch {
+      if (!dialog.isConnected || request !== modelRequest) return;
+      modelNotice.textContent = 'Live models could not be retrieved. Showing known free/free-tier options; availability is unverified.';
+    } finally {
+      if (dialog.isConnected && request === modelRequest) model.disabled = false;
+    }
+  }
+  provider.addEventListener('change', () => { loadModels(); });
   const key = field(dialog, 'API key', 'password', 'Leave blank to keep the saved key');
   key.autocomplete = 'off'; key.spellcheck = false;
   const settingsStatus = status(dialog);
@@ -138,6 +162,10 @@ function aiPanel(launcher, onSearchTitle) {
   }));
   const ask = action(actions, 'Find recommendations', () => busy(async () => {
     if (!prompt.value.trim()) throw Error('Describe what you want to watch');
+    if (!model.value) throw Error('Choose a free/free-tier model');
+    // Keep the selection and the native model actually used for this query in sync.
+    await rpc('ai.save', {provider: provider.value, model: model.value, key: key.value});
+    key.value = '';
     const suggestions = parseAiSuggestions(await rpc('ai.suggest', {query: prompt.value.trim(), kind: 'media'}));
     list.replaceChildren();
     if (!suggestions.length) list.append(element('p', 'No recommendations returned.', 'note'));
@@ -160,9 +188,10 @@ function aiPanel(launcher, onSearchTitle) {
   if (window.Mutiny) rpc('ai.config').then(value => {
     if (!dialog.isConnected) return;
     if (['openrouter','groq','gemini'].includes(value.provider)) provider.value = value.provider;
-    model.value = value.model || '';
+    loadModels(value.model || '');
     settingsStatus.textContent = value.hasKey ? 'An API key is saved on this device.' : 'No API key saved.';
-  }).catch(() => { if (dialog.isConnected) settingsStatus.textContent = 'AI settings unavailable'; });
+  }).catch(() => { if (dialog.isConnected) {settingsStatus.textContent = 'AI settings unavailable';loadModels();} });
+  else loadModels();
   prompt.focus();
 }
 /** Five actions from the Windows home toolbar, adapted for native Android. */
