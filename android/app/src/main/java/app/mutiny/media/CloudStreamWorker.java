@@ -51,15 +51,13 @@ public final class CloudStreamWorker extends Service {
             try (ParcelFileDescriptor.AutoCloseInputStream stream = new ParcelFileDescriptor.AutoCloseInputStream(descriptor)) {
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 long total = 0;
-                {
-                    byte[] block = new byte[16384];
-                    int n;
-                    while ((n = stream.read(block)) != -1) {
+                byte[] block = new byte[16384];
+                int n;
+                while ((n = stream.read(block)) != -1) {
                         if (n > CloudStreamArchive.MAX_BYTES - total) throw new IllegalArgumentException("Oversized archive");
                         total += n;
                         digest.update(block, 0, n);
                     }
-                }
                 if (total < 100 || !expected.equals(CloudStreamArchive.asHex(digest.digest())))
                     throw new IllegalArgumentException("Archive digest mismatch");
             }
