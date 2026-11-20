@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "CS3-RUNTIME 1/4-6: validate multi-DEX archive headers before executable plugin runtime",
-  "lastVerifiedImplementationCommit": "fb2d2a195b1f112228e6cbb81b1b84cb0b113575",
+  "currentChunk": "CS3-RUNTIME 2/4-6: bounded and fail-closed provider request validation contract",
+  "lastVerifiedImplementationCommit": "faa875fc886c1f890693b1d53795e7cf76b09b63",
   "completedChunks": [],
   "tasks": [
     {
@@ -116,7 +116,8 @@
     "CSS theme palettes and appearance regression fixture re-read from GitHub; npm tests, browser screenshots and Android device not verified",
     "Re-read Android theme-color and system preference event handling and static regression fixture; npm tests and device behaviour not verified",
     "Re-read fixed appearance assertions and English-only interface settings; no npm/Playwright or device tests executed, parity not complete",
-    "Re-read secondary DEX validation and malformed DEX fixture from GitHub; Java tests, plugin runtime and provider dispatch not executed"
+    "Re-read secondary DEX validation and malformed DEX fixture from GitHub; Java tests, plugin runtime and provider dispatch not executed",
+    "GitHub source re-read confirms request contract and fixtures; Android compilation, Java fixtures and isolated provider dispatch not executed"
   ],
-  "nextAction": "CS3 chunk 2: design and implement isolated runtime process protocol with bounded provider requests and fail-closed execution; continue 4-6 CS3 chunks before 2-3 Stremio/Nuvio integration chunks."
+  "nextAction": "CS3 chunk 3: implement isolated process request/reply transport, strict timeouts and per-provider identity without executing untrusted DEX until ABI and mediation are ready; Stremio/Nuvio follows 4-6 CS3 chunks."
 }
