@@ -126,11 +126,11 @@ function isAnimeMeta(meta) {
 function animeStreamTags(stream) {
   const label = [stream.name, stream.title, stream.description].filter(Boolean).join(' ');
   const tags = {
-    dub: /\\b(english[ ._-]*dub(?:bed)?|eng[ ._-]*dub(?:bed)?|dubbed[ ._-]*english)\\b/i.test(label),
-    sub: /\\b(english[ ._-]*sub(?:bed|titles?)?|eng[ ._-]*sub(?:bed)?|japanese[ ._-]*audio|jpn[ ._-]*audio|subbed)\\b/i.test(label),
-    dual: /\\b(dual[ ._-]*audio|multi[ ._-]*audio)\\b/i.test(label),
-    uncensored: /\\buncensored\\b/i.test(label),
-    censored: /\\bcensored\\b/i.test(label)
+    dub: /\b(english[ ._-]*dub(?:bed)?|eng[ ._-]*dub(?:bed)?|dubbed[ ._-]*english)\b/i.test(label),
+    sub: /\b(english[ ._-]*sub(?:bed|titles?)?|eng[ ._-]*sub(?:bed)?|japanese[ ._-]*audio|jpn[ ._-]*audio|subbed)\b/i.test(label),
+    dual: /\b(dual[ ._-]*audio|multi[ ._-]*audio)\b/i.test(label),
+    uncensored: /\buncensored\b/i.test(label),
+    censored: /\bcensored\b/i.test(label)
   };
   return tags;
 }
