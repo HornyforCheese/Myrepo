@@ -12,6 +12,7 @@
         <activity android:name=".PlayerActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".VlcPlayerActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <service android:name=".CloudStreamInspector" android:exported="false" android:isolatedProcess="true" />
+        <service android:name=".CloudStreamWorker" android:exported="false" android:isolatedProcess="true" />
         <service android:name=".TorrentService" android:exported="false" android:foregroundServiceType="dataSync" />
     </application>
 </manifest>
