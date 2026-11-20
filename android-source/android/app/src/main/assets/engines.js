@@ -66,8 +66,28 @@ export function controls(main, openTitle) {
     const addons=Array.isArray(data.addons)?data.addons:[];
     if(addons.length)button(cloud,'Import '+addons.length+' cloud add-on(s)',async()=>{window.dispatchEvent(new CustomEvent('mutiny-addons-import',{detail:addons}));status.textContent='Valid add-on manifests will be checked before importing';});
   });
-  const cloudstream=group('CloudStream extension repositories');
-  add(cloudstream,'p','Discover packages from a trusted public CloudStream repository. This build can list .cs3 packages but cannot execute them. CloudStream extensions will not appear as playable providers until the binary host is integrated.','note');
+  const cloudstream=group('CloudStream extensions');
+  add(cloudstream,'p','Import and manage .cs3 extensions from a repository or your device. Packages are validated and stored locally. Provider execution is not yet supported: imported extensions will not appear in search or playback until a compatible CloudStream runtime is integrated. Only import code from sources you trust.','note');
+  const installed=add(cloudstream,'div',null,'cloudstream-installed');
+  async function refreshInstalled(){
+    if(!window.Mutiny) {installed.replaceChildren(add(document.createElement('div'),'p','Installed extensions are available in the Android app.','note'));return;}
+    const packages=await rpc('cloudstream.list');
+    if(!root.isConnected && root.parentNode) return;
+    installed.replaceChildren();
+    add(installed,'h3','Imported packages');
+    if(!packages.length)add(installed,'p','No .cs3 packages imported yet.','note');
+    for(const item of packages) {
+      const row=add(installed,'div',null,'box');
+      add(row,'strong',item.name||item.pluginClassName||'CloudStream extension');
+      add(row,'p',[item.version?'v'+item.version:'',item.bytes?Math.round(item.bytes/1024)+' KiB':'','Imported, inactive'].filter(Boolean).join(' · '),'small');
+      button(row,'Remove',async()=>{await rpc('cloudstream.remove',{sha256:item.sha256});await refreshInstalled();status.textContent='Extension removed.';});
+    }
+  }
+  button(cloudstream,'Import local .cs3 file',()=>{
+    if(!window.Mutiny) throw Error('Open the installed Android app to import local files');
+    location.href='mutiny://cs3';
+  });
+  button(cloudstream,'Refresh imported packages',refreshInstalled);
   const cloudRepo=field(cloudstream,'Repository index URL','url','https://example.org/repo.json');
   const cloudResults=add(cloudstream,'div',null,'cloudstream-list');
   button(cloudstream,'Discover extensions',async()=>{
@@ -76,14 +96,21 @@ export function controls(main, openTitle) {
     const extensions=Array.isArray(catalog.extensions)?catalog.extensions:[];
     add(cloudResults,'p',catalog.repository+': '+extensions.length+' extension(s) discovered.','note');
     if(catalog.failedLists)add(cloudResults,'p',catalog.failedLists+' index list(s) could not be loaded.','note');
-    add(cloudResults,'p',catalog.warning||'This is discovery only. Extension execution is unavailable in this APK.','note');
     for(const extension of extensions.slice(0,150)){
       const line=add(cloudResults,'div',null,'box');
       add(line,'strong',String(extension.name||'Extension'));
       add(line,'p',[extension.description,extension.language,extension.version?'v'+extension.version:''].filter(Boolean).join(' · '),'small');
-      button(line,'View .cs3 package',()=>{location.href='mutiny://external?url='+encodeURIComponent(extension.downloadUrl);});
+      button(line,'Import .cs3',async()=>{
+        if(!window.Mutiny)throw Error('Import requires the installed Android app');
+        const data=await rpc('cloudstream.importUrl',{url:extension.downloadUrl,fileHash:extension.fileHash||''});
+        await refreshInstalled();
+        status.textContent=data.name+' imported and validated. Runtime execution is not yet enabled.';
+      });
     }
   });
+  // Android's document picker returns to the existing WebView; refresh its package list.
+  window.mutinyRefreshCs3=()=>{if(root.isConnected)refreshInstalled().catch(error=>{status.textContent=error.message||'Could not refresh extensions';});};
+  if(window.Mutiny)refreshInstalled().catch(error=>{status.textContent=error.message||'Could not read installed extensions';});
   root.append(status);main.append(root);
   if(window.Mutiny){showAccount().catch(()=>{accountStatus.textContent='Account status unavailable';});}
   return root;
