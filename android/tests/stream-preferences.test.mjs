@@ -13,6 +13,20 @@ test('anime filters require separate evidence for requested properties', () => {
   assert.equal(animeStreamMatch({title:'not uncensored'},{animeRelease:'uncensored'}).matches,false);
 });
 
+test('negated provider labels never satisfy requested anime audio and subtitle filters', () => {
+  for (const title of ['No English dub', 'Not English audio', 'Without dubbed English']) {
+    assert.equal(animeStreamMatch({title}, {animeAudio:'dub'}).matches, false, title);
+  }
+  for (const title of ['No Japanese audio / English subs', 'Japanese audio / without subtitles']) {
+    assert.equal(animeStreamMatch({title}, {animeAudio:'sub'}).matches, false, title);
+  }
+  for (const title of ['No dual audio', 'Not dual-audio', 'Without dual_audio']) {
+    assert.equal(animeStreamMatch({title}, {animeAudio:'dual'}).matches, false, title);
+  }
+  assert.equal(animeStreamMatch({title:'English dub / Japanese audio / English subs'}, {animeAudio:'sub'}).matches, true);
+  assert.equal(animeStreamMatch({title:'Dual audio / English dub'}, {animeAudio:'dual'}).matches, true);
+});
+
 test('quality preferences rank across providers and keep unknown sources available', () => {
   const rows = ['1080p','unknown','480p','720p','360p'].map(title=>({stream:{title}}));
   assert.deepEqual(rankStreams(rows,{quality:'720'}).map(x=>x.stream.title),['720p','480p','360p','1080p','unknown']);
