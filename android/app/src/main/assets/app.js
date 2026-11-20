@@ -403,17 +403,14 @@ function renderPreferences(parent, id) {
     preferenceControl(parent, 'Low-bandwidth preference', 'Prefer lower-bitrate sources where supported', 'lowBandwidth', false);
     parent.append(el('p', 'Playback preferences are saved locally. Stream selection and the native player do not yet honour every preference.', 'note'));
   } else if (id === 'general') {
-    preferenceControl(parent, 'Sync over mobile data', 'Allow future account synchronisation on mobile networks', 'mobileSync', true);
-    preferenceControl(parent, 'Remember last section', 'Keep your Settings navigation preference', 'rememberSection', true);
-    parent.append(el('p', 'Stremio and Nuvio account sign-in are not available in this build.', 'note'));
+    controls(parent, openTitle, id);
   } else if (id === 'ai') {
     aiSettings(parent);
   } else if (id === 'android') {
     preferenceControl(parent, 'Keep screen awake', 'Saved preference; native WakeLock integration pending', 'keepAwake', false);
     parent.append(el('p', 'Auto-start and background service permissions require native Android integration.', 'note'));
   } else if (id === 'server') {
-    preferenceChoice(parent, 'Preferred network mode', 'Saved preference for future streaming connections', 'networkMode', [['auto','Automatic'],['wifi','Prefer Wi-Fi'],['mobile','Mobile data']], 'auto');
-    parent.append(el('p', 'Server and torrent connection limits require native integration.', 'note'));
+    controls(parent, openTitle, id);
   } else if (id === 'cloudstream') {
     parent.append(el('p', 'CloudStream CS3 installation and execution are not available in this branch yet.', 'note'));
   }
@@ -578,7 +575,7 @@ function aiSearch() {
         mood.textContent = 'Found suggestions!';
       }
     } catch (error) {
-      const response = 'Unable to search: ' + (error.message || 'Unknown error') + '. Check Settings → Ask AI.';
+      const response = 'Unable to search: ' + (error.message || 'Unknown error') + '. Check Settings → Search with AI.';
       aiHistory.push({role:'Pirate assistant',message:response}); saveAiHistory();
       if (page === 'ai' && pageToken === viewToken) { reply.textContent = 'Pirate assistant: ' + response; mood.textContent = 'Something went wrong'; }
     } finally {
@@ -631,7 +628,7 @@ function settings(initialSection) {
   const sections = [
     ['♧', 'Addons', 'Manage installed and community addons', 'addons'],
     ['◉', 'General Settings', 'Accounts, sync, support, and account links', 'general'],
-    ['☁', 'Ask AI', 'OpenRouter, Groq, and Gemini', 'ai'],
+    ['☁', 'Search with AI', 'OpenRouter, Groq, and Gemini', 'ai'],
     ['✿', 'CloudStream', 'Repositories, extensions, and provider catalogs', 'cloudstream'],
     ['◎', 'Interface Settings', 'Language preferences and UI toggles', 'interface'],
     ['▷', 'Player Settings', 'Subtitles, hardware decoding, and playback tools', 'player'],

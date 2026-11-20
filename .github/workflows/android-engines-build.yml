@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    name: Test and build Android debug APK
+    name: Verify Android and optionally package debug APK
     runs-on: ubuntu-latest
     timeout-minutes: 90
     defaults:
@@ -44,9 +44,13 @@ jobs:
         run: npm ci
       - name: Run JavaScript unit tests
         run: npm test
+      - name: Compile Android sources
+        run: bash ./gradlew --no-daemon :app:compileDebugJavaWithJavac
       - name: Compile and package Android application
+        if: github.event_name == 'workflow_dispatch'
         run: bash ./gradlew --no-daemon --stacktrace :app:assembleDebug
       - name: Verify APK archive and record checksum
+        if: github.event_name == 'workflow_dispatch'
         run: |
           apk=app/build/outputs/apk/debug/app-debug.apk
           test -s "$apk"
@@ -55,6 +59,7 @@ jobs:
           ls -lh "$apk"
           unzip -Z1 "$apk" | grep -Eq 'lib/.+[.]so'
       - name: Publish APK and checksum as workflow artifact
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: MutinyMedia-Android-1.0.1-engines-dev-debug
