@@ -1,0 +1,12 @@
+{
+  "name": "mutiny-media-android-ui",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc app/src/main/assets/source-deck-catalog.ts --target ES2020 --module ES2020 --strict --lib ES2020,DOM",
+    "test": "npm run build && node --test --test-isolation=none tests/*.test.mjs",
+    "test:ui": "node tests/ui-check.mjs"
+  },
+  "devDependencies": { "typescript": "5.9.3", "@playwright/test": "1.56.1" }
+}

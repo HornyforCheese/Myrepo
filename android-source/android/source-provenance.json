@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/HornyforCheese/Myrepo",
+  "release": "windows-v1.0.1-automatic-sources",
+  "sourceCommit": "20b3a48881681f74df9dcf6dec1d615cd2e40f27",
+  "catalogPath": "src/lib/mutiny/source-deck-catalog.ts",
+  "catalogSha256": "f77c35e032f25102cdfcb4fc2dd2836892f99e945ee86b85447362883fe8befb",
+  "logoPath": "public/mutiny-mark.png",
+  "configuredProviders": 42,
+  "androidImplementation": "New native Android shell and bundled mobile interface; desktop native modules are not included."
+}
