@@ -45,6 +45,15 @@ try {
     await page.getByRole('dialog').getByRole('button',{name:'Close'}).click();
     await page.locator('.quick-action[data-quick-action="Search with AI"]').click();
     await page.getByRole('dialog').getByRole('heading',{name:'Search with AI'}).waitFor(); checks++;
+    const modelChoice = page.getByRole('dialog').getByRole('combobox',{name:'Free LLM model'});
+    await modelChoice.waitFor();
+    assert.equal(await modelChoice.inputValue(),'openrouter/free'); checks++;
+    await page.getByRole('dialog').getByRole('combobox',{name:'AI provider'}).selectOption('groq');
+    assert.equal(await modelChoice.inputValue(),'openai/gpt-oss-120b'); checks++;
+    await modelChoice.selectOption('openai/gpt-oss-20b');
+    assert.equal(await modelChoice.inputValue(),'openai/gpt-oss-20b'); checks++;
+    await page.getByRole('dialog').getByRole('combobox',{name:'AI provider'}).selectOption('gemini');
+    assert.equal(await modelChoice.inputValue(),'gemini-3.5-flash-lite'); checks++;
     await page.getByRole('dialog').getByRole('button',{name:'Close'}).click();
     await page.getByRole('button', { name: /The Matrix/ }).click();
     await page.getByRole('button', { name: /Save to library/ }).click();
