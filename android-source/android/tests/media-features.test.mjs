@@ -46,3 +46,14 @@ test('cross-provider search deduplicates titles with the same movie ID',()=>{
   const result=dedupeMedia(list);
   assert.equal(result.length,2);assert.equal(result[0].poster,'https://test.example/poster.jpg');
 });
+
+test('native media preferences reject out of-range skip, buffer and speed settings',()=>{
+  const storage=memory();
+  const saved=savePreferences({...defaults,seekBackSec:15,seekForwardSec:60,networkCacheMs:10000,defaultPlaybackSpeed:1.25,subtitlesOffByDefault:true,resumePlayback:false,keepScreenOn:false},storage);
+  assert.deepEqual([saved.seekBackSec,saved.seekForwardSec,saved.networkCacheMs,saved.defaultPlaybackSpeed],[15,60,10000,1.25]);
+  assert.equal(saved.subtitlesOffByDefault,true);
+  assert.equal(saved.resumePlayback,false);
+  assert.equal(saved.keepScreenOn,false);
+  const invalid=savePreferences({...saved,seekBackSec:123,seekForwardSec:-12,networkCacheMs:999999,defaultPlaybackSpeed:100},storage);
+  assert.deepEqual([invalid.seekBackSec,invalid.seekForwardSec,invalid.networkCacheMs,invalid.defaultPlaybackSpeed],[10,30,0,1]);
+});
