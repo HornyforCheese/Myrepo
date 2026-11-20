@@ -76,6 +76,10 @@ public class MainActivity extends Activity {
     }
     private WebResourceResponse empty() { return new WebResourceResponse("text/plain", "UTF-8", 404, "Not found", java.util.Collections.emptyMap(), new ByteArrayInputStream(new byte[0])); }
     private void action(Uri action) {
+        if ("cs3".equals(action.getHost())) {
+            startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE), 11);
+            return;
+        }
         if ("local".equals(action.getHost())) {
             Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE);
             startActivityForResult(pick, 10);
@@ -92,6 +96,19 @@ public class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        if (request == 11 && result == RESULT_OK && data != null && data.getData() != null) {
+            Uri source = data.getData();
+            commands.execute(() -> {
+                try {
+                    CloudStreamPackageStore.installFromUri(this, source);
+                    runOnUiThread(() -> {
+                        if (!isDestroyed()) web.evaluateJavascript("window.dispatchEvent(new Event('cs3-imported'))", null);
+                    });
+                } catch (Exception error) {
+                    runOnUiThread(() -> Toast.makeText(this, "Could not import CS3: " + error.getMessage(), Toast.LENGTH_LONG).show());
+                }
+            });
+        }
         if (request == 10 && result == RESULT_OK && data != null && data.getData() != null) {
             startActivity(new Intent(this, VlcPlayerActivity.class).setData(data.getData()).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
         }

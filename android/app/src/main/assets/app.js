@@ -427,8 +427,46 @@ function renderPreferences(parent, id) {
   } else if (id === 'server') {
     controls(parent, openTitle, id);
   } else if (id === 'cloudstream') {
-    parent.append(el('p', 'CloudStream CS3 installation and execution are not available in this branch yet.', 'note'));
+    cloudStreamSettings(parent);
   }
+}
+window.addEventListener('cs3-imported', () => {
+  if (page === 'settings' && settingsSection === 'cloudstream') settings('cloudstream');
+  toast('CS3 imported.');
+});
+function cloudStreamSettings(parent) {
+  const address = el('input'); address.type = 'url'; address.placeholder = 'HTTPS repository index URL';
+  address.setAttribute('aria-label','CloudStream repository URL');
+  const results = el('section'), installed = el('section'), status = el('p', '', 'note');
+  status.setAttribute('role','status');
+  const action = (label, run) => {
+    const control = button(label, async () => {
+      control.disabled = true;
+      try { await run(); } catch (error) { status.textContent = error.message; }
+      finally { control.disabled = false; }
+    });
+    return control;
+  };
+  const reload = async () => {
+    const rows = await rpc('cs3.list');
+    installed.replaceChildren(el('h2','Imported packages'));
+    if (!rows.length) installed.append(el('p','No packages imported.'));
+    for (const row of rows) installed.append(el('p',row.name + ' · v' + row.version), action('Remove ' + row.name, async () => {
+      await rpc('cs3.remove',{sha256:row.sha256}); await reload();
+    }));
+  };
+  const discover = action('Read repository', async () => {
+    results.replaceChildren(); status.textContent = 'Reading repository…';
+    const data = await rpc('cs3.discover',{url:address.value.trim()});
+    status.textContent = data.extensions.length + ' packages found. ' + data.failedLists + ' lists failed.';
+    for (const item of data.extensions) results.append(action('Import ' + item.name, async () => {
+      await rpc('cs3.install',{url:item.downloadUrl,hash:item.fileHash}); await reload();
+      status.textContent = item.name + ' imported.';
+    }));
+  });
+  parent.append(el('p','Import and inspect CS3 packages here. Imported providers are inactive until an isolated execution host is available.'),
+    address, discover, button('Import local CS3', () => native('cs3')), status, results, installed);
+  reload().catch(error => {status.textContent = error.message;});
 }
 function aiSettings(parent) {
   parent.append(el('p', 'Choose a provider and refresh its live model catalogue. Keys are saved in Android secure storage. OpenRouter lists zero-cost models; Groq and Gemini eligibility depends on your account.', 'note'));

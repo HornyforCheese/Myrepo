@@ -44,12 +44,22 @@ jobs:
         run: npm ci
       - name: Run JavaScript unit tests
         run: npm test
-      - name: Verify mobile UI with fixture providers
-        run: |
-          npx playwright install --with-deps chromium
-          npm run test:ui
       - name: Compile Android sources
         run: bash ./gradlew --no-daemon :app:compileDebugJavaWithJavac
+      - name: Run native transport fixtures
+        run: |
+          jar="$RUNNER_TEMP/org-json.jar"
+          curl -fsSL https://repo.maven.apache.org/maven2/org/json/json/20250517/json-20250517.jar -o "$jar"
+          echo "3ea61b2a06e31edf1c91134fe9106b0ebb16628be169f3db75bc7a2b06b45796  $jar" | sha256sum -c -
+          classes="$RUNNER_TEMP/native-fixtures"
+          mkdir -p "$classes"
+          javac --release 17 -cp "$jar" -d "$classes" app/src/main/java/app/mutiny/media/{Secrets,Accounts,AiClient,CloudStreamRepository,UrlPolicy}.java tests/*.java
+          for fixture in AccountSessionTest AiClientTest CloudStreamRepositoryTest UrlPolicyTest; do
+            java -cp "$jar:$classes" "$fixture"
+          done
+      - name: Verify mobile UI with fixture providers
+        run: |
+          CHROMIUM_EXECUTABLE="$(command -v google-chrome)" npm run test:ui
       - name: Compile and package Android application
         if: github.event_name == 'workflow_dispatch'
         run: bash ./gradlew --no-daemon --stacktrace :app:assembleDebug
