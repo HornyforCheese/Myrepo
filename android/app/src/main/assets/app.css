@@ -13,3 +13,16 @@
 .settings-labels small { color:#aaa7b2; font-size:13px; line-height:1.4; }
 .settings-chevron { color:#bcb8c5; font-size:30px; font-weight:300; }
 .settings-back { margin:8px 0 18px; }
+
+.settings-option,.settings-choice { display:flex; align-items:center; justify-content:space-between; gap:16px; background:#343238; padding:18px; border-radius:16px; margin:12px 0; color:#f7f5fa; }
+.settings-option-text,.settings-choice { min-width:0; }
+.settings-option-text { display:flex; flex:1; flex-direction:column; gap:5px; }
+.settings-option small,.settings-choice small { display:block; color:#aaa7b2; font-size:12px; line-height:1.4; margin-top:5px; }
+.settings-option input[type=checkbox] { width:24px; height:24px; min-height:24px; accent-color:#9571e8; flex-shrink:0; }
+.settings-choice { flex-direction:column; align-items:stretch; }
+.settings-choice select { margin-top:8px; background:#25232c; }
+:root[data-theme=light] main { background:#f4f1fa; color:#17131e; }
+:root[data-theme=light] .settings-card,:root[data-theme=light] .settings-option,:root[data-theme=light] .settings-choice { background:#e3dfeb; color:#17131e; }
+:root[data-theme=light] .settings-labels small { color:#5b5665; }
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+.compact-cards .grid { grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); gap:12px 8px; }
