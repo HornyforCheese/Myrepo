@@ -33,7 +33,8 @@ export function streamId(meta, episode) {
 }
 export function supportsStreams(manifest, type, id) {
   return Array.isArray(manifest.resources) && manifest.resources.some(resource => {
-    if (resource === 'stream') return !Array.isArray(manifest.types) || manifest.types.includes(type);
+    if (resource === 'stream') return (!Array.isArray(manifest.types) || manifest.types.includes(type)) &&
+      (!Array.isArray(manifest.idPrefixes) || manifest.idPrefixes.some(prefix => typeof prefix === 'string' && id.startsWith(prefix)));
     return resource && resource.name === 'stream' && (!Array.isArray(resource.types) || resource.types.includes(type)) && (!Array.isArray(resource.idPrefixes) || resource.idPrefixes.some(prefix => id.startsWith(prefix)));
   });
 }

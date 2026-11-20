@@ -4,7 +4,7 @@ import { safeUrl, addonBase, sourcesFor, streamId, supportsStreams, jsonRequest 
 const main = document.querySelector('#main');
 const dialog = document.querySelector('#detail');
 const detail = document.querySelector('#detail-body');
-const API = 'https://v3-cinemeta.strem.io';
+import { CINEMETA as API, searchCatalogs, titleKey } from './catalog-search.js';
 let page = 'home', type = 'movie', pageToken = 0, detailToken = 0;
 let saved = read('mutiny.android.library.v1', []);
 let addons = read('mutiny.android.addons.v1', []);
@@ -42,6 +42,7 @@ function grid(metas) {
   for (const meta of metas.filter(meta => meta && typeof meta.id === 'string').slice(0, 100)) {
     const card = button('', () => openTitle(meta), 'card');
     card.append(picture(meta.poster, meta.name), el('strong', meta.name || 'Untitled'), el('small', [meta.releaseInfo || meta.year, meta.type === 'series' ? 'Series' : 'Movie'].filter(Boolean).join(' · ')));
+    if (Array.isArray(meta.sourceNames)) card.append(el('small', meta.sourceNames.join(' · ')));
     node.append(card);
   }
   return node;
@@ -87,11 +88,22 @@ function search() {
   const form = el('form'), input = el('input'); input.type = 'search'; input.placeholder = 'Movies, shows, and more'; input.setAttribute('aria-label', 'Search titles'); input.maxLength = 150;
   const submit = el('button', 'Search', 'primary'); submit.type = 'submit'; form.append(input, submit);
   const results = el('section');
-  const run = () => {
-    const query = input.value.trim();
-    if (!query) return;
-    const token = ++pageToken;
-    loadCatalog(results, `${API}/catalog/${type}/top/search=${encodeURIComponent(query)}.json`, token);
+  const run = async () => {
+    const query = input.value.trim(), token = ++pageToken;
+    if (!query) return stateBox(results, 'Enter a title to search.');
+    stateBox(results, 'Searching catalogues…');
+    const {metas, failures, hydrated} = await searchCatalogs(type, query, addons, jsonRequest, () => token === pageToken);
+    if (token !== pageToken) return;
+    let migrated = false;
+    for (const addon of addons) {
+      if (Array.isArray(addon.manifest.catalogs)) continue;
+      const previous = hydrated.find(item => item?.base === addon.base && item.manifest.id === addon.manifest.id);
+      if (Array.isArray(previous?.manifest.catalogs)) { addon.manifest.catalogs = previous.manifest.catalogs; migrated = true; }
+    }
+    if (migrated) write('mutiny.android.addons.v1', addons);
+    if (metas.length) results.replaceChildren(grid(metas));
+    else stateBox(results, failures ? 'No results available from responding catalogues.' : 'No matching titles found.');
+    if (failures) results.append(el('p', failures + ' catalogue request(s) failed.', 'note'), button('Retry search', run));
   };
   const chips = filters(() => { [...chips.children].forEach((node, i) => node.classList.toggle('selected', i === (type === 'movie' ? 0 : 1))); run(); });
   form.addEventListener('submit', event => { event.preventDefault(); run(); input.blur(); });
@@ -208,10 +220,12 @@ async function openTitle(meta) {
   current = { ...meta }; episode = null; sourceIndex = 0;
   detail.replaceChildren(el('p', 'Loading title…')); if (!dialog.open) dialog.showModal();
   try {
-    const data = await jsonRequest(`${API}/meta/${meta.type === 'series' ? 'series' : 'movie'}/${encodeURIComponent(meta.id)}.json`);
+    const base = meta.catalogBase || API;
+    if (base !== API && !addons.some(addon => addon?.base === base)) throw Error('Provider removed');
+    const data = await jsonRequest(`${base}/meta/${meta.type === 'series' ? 'series' : 'movie'}/${encodeURIComponent(meta.id)}.json`);
     if (token !== detailToken) return;
     if (!data.meta || data.meta.id !== meta.id || data.meta.type !== meta.type) throw Error('Metadata did not match.');
-    current = data.meta;
+    current = {...data.meta, catalogBase:base, sourceNames:meta.sourceNames};
   } catch {
     if (token !== detailToken) return;
     toast('Full title details could not load. Some sources may be unavailable.');
@@ -225,11 +239,11 @@ function renderTitle() {
   text.append(el('span', meta.type === 'series' ? 'Series' : 'Movie', 'eyebrow'), el('h1', meta.name || 'Untitled'), el('p', [meta.releaseInfo, meta.imdbRating && `IMDb ${meta.imdbRating}`].filter(Boolean).join(' · ')));
   heading.append(picture(meta.poster, meta.name), text);
   const save = button('', () => {
-    const found = saved.some(item => item.id === meta.id && item.type === meta.type);
-    saved = found ? saved.filter(item => item.id !== meta.id || item.type !== meta.type) : [{ id: meta.id, type: meta.type, name: meta.name, poster: meta.poster, releaseInfo: meta.releaseInfo }, ...saved].slice(0, 500);
+    const found = saved.some(item => titleKey(item) === titleKey(meta));
+    saved = found ? saved.filter(item => titleKey(item) !== titleKey(meta)) : [{ catalogBase:meta.catalogBase, id: meta.id, type: meta.type, name: meta.name, poster: meta.poster, releaseInfo: meta.releaseInfo }, ...saved].slice(0, 500);
     write('mutiny.android.library.v1', saved); if(window.Mutiny) rpc('account.bookmark',{meta,removed:found}).catch(e=>toast('Saved on device. Cloud sync: '+e.message)); save.textContent = found ? '♡  Save to library' : '♥  Saved to library';
   });
-  save.textContent = saved.some(item => item.id === meta.id && item.type === meta.type) ? '♥  Saved to library' : '♡  Save to library';
+  save.textContent = saved.some(item => titleKey(item) === titleKey(meta)) ? '♥  Saved to library' : '♡  Save to library';
   detail.append(heading, save, el('p', meta.description || 'No description available.', 'overview'));
   if (meta.type === 'series') episodePicker(meta);
   const sources = el('section', null, 'source-section'); sources.id = 'sources'; detail.append(sources); renderSources();
@@ -323,8 +337,9 @@ async function renderStreams(target, forceRefresh = false) {
   for (const result of results) {
     if (result.status !== 'fulfilled') { failures++; continue; }
     const { addon, data } = result.value;
-    if (!Array.isArray(data.streams)) continue;
+    if (!Array.isArray(data?.streams)) { failures++; continue; }
     for (const stream of data.streams.slice(0, 80)) {
+      if (!stream || typeof stream !== 'object') { unsupported++; continue; }
       if (animeMode) {
         const match = animeStreamMatch(stream, animePrefs);
         if (!match.matches) {
@@ -666,7 +681,7 @@ function settings(initialSection) {
       if (addons.some(addon => addon.base === base)) throw Error('This add-on is already installed.');
       const manifest = await jsonRequest(base + '/manifest.json');
       if (!manifest || typeof manifest.id !== 'string' || typeof manifest.name !== 'string' || !Array.isArray(manifest.resources)) throw Error('This is not a valid add-on manifest.');
-      addons.push({ base, manifest: { id: manifest.id, name: manifest.name, resources: manifest.resources, types: manifest.types } });
+      addons.push({ base, manifest: { id: manifest.id, name: manifest.name, resources: manifest.resources, types: manifest.types, catalogs: Array.isArray(manifest.catalogs) ? manifest.catalogs : [], idPrefixes:manifest.idPrefixes } });
       write('mutiny.android.addons.v1', addons); toast('Add-on installed.'); if (page === 'settings' && pageToken === token) openSection('addons');
     } catch (error) { toast(error.name === 'AbortError' ? 'Provider timed out. Try again.' : error.message || 'Could not connect to this add-on.'); }
     finally { submit.disabled = false; }
