@@ -24,6 +24,9 @@ public final class VlcPlayerActivity extends Activity {
     private boolean pipRequested;
     private boolean seeking, wasPlaying;
     private Uri uri;
+    private android.os.ParcelFileDescriptor localFile;
+    private PlayerPreferences.Values options;
+    private boolean mediaPreferencesApplied;
     private JSONObject meta = new JSONObject();
     private long resume, lastCloudSave;
     private final ArrayDeque<Uri> fallbackUris = new ArrayDeque<>();
@@ -43,14 +46,15 @@ public final class VlcPlayerActivity extends Activity {
     };
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        options = PlayerPreferences.load(this);
+        if(options.keepScreenOn) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         String url = getIntent().getStringExtra("url");
         uri = getIntent().getData() != null ? getIntent().getData() : url == null ? null : Uri.parse(url);
         boolean local = uri != null && "content".equals(uri.getScheme());
         boolean torrent = url != null && TorrentEngine.get(this).isStreamUrl(url);
         if (uri == null || (!local && !torrent && !UrlPolicy.isPublicHttps(uri.toString()))) { finish(); return; }
         try { meta = new JSONObject(getIntent().getStringExtra("meta") == null ? "{}" : getIntent().getStringExtra("meta")); } catch (Exception ignored) { }
-        resume = state == null ? getPreferences(MODE_PRIVATE).getLong(resumeKey(), getIntent().getLongExtra("resume", 0)) : state.getLong("position");
+        resume = !options.resumePlayback ? 0 : state == null ? getPreferences(MODE_PRIVATE).getLong(resumeKey(), getIntent().getLongExtra("resume", 0)) : state.getLong("position");
         if (!local && !torrent) {
             String candidates = getIntent().getStringExtra("fallbackUrls");
             if (candidates != null) try {
@@ -72,20 +76,28 @@ public final class VlcPlayerActivity extends Activity {
         time = new TextView(this); time.setTextColor(0xffffffff); time.setPadding(16, 0, 16, 0); root.addView(time);
         seek = new SeekBar(this); seek.setMax(1000); root.addView(seek);
         playbackControls = new LinearLayout(this); playbackControls.setGravity(Gravity.CENTER);
-        playbackControls.addView(control("−10s", () -> player.setTime(Math.max(0, player.getTime() - 10000))));
+        playbackControls.addView(control("−"+options.seekBackSec+"s", () -> player.setTime(Math.max(0, player.getTime() - options.seekBackSec * 1000L))));
         toggle = control("Pause", () -> { if (player.isPlaying()) player.pause(); else player.play(); }); playbackControls.addView(toggle);
-        playbackControls.addView(control("+30s", () -> player.setTime(player.getTime() + 30000))); root.addView(playbackControls);
+        playbackControls.addView(control("+"+options.seekForwardSec+"s", () -> player.setTime(player.getTime() + options.seekForwardSec * 1000L))); root.addView(playbackControls);
         setContentView(root);
         try {
-            int networkCacheMs = getIntent().getBooleanExtra("lowBandwidth", false) ? 5000 : 2000;
+            int networkCacheMs = options.networkCacheMs != 0 ? options.networkCacheMs : getIntent().getBooleanExtra("lowBandwidth", false) ? 5000 : 2000;
             vlc = new LibVLC(this, new ArrayList<>(Arrays.asList("--network-caching=" + networkCacheMs, "--file-caching=1000", "--no-video-title-show")));
             player = new MediaPlayer(vlc); player.attachViews(surface, null, true, false);
             player.setEventListener(event -> {
-                if (event.type == MediaPlayer.Event.Playing && resume > 0) { player.setTime(resume); resume = 0; }
+                if (event.type == MediaPlayer.Event.Playing) {
+                    if (!mediaPreferencesApplied) {
+                        mediaPreferencesApplied = true;
+                        player.setRate(options.defaultPlaybackSpeed);
+                        if (options.subtitlesOffByDefault) player.setSpuTrack(-1);
+                    }
+                    if (resume > 0) { player.setTime(resume); resume = 0; }
+                }
                 if (event.type == MediaPlayer.Event.EncounteredError) handler.post(this::tryNextSource);
                 if (event.type == MediaPlayer.Event.EndReached) saveProgress();
             });
-            Media media = local ? new Media(vlc, getContentResolver().openFileDescriptor(uri, "r").getFileDescriptor()) : new Media(vlc, uri);
+            if (local) localFile = getContentResolver().openFileDescriptor(uri, "r");
+            Media media = local ? new Media(vlc, localFile.getFileDescriptor()) : new Media(vlc, uri);
             media.setHWDecoderEnabled(true, false);
             configureRequestHeaders(media);
             player.setMedia(media); media.release(); player.play(); handler.post(tick);
@@ -123,6 +135,7 @@ public final class VlcPlayerActivity extends Activity {
                     media.setHWDecoderEnabled(true, false);
                     configureRequestHeaders(media);
                     player.stop();
+                    mediaPreferencesApplied = false;
                     player.setMedia(media);
                     media.release();
                     tryingFallback = false;
@@ -204,12 +217,12 @@ public final class VlcPlayerActivity extends Activity {
         if (player == null) return;
         long position = player.getTime(), duration = player.getLength();
         if (duration <= 0 || position < 1000) return;
-        getPreferences(MODE_PRIVATE).edit().putLong(resumeKey(), position < duration * .95 ? position : 0).apply();
+        if (options.resumePlayback) getPreferences(MODE_PRIVATE).edit().putLong(resumeKey(), position < duration * .95 ? position : 0).apply();
         lastCloudSave = System.currentTimeMillis();
         sync.submit(() -> { try { NativeApi.get(this).accounts.progress(meta, position, duration); } catch (Exception ignored) { /* Local resume remains available when cloud sync is offline. */ } });
     }
     @Override protected void onPause() { if (player != null) { saveProgress(); wasPlaying = player.isPlaying(); if (!pipRequested && !isInPictureInPictureMode()) player.pause(); } super.onPause(); }
     @Override protected void onResume() { super.onResume(); if (player != null && wasPlaying) player.play(); }
     @Override protected void onSaveInstanceState(Bundle state) { super.onSaveInstanceState(state); if (player != null) state.putLong("position", player.getTime()); }
-    @Override protected void onDestroy() { handler.removeCallbacks(tick); sync.shutdown(); if (player != null) { player.stop(); player.detachViews(); player.release(); } if (vlc != null) vlc.release(); super.onDestroy(); }
+    @Override protected void onDestroy() { handler.removeCallbacks(tick); sync.shutdown(); if (player != null) { player.stop(); player.detachViews(); player.release(); } if (vlc != null) vlc.release(); if (localFile != null) try { localFile.close(); } catch (java.io.IOException ignored) { } super.onDestroy(); }
 }
