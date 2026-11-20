@@ -70,3 +70,9 @@ Run npm ci and npm test under android. Java and browser fixture commands are in 
 - Regression fixtures `c64984c8e33ac3c202047971cb9c91a6834b7aad`: cover negated and affirmative stream descriptions.
 - Re-fetched GitHub files to verify source and fixtures; **tests not executed, actual media track detection not verified, no APK built**. This is provider-label filtering, not reliable language-track identification.
 - Next: run JS and UI fixtures, then Windows feature parity and interface chunks in user-requested order.
+
+## Windows parity/UI chunk 1: appearance palette
+
+- Implementation `8d02b97c02fe14bf5625e0ed4d7cad656a76d9f5` and `86cae5bd9c46ed2ebccd1ab02dfa5a16c59c3e14`: make existing light/system theme settings control core background, text, navigation, hero, and settings panels with CSS variables; system mode respects `prefers-color-scheme:light`.
+- Fixture `fef47ecb613820cb30aee80d6f4df57abacdcced`: static appearance palette wiring assertions.
+- GitHub source re-read confirmed files. **Test execution, screenshots, live device theme changes and APK build not verified.** Further UI styling and functional Windows parity remain open.
