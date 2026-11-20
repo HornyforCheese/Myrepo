@@ -31,7 +31,7 @@ public final class NativeApi {
                 if (!"94d7ec68ed45cf3527fb71d92460047cd3d1d5de8c92aa912122f7ed1117e332".equals(hash) ||
                     !CloudStreamPackageStore.isInstalled(context, hash))
                     throw new IllegalArgumentException("StreamPlay v715 must be imported and match the verified package digest");
-                return CloudStreamTransport.request(context, args.getJSONObject("request"));
+                return CloudStreamTransport.request(context, hash, args.getJSONObject("request"));
             }
             case "account.addons": return accounts.addonSnapshots();
             case "account.profiles": return accounts.profiles();
