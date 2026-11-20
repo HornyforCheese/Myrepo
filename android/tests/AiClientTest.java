@@ -26,6 +26,18 @@ public class AiClientTest {
         if (!"fixture reply".equals(ai.suggest("film", history, "fixture reference"))) throw new AssertionError("Response");
         try { ai.suggest("x".repeat(2001), history, ""); throw new AssertionError("Oversized query"); }
         catch (IllegalArgumentException expected) { }
+        AiClient catalogue = new AiClient(store, (url, method, headers, body) -> {
+            if (!url.equals("https://openrouter.ai/api/v1/models")) throw new AssertionError("Catalogue routing");
+            JSONArray models = new JSONArray()
+                .put(new JSONObject().put("id", "unpriced:free"))
+                .put(new JSONObject().put("id", "paid").put("pricing", new JSONObject().put("prompt", "0.01").put("completion", "0")))
+                .put(new JSONObject().put("id", "verified:free").put("pricing", new JSONObject().put("prompt", "0").put("completion", "0")));
+            return new JSONObject().put("data", models);
+        });
+        JSONObject free = catalogue.models("openrouter", "");
+        JSONArray listed = free.getJSONArray("models");
+        if (listed.length() != 1 || !"verified:free".equals(listed.getJSONObject(0).getString("id")))
+            throw new AssertionError("Unpriced or paid model incorrectly labelled free");
         System.out.println("AI transport, history, routing and validation fixtures passed");
     }
 }
