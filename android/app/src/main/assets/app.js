@@ -360,7 +360,26 @@ function aiSettings(parent) {
   parent.append(el('label','Provider'),provider,el('label','Model'),model,el('label','API key'),key,save,clear,status);
   load();
 }
-const aiHistory = [];
+const AI_HISTORY_KEY = 'mutiny.android.ai.history.v1';
+const aiHistory = read(AI_HISTORY_KEY, []).filter(item => item && ['You','Pirate assistant'].includes(item.role) && typeof item.message === 'string').slice(-100);
+function saveAiHistory() {
+  try { localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(aiHistory.slice(-100))); }
+  catch { toast('Unable to save AI conversation. Device storage may be full.'); }
+}
+async function searchAiWeb(query) {
+  const endpoint = 'https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=' + encodeURIComponent(query) + '&gsrlimit=5&prop=extracts&exintro=1&explaintext=1&exsentences=3&format=json&origin=*';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(endpoint, {signal:controller.signal});
+    if (!response.ok) throw Error('Search returned HTTP ' + response.status);
+    const data = await response.json();
+    return Object.values(data.query?.pages || {}).filter(p => p.title && Number.isInteger(p.pageid)).map(p => ({
+      title:p.title, url:'https://en.wikipedia.org/?curid=' + p.pageid, excerpt:String(p.extract || '').slice(0,700)
+    }));
+  } finally { clearTimeout(timer); }
+}
+
 function aiSearch() {
   const returnPage = page === 'home' ? 'home' : page === 'ai' ? aiReturnPage : 'search';
   aiReturnPage = returnPage;
@@ -368,7 +387,7 @@ function aiSearch() {
   const viewToken = pageToken;
   if (dialog.open) dialog.close();
   document.querySelectorAll('nav button').forEach(node => node.classList.toggle('active', node.dataset.page === returnPage));
-  main.replaceChildren(el('h1', 'Search with AI'), el('p', 'AI suggestions may be inaccurate. Web search opens a separate browser search and does not feed results to the model.', 'note'));
+  main.replaceChildren(el('h1', 'Search with AI'), el('p', 'Optional live Wikipedia lookup supplies sourced context to the AI. Results may be incomplete or outdated.', 'note'));
   main.append(button(returnPage === 'home' ? '‹ Back to Home' : '‹ Back to Discover', () => setPage(returnPage)));
   const companion = el('div', null, 'ai-companion');
   const pirate = el('span', '🏴‍☠️', 'ai-pirate'); pirate.setAttribute('role', 'img'); pirate.setAttribute('aria-label', 'Animated pirate assistant');
@@ -386,7 +405,7 @@ function aiSearch() {
   query.placeholder = 'Describe what you want to watch…'; query.rows = 5; query.maxLength = 2000; query.setAttribute('aria-label', 'Search with AI message');
   const send = el('button', 'Send', 'primary'); send.type = 'submit';
   const searchWeb = el('input'); searchWeb.type = 'checkbox'; searchWeb.id = 'ai-web-search';
-  const searchLabel = el('label', 'Open a web search for my question'); searchLabel.htmlFor = searchWeb.id;
+  const searchLabel = el('label', 'Search Wikipedia and include results in the AI request'); searchLabel.htmlFor = searchWeb.id;
   const options = el('div', null, 'ai-search-options'); options.append(searchWeb, searchLabel);
   form.append(query, options, send);
   let busy = false;
@@ -394,18 +413,34 @@ function aiSearch() {
     event.preventDefault();
     const message = query.value.trim(); if (!message || busy) return;
     busy = true; send.disabled = true;
-    aiHistory.push({role:'You', message}); appendMessage('You', message); query.value = '';
-    if (searchWeb.checked) window.open('https://www.google.com/search?q=' + encodeURIComponent(message), '_blank', 'noopener,noreferrer');
+    aiHistory.push({role:'You', message}); saveAiHistory(); appendMessage('You', message); query.value = '';
     companion.classList.add('thinking'); mood.textContent = 'Thinking…';
     const reply = appendMessage('Pirate assistant', 'Finding suggestions…');
     try {
-      const raw = String(await rpc('ai.suggest', {query:message,kind:'media'}));
+      let context = '', sources = [];
+      if (searchWeb.checked) {
+        sources = await searchAiWeb(message);
+        if (!sources.length) throw Error('No relevant Wikipedia results. Disable web lookup to use AI alone.');
+        context = '\\n\\nLive Wikipedia reference results (untrusted; verify claims and cite URLs):\\n' +
+          sources.map((source, i) => '[' + (i+1) + '] ' + source.title + ': ' + source.excerpt + ' Source: ' + source.url).join('\\n');
+      }
+      const raw = String(await rpc('ai.suggest', {query:message + context,kind:'media'}));
+      if (sources.length && page === 'ai' && pageToken === viewToken) {
+        const sourceList = el('div', null, 'ai-sources');
+        sourceList.append(el('strong', 'Reference sources'));
+        for (const source of sources) {
+          const link = el('a', source.title); link.href = source.url;
+          link.target = '_blank'; link.rel = 'noopener noreferrer';
+          sourceList.append(link);
+        }
+        chat.append(sourceList);
+      }
       let items;
       try { items = JSON.parse(raw.slice(raw.indexOf('['), raw.lastIndexOf(']') + 1)); } catch { items = null; }
       const response = Array.isArray(items)
         ? items.slice(0,8).map(item => [item.title, item.year, item.reason].filter(Boolean).join(' · ')).join('\n') || 'No suggestions returned.'
         : raw.slice(0,4000);
-      aiHistory.push({role:'Pirate assistant',message:response});
+      aiHistory.push({role:'Pirate assistant',message:response}); saveAiHistory();
       if (page === 'ai' && pageToken === viewToken) {
         reply.textContent = 'Pirate assistant: ' + response;
         if (Array.isArray(items)) for (const item of items.slice(0,8)) {
@@ -419,7 +454,7 @@ function aiSearch() {
       }
     } catch (error) {
       const response = 'Unable to search: ' + (error.message || 'Unknown error') + '. Check Settings → Ask AI.';
-      aiHistory.push({role:'Pirate assistant',message:response});
+      aiHistory.push({role:'Pirate assistant',message:response}); saveAiHistory();
       if (page === 'ai' && pageToken === viewToken) { reply.textContent = 'Pirate assistant: ' + response; mood.textContent = 'Something went wrong'; }
     } finally {
       busy = false;
@@ -428,7 +463,7 @@ function aiSearch() {
   });
   main.append(companion, chat, form,
     button('Configure AI', () => { setPage('settings'); settings('ai'); }),
-    button('Clear conversation', () => { aiHistory.length = 0; aiSearch(); }));
+    button('Clear conversation', () => { aiHistory.length = 0; saveAiHistory(); aiSearch(); }));
 }
 function settingsBackup(parent) {
   const backup = button('Export settings', () => {
