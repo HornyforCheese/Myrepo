@@ -3,8 +3,8 @@
   "project": "Mutiny Media Android",
   "branch": "android-v1.0.1-engines-development",
   "baselineCommit": "ae21add5b194090d3c0a8c0e9d0daee0e3c83bda",
-  "currentChunk": "CS3-ARCHIVE-COMPILE: correct backslash guard Java syntax",
-  "lastVerifiedImplementationCommit": "40d93778fa22637c18a0c061f5f5ceae26b7a2b0",
+  "currentChunk": "CS3-ARCHIVE-CONTROL-PATHS: reject control-character ZIP entries",
+  "lastVerifiedImplementationCommit": "c466d45e61de90e067af26ef3956514bd3e91fe5",
   "completedChunks": [],
   "tasks": [
     {
@@ -106,7 +106,9 @@
     "DOM fixtures: home, account/torrent navigation, AI context and clear race",
     "GitHub run 44822049872: Android Java compilation and native transport fixtures succeeded",
     "CS3 archive path hardening: source re-read verified; negative-path fixtures added but not executed; Java compilation/CI pending",
-    "Isolated javac/java backslash guard syntax and behaviour check passed in local environment; full CS3 archive fixtures and Android CI not verified"
+    "Isolated javac/java backslash guard syntax and behaviour check passed in local environment; full CS3 archive fixtures and Android CI not verified",
+    "Reviewed prior GitHub Actions run 44822049872: Android compile and native fixtures succeeded, UI fixture failed at library navigation due to open dialog intercepting clicks; historical run, not current branch CI",
+    "CS3 control-character ZIP path rejection and negative fixtures committed; source re-read verified, test execution pending"
   ],
-  "nextAction": "Verify latest Android push CI (native CloudStreamArchiveTest and compileDebugJavaWithJavac), fix failures if any, then proceed with isolated CS3 runtime/provider ABI."
+  "nextAction": "Inspect current Android branch CI and investigate UI fixture modal interception; run CS3 archive fixtures including new control-character cases, then implement isolated CS3 runtime."
 }
