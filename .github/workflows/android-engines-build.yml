@@ -37,8 +37,9 @@ jobs:
       - name: Prepare preinstalled Android SDK
         run: |
           echo "ANDROID_HOME=${ANDROID_HOME}"
-          command -v sdkmanager
-          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+          sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          test -n "$sdkmanager_bin"
+          "$sdkmanager_bin" --sdk_root="$ANDROID_HOME" --install 'platforms;android-35' 'build-tools;35.0.0'
       - name: Install JavaScript dependencies
         run: npm ci
       - name: Run JavaScript unit tests
