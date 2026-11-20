@@ -19,6 +19,60 @@ public final class AiClient {
         String provider = secrets.get("ai.provider"); if (provider.isEmpty()) provider = "openrouter";
         return new JSONObject().put("provider", provider).put("model", secrets.get("ai.model." + provider)).put("hasKey", !secrets.get("ai.key." + provider).isEmpty());
     }
+
+    /** Native catalogue lookup keeps remote model metadata off the local WebView. */
+    public JSONObject freeModels(String provider) throws Exception {
+        endpoint(provider); // Validate requested provider.
+        JSONArray models = new JSONArray();
+        String notice;
+        if ("openrouter".equals(provider)) {
+            notice = "Live OpenRouter zero-cost text models. Free models have rate limits and may be unavailable.";
+            try {
+                Object value = http.request("https://openrouter.ai/api/v1/models", "GET", new JSONObject(), null);
+                if (!(value instanceof JSONObject)) throw new IllegalStateException("Invalid model catalogue");
+                JSONArray catalog = ((JSONObject) value).optJSONArray("data");
+                if (catalog == null) throw new IllegalStateException("No models returned");
+                java.util.HashSet<String> added = new java.util.HashSet<>();
+                // The free router is a stable zero-cost fallback, not a paid model.
+                models.put(new JSONObject().put("id", "openrouter/free").put("label", "Automatic free model (OpenRouter)"));
+                added.add("openrouter/free");
+                for (int i = 0; i < catalog.length() && models.length() < 100; i++) {
+                    JSONObject item = catalog.optJSONObject(i);
+                    if (item == null) continue;
+                    String id = item.optString("id");
+                    JSONObject pricing = item.optJSONObject("pricing");
+                    JSONObject architecture = item.optJSONObject("architecture");
+                    JSONArray output = architecture == null ? null : architecture.optJSONArray("output_modalities");
+                    if (id.isEmpty() || id.length() > 160 || pricing == null ||
+                        !zeroPrice(pricing.optString("prompt")) || !zeroPrice(pricing.optString("completion")) ||
+                        (output != null && !contains(output, "text")) || !added.add(id)) continue;
+                    String name = item.optString("name", id);
+                    models.put(new JSONObject().put("id", id).put("label", name.substring(0, Math.min(name.length(), 120))));
+                }
+            } catch (Exception unavailable) {
+                notice = "Live OpenRouter model catalogue unavailable; using the automatic free router. Retry later.";
+            }
+            if (models.length() == 0) models.put(new JSONObject().put("id", "openrouter/free").put("label", "Automatic free model (OpenRouter)"));
+        } else if ("groq".equals(provider)) {
+            notice = "Known Groq free-plan text models. Availability depends on your API key, plan and current limits.";
+            models.put(new JSONObject().put("id", "openai/gpt-oss-120b").put("label", "GPT-OSS 120B"));
+            models.put(new JSONObject().put("id", "openai/gpt-oss-20b").put("label", "GPT-OSS 20B"));
+        } else {
+            notice = "Gemini models with documented free-tier pricing. Billing, quota and regional eligibility depend on your account.";
+            models.put(new JSONObject().put("id", "gemini-3.5-flash-lite").put("label", "Gemini 3.5 Flash-Lite"));
+            models.put(new JSONObject().put("id", "gemini-3.1-flash-lite").put("label", "Gemini 3.1 Flash-Lite"));
+        }
+        return new JSONObject().put("provider", provider).put("models", models).put("notice", notice);
+    }
+    private static boolean zeroPrice(String value) {
+        try { return !value.isEmpty() && Double.parseDouble(value) == 0.0; }
+        catch (Exception invalid) { return false; }
+    }
+    private static boolean contains(JSONArray list, String target) {
+        for (int i = 0; i < list.length(); i++) if (target.equals(list.optString(i))) return true;
+        return false;
+    }
+
     public synchronized JSONObject save(JSONObject input) throws Exception {
         String provider = input.getString("provider"); endpoint(provider);
         String model = input.optString("model").trim(); if (model.isEmpty() || model.length() > 160) throw new IllegalArgumentException("Enter a model ID from your provider");
