@@ -52,8 +52,9 @@ public final class CloudStreamPackageStore {
     /** Only a previously imported package with the exact pinned digest may be selected. */
     static synchronized boolean isInstalled(Context context, String sha256) throws Exception {
         if (sha256 == null || !sha256.matches("[a-f0-9]{64}")) return false;
-        for (int i = 0; i < index(context).length(); i++) {
-            JSONObject row = index(context).optJSONObject(i);
+        JSONArray installed = index(context);
+        for (int i = 0; i < installed.length(); i++) {
+            JSONObject row = installed.optJSONObject(i);
             if (row != null && sha256.equals(row.optString("sha256")) &&
                 new File(directory(context), sha256 + ".cs3").isFile()) return true;
         }
