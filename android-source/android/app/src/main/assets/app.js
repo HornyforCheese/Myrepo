@@ -6,6 +6,16 @@ import { searchAcrossProviders, metadataCandidates } from './search.js';
 import { safeUrl, addonBase, sourcesFor, streamId, supportsStreams, jsonRequest } from './model.js';
 
 applyPreferences();
+// Sync validated playback preferences to Android so local videos and magnets
+// use the same options as add-on streams, even when opened without a web title.
+function syncNativePlaybackPrefs() {
+  if (!window.Mutiny) return Promise.resolve();
+  return rpc('player.preferences', getPreferences()).catch(error => {
+    console.warn('Native playback settings were not synced:', error?.message || error);
+  });
+}
+window.addEventListener('mutiny-preferences-changed', syncNativePlaybackPrefs);
+syncNativePlaybackPrefs();
 const main = document.querySelector('#main');
 const dialog = document.querySelector('#detail');
 const detail = document.querySelector('#detail-body');
@@ -57,7 +67,7 @@ function home() {
   hero.append(el('span', 'Your next great escape', 'eyebrow'), el('h1', 'A world of stories.\nOne place to start.'), el('p', 'Find something worth watching. Bring your sources. Make it your own.'), button('Explore the catalog  →', () => setPage('search'), 'primary'));
   const actions=renderHomeActions({
     openWebSources: () => {setPage('search');toast('Search for a title and open Web Sources in its details.');},
-    openLocalVideo: () => native('local'),
+    openLocalVideo: () => {syncNativePlaybackPrefs().then(()=>native('local'));},
     openSettings: () => setPage('settings'),
     onSearchTitle: query => window.dispatchEvent(new CustomEvent('mutiny-search-title',{detail:query})),
   });
@@ -234,7 +244,7 @@ async function renderStreams(target) {
         if(!window.Mutiny)return native('video',stream.url);
         const signature=value=>JSON.stringify(Object.entries(value.headers||{}).sort(([a],[b])=>a.localeCompare(b)));
         const fallbackUrls=prefs.autoFallback?ranked.filter(other=>other.kind==='https'&&other.url!==stream.url&&signature(other)===signature(stream)&&(Object.keys(stream.headers||{}).length===0||new URL(other.url).origin===new URL(stream.url).origin)).map(other=>other.url).slice(0,5):[];
-        return rpc('video.play',{url:stream.url,headers:stream.headers||{},fallbackUrls,lowBandwidth:prefs.lowBandwidth,meta:{...current,videos:undefined,videoId:id,season:episode?.season,episode:episode?.episode}}).catch(error=>toast(error.message));
+        return syncNativePlaybackPrefs().then(()=>rpc('video.play',{url:stream.url,headers:stream.headers||{},fallbackUrls,lowBandwidth:prefs.lowBandwidth,meta:{...current,videos:undefined,videoId:id,season:episode?.season,episode:episode?.episode}})).catch(error=>toast(error.message));
       },'primary'));
       if (/\.(mp4|mkv|webm|mov|m4v|avi)$/i.test(new URL(stream.url).pathname) && !Object.keys(stream.headers||{}).length) {
         box.append(button('Download video',()=>rpc('download.start',{url:stream.url,title:current.name}).then(()=>toast('Download added to Android Download Manager.')).catch(error=>toast(error.message))));
@@ -275,7 +285,13 @@ function settings() {
   main.append(el('h2', 'On this device'), button('Open local video', () => native('local')), el('p', 'Choose a video with Android’s file picker. No broad storage permission is needed.', 'note'));
   const directLabel = el('label', 'Play a direct HTTPS video address'); directLabel.htmlFor = 'direct-url';
   const direct = el('form'), address = el('input'); address.id = 'direct-url'; address.type = 'url'; address.placeholder = 'https://example.com/video.mp4'; address.required = true;
-  const play = el('button', 'Play'); play.type = 'submit'; direct.append(address, play); direct.addEventListener('submit', event => { event.preventDefault(); native('video', address.value.trim()); }); main.append(directLabel, direct);
+  const play = el('button', 'Play'); play.type = 'submit'; direct.append(address, play); direct.addEventListener('submit', event => {
+    event.preventDefault();
+    const url=address.value.trim();
+    if(!safeUrl(url))return toast('Only public HTTPS video URLs are supported.');
+    if(!window.Mutiny)return native('video',url);
+    syncNativePlaybackPrefs().then(()=>rpc('video.play',{url,lowBandwidth:getPreferences().lowBandwidth})).catch(error=>toast(error.message));
+  }); main.append(directLabel, direct);
   main.append(el('h2', 'About this preview'), el('p', 'Mutiny Media 1.0.2-dev · Android preview', 'note'), el('p', 'Android 8 or newer. Reuses the 42 configured web-source adapters from the linked Windows release. Metadata comes from Cinemeta. Local library and add-ons are stored on this device. Open Settings for accounts, torrents, appearance, anime preferences and AI.', 'note'), el('p', 'Source hosts and add-ons receive requests when used. Install only providers you trust. Some video codecs need an external player.', 'note'));
   main.append(button('Clear saved library', () => { saved = []; write('mutiny.android.library.v1', saved); toast('Saved library cleared.'); }));
 }
