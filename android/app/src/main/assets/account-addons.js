@@ -68,11 +68,11 @@ export async function reconcileAccountAddons(previous = [], payload = {}, loadMa
         if (old && !refresh) return old;
         try {
           const manifest = await loadManifest(base + '/manifest.json');
-          if (!validManifest(manifest)) return null;
+          if (!validManifest(manifest)) return old || null;
           const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(base));
           const catalogKey = 'addon:' + Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2,'0')).join('');
           return {base, catalogKey, account, user, profile, manifest: cleanManifest(manifest)};
-        } catch { return null; }
+        } catch { return old || null; }
       }));
       for (const result of batch) {
         if (result) imported.push(result);
