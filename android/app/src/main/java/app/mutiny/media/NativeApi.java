@@ -28,6 +28,7 @@ public final class NativeApi {
             case "account.sync": return accounts.sync(args.getString("provider"), args.optInt("profile", 1));
             case "account.bookmark": accounts.bookmark(args.getJSONObject("meta"), args.optBoolean("removed")); return true;
             case "ai.config": return ai.config();
+            case "ai.models": return ai.models(args.getString("provider"), args.optString("key", ""));
             case "ai.save": return ai.save(args);
             case "ai.suggest": return ai.suggest(args.getString("query"), args.optString("kind", "media"));
             case "public.get": return http.request(args.getString("url"), "GET", new JSONObject(), null);
