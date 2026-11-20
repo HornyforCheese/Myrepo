@@ -80,7 +80,7 @@ public final class AiClient {
                     if (!generates) continue;
                     id = name.substring(7);
                 }
-                if (id.isEmpty() || ids.contains(id)) continue;
+                if (id.isEmpty() || id.length() > 160 || ids.contains(id)) continue;
                 boolean free = provider.equals("openrouter") && zeroCost(item);
                 if (provider.equals("openrouter") && !free) continue;
                 if (out.length() >= 500) { truncated = true; break; }
@@ -121,6 +121,7 @@ public final class AiClient {
         if (key.isEmpty() || model.isEmpty()) throw new IllegalStateException("Add an API key and model in AI settings first");
         if (query == null || query.trim().isEmpty() || query.length() > 2000) throw new IllegalArgumentException("Describe what you want in 1–2000 characters");
         String prompt = "Find up to 8 real movies or TV series matching the user. Return ONLY a JSON array of objects {\"title\":\"exact title\",\"year\":2000,\"type\":\"movie\" or \"series\",\"reason\":\"short reason\"}. For a specific episode also add numeric season and episode. Never invent IDs or URLs.";
+        if (references == null) references = "";
         if (references == null) references = "";
         if (references.length() > 6000) throw new IllegalArgumentException("Reference text is too long");
         JSONArray messages = new JSONArray().put(new JSONObject().put("role", "system").put("content", prompt));
