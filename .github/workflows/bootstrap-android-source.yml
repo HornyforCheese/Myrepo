@@ -1,0 +1,29 @@
+name: Bootstrap editable Mutiny Media Android source
+on:
+  push:
+    branches: [mutiny-android-feature-parity]
+    paths:
+      - '.github/workflows/bootstrap-android-source.yml'
+permissions:
+  contents: write
+jobs:
+  unpack:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Expand release source into an editable project
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f MutinyMedia-android-engines-source.zip
+          mkdir -p android-source
+          unzip -q MutinyMedia-android-engines-source.zip -d android-source
+          find android-source -maxdepth 3 -type f | head -80
+          test "$(find android-source -type f | wc -l)" -gt 3
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android-source
+          git diff --cached --quiet && exit 0
+          git commit -m "Extract v1.0.1 Engines Android source for feature-parity development"
+          git push origin HEAD:mutiny-android-feature-parity

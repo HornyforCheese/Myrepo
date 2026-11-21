@@ -1,0 +1,39 @@
+name: Publish tested Android media-only debug APK
+on:
+  push:
+    branches: [mutiny-android-feature-parity]
+    paths:
+      - '.github/workflows/publish-android-tested.yml'
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download successfully tested build
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44799133619
+          github-token: ${{ github.token }}
+          name: mutiny-android-media-only-debug
+          path: built
+      - name: Stage exact tested APK with checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=$(find built -type f -name '*.apk' | head -n 1)
+          test -n "$apk" && test -s "$apk"
+          cp "$apk" MutinyMedia-android-media-only-preview.apk
+          sha256sum MutinyMedia-android-media-only-preview.apk > SHA256SUMS
+      - name: Publish clearly labelled development build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create android-media-only-preview-20261121 MutinyMedia-android-media-only-preview.apk SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" \
+            --target 4b0bd8438296ea0a8a68d95316d87d365a18ee8e \
+            --prerelease \
+            --title "Mutiny Media Android media-only preview (21 Nov 2026)" \
+            --notes "Development-signed APK from successful GitHub Actions run 44799133619. 12 unit tests, responsive UI checks and APK compilation passed. Device playback remains unverified. This preview removes game controls and adds media preferences, multi-provider search, collections, theme studio, stream ranking, fallback and download controls. Full CloudStream binary compatibility, debrid, video upscaling and realtime bitrate measurement are still missing. Debug signing certificates may differ from the previous preview: backing up and uninstalling the previous app may be required before installation."

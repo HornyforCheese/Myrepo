@@ -1,0 +1,65 @@
+name: Test Mutiny Media Android media-only branch
+on:
+  push:
+    branches: [mutiny-android-feature-parity]
+    paths:
+      - 'android-source/android/**'
+      - '.github/workflows/android-feature-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mutiny-android-feature-parity
+  cancel-in-progress: true
+jobs:
+  test-and-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: android-source/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: android-source/android/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+      - name: Prepare preinstalled Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          MANAGER=$(find "$SDK/cmdline-tools" -name sdkmanager -type f | head -1)
+          test -n "$MANAGER"
+          yes | "$MANAGER" --licenses >/dev/null || true
+          "$MANAGER" "platforms;android-35" "build-tools;35.0.0"
+      - name: Unit tests
+        run: |
+          npm ci
+          npm test
+      - name: Mobile UI checks
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:ui
+      - name: Build debug APK
+        run: |
+          chmod +x ./gradlew
+          for attempt in 1 2 3; do
+            if ./gradlew --no-daemon :app:assembleDebug; then exit 0; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep "$((attempt * 20))"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mutiny-android-media-only-debug
+          path: android-source/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
