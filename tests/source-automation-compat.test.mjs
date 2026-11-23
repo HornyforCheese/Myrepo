@@ -94,6 +94,7 @@ test('addon and CloudStream playback stays manual and remote browser popups are 
   assert.match(playerPatch,/addonPicker=\{<AddonPlayPicker \{\.\.\.props\} autoPlay=\{false\}/);
   assert.match(completion,/Remote add-on pages never open verification popups automatically/);
   assert.match(completion,/NewWindowResponse::Deny/);
+  assert.match(completion,/tar\.exe handles ZIP archives without PowerShell/);
   assert.match(deck,/Choose a result manually/);
   assert.match(deck,/verification pages and popups do not open automatically/);
 });

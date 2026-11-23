@@ -67,6 +67,18 @@ patch('src-tauri/src/browser.rs', '// Remote add-on pages never open verificatio
                 .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny);`,
 ]]);
 
+patch('scripts/fetch-binaries.mjs', '// Windows runner compatibility: tar.exe handles ZIP archives without PowerShell/.NET overloads.', [[
+  `    } else if (process.platform === "win32") {
+      execFileSync(
+        "powershell",
+        ["-NoProfile", "-NonInteractive", "-Command", \`Expand-Archive -LiteralPath "\${archive}" -DestinationPath "\${outDir}" -Force\`],
+        { stdio: "inherit" },
+      );`,
+  `    } else if (process.platform === "win32") {
+      // Windows runner compatibility: tar.exe handles ZIP archives without PowerShell/.NET overloads.
+      execFileSync("tar", ["-xf", archive, "-C", outDir], { stdio: "inherit" });`,
+]]);
+
 patch('src/components/search/ai-search/use-ai-suggest.ts', 'from "@/lib/mutiny/live-web"', [
   ['import { enrichWithContent } from "@/lib/jina-search";', 'import { liveWebContext } from "@/lib/mutiny/live-web";'],
   ['await enrichWithContent(query, settings.jinaKey)', 'await liveWebContext(query, settings)'],
