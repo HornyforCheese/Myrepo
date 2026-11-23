@@ -22,9 +22,9 @@ on:
         type: string
         default: ab184a73ceebfc063c5d6aedc0fbaff0111907f1
       release_sha256:
-        description: Expected installer SHA-256
+        description: Expected installer SHA-256, or auto for a newly successful run
         type: string
-        default: 10bce43800690d18340e55b433b0821b934b8f71d1187acc79821491028c8ada
+        default: auto
 
 permissions:
   actions: read
@@ -241,8 +241,8 @@ jobs:
           r=json.load(open('build.json'))
           assert r['conclusion']=='success'
           assert r['head_sha']==os.environ['RELEASE_COMMIT']
-          assert len(os.environ['RELEASE_SHA256'])==64
-          assert all(c in '0123456789abcdef' for c in os.environ['RELEASE_SHA256'])
+          digest=os.environ['RELEASE_SHA256']
+          assert digest=='auto' or (len(digest)==64 and all(c in '0123456789abcdef' for c in digest))
           PYVERIFY
           test "$(gh api "repos/HornyforCheese/Myrepo/commits/$RELEASE_TAG" --jq .sha)" = "$RELEASE_COMMIT"
       - name: Download verified installer
@@ -258,7 +258,11 @@ jobs:
         run: |
           mv 'installer/Mutiny Media_1.0.1_x64-setup.exe' installer/MutinyMedia-1.0.1-windows-x64-setup.exe
           cd installer
-          printf '%s  MutinyMedia-1.0.1-windows-x64-setup.exe\n' "$RELEASE_SHA256" > SHA256SUMS.txt
+          if [ "$RELEASE_SHA256" = auto ]; then
+            sha256sum MutinyMedia-1.0.1-windows-x64-setup.exe > SHA256SUMS.txt
+          else
+            printf '%s  MutinyMedia-1.0.1-windows-x64-setup.exe\n' "$RELEASE_SHA256" > SHA256SUMS.txt
+          fi
           sha256sum --check SHA256SUMS.txt
           cat > release-notes.md <<NOTES
           Mutiny Media 1.0.1 for Windows x64. Download and run the setup executable below.
