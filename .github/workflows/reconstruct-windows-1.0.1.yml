@@ -177,6 +177,18 @@ jobs:
           New-Item -ItemType Directory -Force -Path 'windows-src/src-tauri/libmpv' | Out-Null
           Copy-Item $dlls[0].FullName 'windows-src/src-tauri/libmpv/libmpv-2.dll' -Force
 
+      - name: Stage verified CloudStream nanojson dependency
+        shell: pwsh
+        run: |
+          $target = 'windows-src/android-extension-compat/libs/nanojson-e9d656d.jar'
+          New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+          Invoke-WebRequest `
+            -Uri 'https://github.com/compassstremio/Compass/releases/download/nanojson-e9d656d/nanojson-e9d656d.jar' `
+            -OutFile $target
+          $expected = 'd495881a322b3c72e5d43284afd7d7021520028ca8b7c6ba861e3fd8d90614d5'
+          $actual = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "nanojson digest mismatch: $actual" }
+
       - name: Stage Windows binaries and runtime dependencies
         working-directory: windows-src
         shell: pwsh
