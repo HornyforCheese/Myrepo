@@ -59,6 +59,14 @@ patch('src/lib/mutiny/desktop-actions.tsx', 'import { DesktopMediaActions }', [
   ['fixed bottom-4 end-4 z-50 flex flex-wrap', 'fixed bottom-4 end-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap'],
 ]);
 
+patch('src-tauri/src/browser.rs', '// Remote add-on pages never open verification popups automatically.', [[
+  '                .initialization_script(&init_script);',
+  `                .initialization_script(&init_script)
+                // Remote add-on pages never open verification popups automatically.
+                // A user must follow an explicit in-app/browser action instead.
+                .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny);`,
+]]);
+
 patch('src/components/search/ai-search/use-ai-suggest.ts', 'from "@/lib/mutiny/live-web"', [
   ['import { enrichWithContent } from "@/lib/jina-search";', 'import { liveWebContext } from "@/lib/mutiny/live-web";'],
   ['await enrichWithContent(query, settings.jinaKey)', 'await liveWebContext(query, settings)'],

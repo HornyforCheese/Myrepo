@@ -22,3 +22,5 @@ No Windows GUI emulation was performed, as requested. Real local-file playback, 
 ## Chunk 4 follow-up
 
 The 2026-11-23 web-source pass reduced the user-facing selector to eight repeatedly reachable endpoints: EmbedMaster, PrimeSrc, VidLink, VidFast, VixSrc, VidRock 1, VidRift and Mapple. Each returned HTML on three consecutive checks. Unreliable, blocked, undocumented and unconfigured choices were removed from the menu. All 41 compatibility tests, the source-deck integration/rollback suite and all three static validation passes passed after the correction. See [automatic web-source evidence](windows-automatic-web-sources.md). A new Windows installer is required for these post-release corrections.
+
+Addon Providers remains a manual-selection tab: its original Stremio/Nuvio/CloudStream picker is always mounted with autoplay disabled. The native add-on browser now explicitly denies remote `window.open`/new-window requests, so provider verification pages cannot create automatic popup windows. A deliberate user action is required to open an external provider page.

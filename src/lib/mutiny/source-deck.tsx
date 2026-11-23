@@ -266,7 +266,7 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
           ) : (
             <div role="tabpanel" aria-label="Addon Providers" className="min-w-0">
               <div className="border-b border-edge px-5 py-3 text-xs text-ink-muted">
-                Choose a result from your configured add-ons. Mutiny uses the existing native playback pipeline, ranking, filters and playback history.
+                Choose a result manually from your configured add-ons. Mutiny uses the existing native playback pipeline, ranking, filters and playback history. Provider verification pages and popups do not open automatically.
               </div>
               <div className="relative h-[min(70vh,840px)] min-h-[420px] overflow-hidden bg-canvas">{addonPicker}</div>
             </div>

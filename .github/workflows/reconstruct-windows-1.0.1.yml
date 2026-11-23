@@ -27,6 +27,7 @@ on:
         default: 10bce43800690d18340e55b433b0821b934b8f71d1187acc79821491028c8ada
 
 permissions:
+  actions: read
   contents: read
 
 env:
@@ -41,32 +42,32 @@ jobs:
       - name: Checkout isolated Mutiny Media Windows workbench
         uses: actions/checkout@v4
 
-      - name: Checkout exact upstream 1.0.1 baseline
-        uses: actions/checkout@v4
+      # Harborofficial/Harbor became unavailable after the verified 2026-11-13
+      # build. Recover its complete customized source artifact rather than
+      # silently substituting another upstream revision.
+      - name: Download verified complete Windows source baseline
+        uses: actions/download-artifact@v4
         with:
-          repository: Harborofficial/Harbor
-          ref: d862943d27ca10beca26d0d53e7bf6be66688968 # v1.0.1-beta
-          path: windows-src
+          github-token: ${{ github.token }}
+          repository: HornyforCheese/Myrepo
+          run-id: '43499763471'
+          name: mutiny-media-windows-1.0.1-complete-source
+          path: recovered-source
 
-      - name: Assemble and verify archived user source overlay
+      - name: Extract and verify recovered source provenance
         shell: pwsh
         run: |
-          $manifest = Get-Content 'third_party/v4-overlay/manifest.json' -Raw | ConvertFrom-Json
-          $parts = @(Get-ChildItem 'third_party/v4-overlay/overlay.part*' -File | Sort-Object Name)
-          if ($parts.Count -ne $manifest.parts.Count) { throw "Overlay parts missing: $($parts.Count) found, expected $($manifest.parts.Count)" }
-          $zip = Join-Path $env:RUNNER_TEMP 'mutiny-v4-overlay.zip'
-          $out = [System.IO.File]::Create($zip)
-          try {
-            foreach ($part in $parts) {
-              $bytes = [System.IO.File]::ReadAllBytes($part.FullName)
-              $out.Write($bytes,0,$bytes.Length)
-            }
-          } finally { $out.Dispose() }
-          $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -ne $manifest.source_sha256) { throw "Archived 1.0.1 overlay checksum failed: $actual" }
-          Expand-Archive -LiteralPath $zip -DestinationPath 'v4-kit' -Force
-          if (!(Test-Path 'v4-kit/MutinyMedia_v4_DirectSource_Update/tools/apply-update.mjs')) { throw 'Archived source-update scripts were not found' }
-          "Validated source overlay: $($parts.Count) chunks, $((Get-Item $zip).Length) bytes"
+          $archives = @(Get-ChildItem 'recovered-source' -File -Filter '*.tar.gz')
+          if ($archives.Count -ne 1) { throw "Expected one recovered source archive; found $($archives.Count)" }
+          New-Item -ItemType Directory -Path 'windows-src' | Out-Null
+          tar -xzf $archives[0].FullName -C 'windows-src'
+          if ($LASTEXITCODE -ne 0) { throw 'Recovered source extraction failed' }
+          $provenance = Get-Content 'windows-src/BUILD_SOURCE.json' -Raw | ConvertFrom-Json
+          if ($provenance.upstream -ne 'd862943d27ca10beca26d0d53e7bf6be66688968' -or
+              $provenance.customization -ne '3736ec074084541a7e50f07e0cb95e30903a94ae' -or
+              $provenance.version -ne '1.0.1') {
+            throw 'Recovered source provenance does not match the last verified Windows build'
+          }
 
       - uses: actions/setup-node@v4
         with:
@@ -90,17 +91,12 @@ jobs:
         with:
           version: 11.9.0
 
-      - name: Apply archived Mutiny Media v4 source updates
+      - name: Refresh current guarded Mutiny Media source modules
         shell: pwsh
         run: |
-          node tools/repair-v4-translation.mjs --pre 'v4-kit/MutinyMedia_v4_DirectSource_Update'
-          if ($LASTEXITCODE -ne 0) { throw 'Legacy translation patch preflight failed' }
-          node 'v4-kit/MutinyMedia_v4_DirectSource_Update/tools/apply-update.mjs' 'windows-src'
-          if ($LASTEXITCODE -ne 0) { throw 'v4 source-update integration failed' }
-          node tools/repair-v4-translation.mjs --post 'windows-src'
-          if ($LASTEXITCODE -ne 0) { throw 'Legacy translation compatibility update failed' }
-          node tools/repair-windows-native.mjs 'windows-src'
-          if ($LASTEXITCODE -ne 0) { throw 'Native source coherence repair failed' }
+          Copy-Item 'src/lib/mutiny/source-deck-catalog.ts' 'windows-src/src/lib/mutiny/source-deck-catalog.ts' -Force
+          Copy-Item 'src/lib/mutiny/source-deck.tsx' 'windows-src/src/lib/mutiny/source-deck.tsx' -Force
+          Copy-Item 'src/lib/mutiny/web-media-ids.ts' 'windows-src/src/lib/mutiny/web-media-ids.ts' -Force
           node tools/complete-windows-source.mjs 'windows-src'
           if ($LASTEXITCODE -ne 0) { throw 'Windows 1.0.1 source contract completion failed' }
 
