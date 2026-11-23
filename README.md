@@ -7,10 +7,10 @@ This is the source patch/workflow workbench for the existing **Mutiny Media 1.0.
 ## Contents
 
 * A two-tab, web-first playback source selector with the existing add-on picker preserved.
-* A catalog of 57 source names, 42 preconfigured URL adapters, and safe placeholder states for unconfigured sources. None is verified as streaming correctly.
+* A curated selector of eight repeatedly reachable web-provider endpoints: EmbedMaster, PrimeSrc, VidLink, VidFast, VixSrc, VidRock 1, VidRift and Mapple. Per-title playback still requires user verification.
 * Automatic source selection, exact IMDb-to-TMDB lookup without an API key, user-triggered next-source/browser options, and per-provider normal-frame compatibility. Fifteen unverified names are retained in the advanced list.
 * A cautious branding migration with compatibility-key preservation and rollback.
-* Local static tests and a 570-case (10 titles × 57 providers) live Windows QA checklist.
+* Local static tests plus the archived 570-case provider audit that led to the smaller curated selector.
 * A Windows reconstruction workflow that restores the full customized source, checks it, stages runtime dependencies, and builds an NSIS installer. It uploads the complete source separately from the installer.
 
 ## Current desktop release
@@ -43,7 +43,7 @@ Download and extract the installer artifact ZIP to obtain the `.exe`. GitHub may
 
 Run `npm install --no-save typescript` and `node tests/run-tests.mjs` and `node tests/three-pass-validation.mjs` to test patch mechanics and rollback. They **do not** test real playback.
 
-`qa/web_sources_10x57_cases.csv` contains 570 **NOT_RUN** checks. Each needs a human or approved automated browser verifying the correct title or episode and 30 seconds of playback. An iframe loading alone does not count.
+`qa/web_sources_10x57_cases.csv` preserves the original 570-case audit plan. The current selector exposes only eight providers; each still needs a human verifying the correct title or episode and 30 seconds of playback. An iframe loading alone does not count.
 
 Do not rename legacy protocol, cache keys or third-party licence attribution without a compatibility migration. The displayed product name is Mutiny Media, but internal identifiers can remain for compatibility.
 
@@ -53,7 +53,7 @@ Do not rename legacy protocol, cache keys or third-party licence attribution wit
 - Three branding validation passes: passed locally.
 - Exact 1.0.1 reconstruction and guarded player/branding integration: passed locally.
 - Full Windows release compile and NSIS packaging: [passed](https://github.com/HornyforCheese/Myrepo/actions/runs/43499763471) for source commit `3736ec074084541a7e50f07e0cb95e30903a94ae`.
-- 570 real web-provider checks: not performed.
+- Eight curated provider endpoints passed three consecutive reachability checks; real title playback remains for user testing.
 - [Download the current Windows installer](https://github.com/HornyforCheese/Myrepo/releases/download/windows-v1.0.1-desktop-updates/MutinyMedia-1.0.1-windows-x64-setup.exe). SHA-256: `55c5579493a507d3cc3cec82b04589ba7fcf593e6c17377c6b56b221ea74bac0`.
 - [Complete customized source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43499763471/artifacts/14073602529).
 - [GitHub testing release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1-desktop-updates): includes the direct `.exe` and `SHA256SUMS.txt`. Windows GUI and live playback remain for user testing.

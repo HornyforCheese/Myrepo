@@ -1,7 +1,7 @@
 /** Mutiny source deck. Names reflect the user-provided DuaFile server selector.
  *  Names alone are NOT proof that those hosts expose a working embed API.
  */
-export const WEB_SOURCE_NAMES = [
+const KNOWN_WEB_SOURCE_NAMES = [
   "EmbedMaster", "NonTonGo", "VidStorm", "VidSrc 1", "VidCore 1", "VidRock 1",
   "VidZee", "VidUp", "PrimeSrc", "MultiEmbed", "VidSrc 2", "MoviesAPI",
   "VidFast", "2Embed", "Frembed", "VidSrc 3", "VidLink", "Nxsha 1",
@@ -14,7 +14,12 @@ export const WEB_SOURCE_NAMES = [
   "RiveStream 3", "CineSrc", "CinemaOS", "Mapple",
 ] as const;
 
-export type WebSourceName = (typeof WEB_SOURCE_NAMES)[number];
+export type WebSourceName = (typeof KNOWN_WEB_SOURCE_NAMES)[number];
+
+/** User-facing providers retained after repeated live reachability and framing checks. */
+export const WEB_SOURCE_NAMES: readonly WebSourceName[] = [
+  "EmbedMaster", "PrimeSrc", "VidLink", "VidFast", "VixSrc", "VidRock 1", "VidRift", "Mapple",
+];
 export type MediaSelection = {
   id: string;
   type: "movie" | "series";
@@ -38,6 +43,8 @@ const VERIFIED_EMBEDS: Partial<Record<WebSourceName, {
   accepts: "imdb-or-tmdb" | "tmdb";
   documentation?: string;
   sandbox?: boolean;
+  /** The provider currently rejects third-party framing; retain its documented URL for Open in browser only. */
+  externalOnly?: boolean;
 }>> = {
   EmbedMaster: {
     sandbox: false,
@@ -86,8 +93,8 @@ const VERIFIED_EMBEDS: Partial<Record<WebSourceName, {
     accepts: "imdb-or-tmdb",
   },
   Videasy: {
-    movie: "https://player.videasy.net/movie/{tmdb}",
-    series: "https://player.videasy.net/tv/{tmdb}/{season}/{episode}",
+    movie: "https://player.videasy.to/movie/{tmdb}",
+    series: "https://player.videasy.to/tv/{tmdb}/{season}/{episode}",
     accepts: "tmdb",
   },
   "Nxsha 1": {
@@ -143,6 +150,7 @@ const VERIFIED_EMBEDS: Partial<Record<WebSourceName, {
     documentation: "https://vidup.to/",
   },
   "MultiEmbed": {
+    externalOnly: true,
     movie: "https://multiembed.mov/?video_id={tmdb}&tmdb=1",
     series: "https://multiembed.mov/?video_id={tmdb}&tmdb=1&s={season}&e={episode}",
     accepts: "tmdb",
@@ -283,7 +291,7 @@ const VERIFIED_EMBEDS: Partial<Record<WebSourceName, {
 };
 
 /** Documented URL formats only. These have NOT passed per-title playback tests. */
-export const DOCUMENTED_WEB_SOURCE_NAMES = Object.keys(VERIFIED_EMBEDS) as WebSourceName[];
+export const DOCUMENTED_WEB_SOURCE_NAMES = WEB_SOURCE_NAMES.filter(name => VERIFIED_EMBEDS[name]);
 
 export function mediaIdentifiers(media: MediaSelection): { imdb: string | null; tmdb: string | null } {
   // IDs come from the selected title's catalogue record, never from a title search guess.
@@ -374,13 +382,17 @@ export function sourceConfigured(name: WebSourceName, overrides: Partial<Record<
 export function readyWebSources(media: MediaSelection, overrides: Partial<Record<WebSourceName, string>> = {}, excluded: readonly WebSourceName[] = []) {
   return WEB_SOURCE_NAMES.filter(name => !excluded.includes(name))
     .map(name => ({ name, result: embedFor(name, media, overrides) }))
-    .filter(item => item.result.configured && item.result.url !== null)
+    .filter(item => item.result.configured && item.result.url !== null && !item.result.externalOnly)
     .sort((a, b) => Number(b.result.sandbox) - Number(a.result.sandbox));
 }
 
 /** Default protection stays enabled; the UI offers a separate per-host opt-in. */
 export function embedFor(name: WebSourceName, media: MediaSelection, overrides: Partial<Record<WebSourceName, string>> = {}) {
-  return { ...resolveEmbed(name, media, overrides), sandbox: overrides[name] ? true : (VERIFIED_EMBEDS[name]?.sandbox ?? true) };
+  return {
+    ...resolveEmbed(name, media, overrides),
+    sandbox: overrides[name] ? true : (VERIFIED_EMBEDS[name]?.sandbox ?? true),
+    externalOnly: !overrides[name] && (VERIFIED_EMBEDS[name]?.externalOnly ?? false),
+  };
 }
 
 const DEFAULT_PLAYER_SANDBOX = "allow-scripts allow-same-origin allow-presentation";

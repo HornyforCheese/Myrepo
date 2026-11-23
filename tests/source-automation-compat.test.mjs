@@ -17,11 +17,12 @@ const response = meta => new Response(JSON.stringify({meta}),{status:200});
 test('automatic sources have actual configured title URLs; missing entries are not guessed',()=>{
   const media={id:'tt1254207',tmdb:'10378',type:'movie'};
   const ready=catalog.readyWebSources(media);
-  assert.equal(ready.length,42);
+  assert.equal(ready.length,8);
   assert.equal(ready[0].result.sandbox,true);
   assert.notEqual(ready[0].name,"EmbedMaster","Automatic should prefer hosts without a mandatory compatibility acknowledgement");
   assert.ok(ready.every(p=>catalog.validEmbedUrl(p.result.url)));
   assert.ok(!ready.some(p=>p.name==='Atlantic'));
+  assert.deepEqual(ready.map(p=>p.name).sort(),["EmbedMaster","Mapple","PrimeSrc","VidFast","VidLink","VidRift","VidRock 1","VixSrc"].sort());
   assert.equal(catalog.sourceConfigured('Atlantic'),false);
   assert.equal(catalog.sourceConfigured('Mapple'),true);
   assert.equal(catalog.readyWebSources(media,{},ready.map(p=>p.name)).length,0);
@@ -29,7 +30,7 @@ test('automatic sources have actual configured title URLs; missing entries are n
 });
 test('each configured episode URL preserves the selected season and episode',()=>{
   const ready=catalog.readyWebSources({id:'tt12345678',tmdb:'99999',type:'series',season:2,episode:7});
-  assert.equal(ready.length,42);
+  assert.equal(ready.length,8);
   for(const {name,result}of ready){assert.ok(!/[{}]/.test(result.url),name);assert.ok(result.url.includes('2')&&result.url.includes('7'),name);}
 });
 test('exact Cinemeta IDs resolve without API keys and concurrent lookups coalesce',async()=>{

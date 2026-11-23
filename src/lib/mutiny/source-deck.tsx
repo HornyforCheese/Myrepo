@@ -52,7 +52,6 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
   const [tab, setTab] = useState<"web" | "addons">("web");
   const [sourceChoice, setSourceChoice] = useState<WebSourceName | "Automatic">("Automatic");
   const [excluded, setExcluded] = useState<WebSourceName[]>([]);
-  const [showUnconfigured, setShowUnconfigured] = useState(false);
   const [resolvedTmdb, setResolvedTmdb] = useState<{ key: string; id: string | null } | null>(null);
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState("");
@@ -95,7 +94,7 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
   const provider = sourceChoice === "Automatic" ? (ready[0]?.name ?? "EmbedMaster") : sourceChoice;
   const current = useMemo(() => embedFor(provider, media, templates), [provider, media, templates]);
   const allowUnrestrictedEmbed = webIframeSandbox(compatibilityConsent, provider, current.url) === undefined;
-  const filteredHosts = useMemo(() => WEB_SOURCE_NAMES.filter((name) => (showUnconfigured || sourceConfigured(name, templates)) && name.toLowerCase().includes(search.trim().toLowerCase())), [search, showUnconfigured, templates]);
+  const filteredHosts = useMemo(() => WEB_SOURCE_NAMES.filter((name) => sourceConfigured(name, templates) && name.toLowerCase().includes(search.trim().toLowerCase())), [search, templates]);
   // The host player may have an additional Play control. These hosts document
   // a documented autoplay option for four integrations; an iframe load still does not prove playback.
   const iframeUrl = useMemo(() => {
@@ -177,7 +176,6 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
                     </button>
                     {menu && (
                       <div id="mutiny-web-host-menu" className="absolute inset-x-0 top-full z-[100] mt-1 overflow-hidden rounded-xl border border-edge bg-elevated shadow-2xl">
-                        <label className="flex items-center gap-2 px-3 pt-3 text-xs text-ink-muted"><input type="checkbox" checked={showUnconfigured} onChange={event => setShowUnconfigured(event.target.checked)} />Show entries without a verified URL</label>
                         <div className="p-2"><input autoFocus type="search" aria-label="Search web providers" placeholder="Search preconfigured hosts..." value={search} onChange={(e) => setSearch(e.target.value)}
                           className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-accent"/></div>
                         <div className="max-h-64 overflow-y-auto py-1" role="listbox" aria-label="Web host options">
@@ -208,7 +206,7 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
                     <span className="text-ink-subtle">Fallback is enabled when the preferred audio is unavailable.</span>
                   </div>
                 )}
-                {current.url && (
+                {current.url && !current.externalOnly && (
                   <label className="mt-3 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-ink-muted">
                     <input type="checkbox" checked={allowUnrestrictedEmbed} onChange={(event) => { setPlaying(false); setCompatibilityConsent(event.target.checked ? webCompatibilityKey(provider, current.url) : null); }} />
                     Compatibility mode for {provider}: use a normal iframe if this host rejects a sandbox. The host can run scripts without iframe sandbox restrictions; I understand the risk.
@@ -230,15 +228,16 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
                     <div className="absolute left-4 top-4 rounded-lg border border-edge bg-black/70 px-3 py-2 text-[10px] font-bold text-ink-muted">WEB SOURCE · {provider}</div>
                     <button type="button" aria-label={`Play ${meta.name} using ${provider}`} onClick={() => {
                         if (!current.url) setError(current.reason);
+                        else if (current.externalOnly) setError("This provider currently blocks embedded playback. Use Open in browser or choose another provider.");
                         else if (!current.sandbox && !allowUnrestrictedEmbed) setError("This provider requires compatibility mode. Enable compatibility mode for this provider or choose another provider.");
                         else { setPlaying(true); setError(""); }
                       }}
                       className="flex size-20 items-center justify-center rounded-full bg-accent text-canvas shadow-[0_0_0_8px_rgba(52,235,171,.10)] transition-transform hover:scale-105 active:scale-95">
                       <Play fill="currentColor" size={31} aria-hidden="true"/>
                     </button>
-                    <span className="text-center text-[11px] font-bold uppercase tracking-widest text-ink-subtle">{current.url ? "Source selected · ready to play" : "Source needs setup or a matching ID"}</span>
+                    <span className="text-center text-[11px] font-bold uppercase tracking-widest text-ink-subtle">{current.externalOnly ? "Browser-only source · use Open in browser" : current.url ? "Source selected · ready to play" : "Source needs setup or a matching ID"}</span>
                   </div>
-                ) : current.url ? (
+                ) : current.url && !current.externalOnly ? (
                   <iframe key={iframeUrl ?? current.url} title={`${provider} player for ${meta.name}`} src={iframeUrl ?? current.url}
                     className="absolute inset-0 size-full border-0 bg-black" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
                     allowFullScreen referrerPolicy="strict-origin-when-cross-origin"
@@ -248,7 +247,7 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-edge p-4 text-xs sm:px-5">
                 <div className="min-w-0">
                   <div className="font-semibold text-ink">{playing ? `Embedded player opened: ${provider}` : `${provider} selected`}</div>
-                  <div className="mt-1 max-w-2xl text-ink-muted">{current.reason || (allowUnrestrictedEmbed ? "Compatibility mode is enabled for this host. Availability and playback depend on the provider." : "Iframe sandbox enabled. If the host rejects it, enable compatibility mode for this provider.")}</div>
+                  <div className="mt-1 max-w-2xl text-ink-muted">{current.externalOnly ? "This provider rejects third-party framing. Open it in your browser instead." : current.reason || (allowUnrestrictedEmbed ? "Compatibility mode is enabled for this host. Availability and playback depend on the provider." : "Iframe sandbox enabled. If the host rejects it, enable compatibility mode for this provider.")}</div>
                 </div>
                 {current.url && <button type="button" onClick={() => {
                   setPlaying(false);

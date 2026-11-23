@@ -39,10 +39,11 @@ const js=ts.transpileModule(raw,{compilerOptions:{module:ts.ModuleKind.CommonJS,
 const catalog = { exports: {} };
 new Function('module','exports',js)(catalog,catalog.exports);
 const { WEB_SOURCE_NAMES, DOCUMENTED_WEB_SOURCE_NAMES, mediaIdentifiers, validEmbedTemplate, embedFor } = catalog.exports;
-assert.equal(WEB_SOURCE_NAMES.length,57);
-assert.equal(new Set(WEB_SOURCE_NAMES).size,57);
-assert.equal(DOCUMENTED_WEB_SOURCE_NAMES.length,42);
-assert.equal(new Set(DOCUMENTED_WEB_SOURCE_NAMES).size,42);
+assert.equal(WEB_SOURCE_NAMES.length,8);
+assert.deepEqual(WEB_SOURCE_NAMES,["EmbedMaster","PrimeSrc","VidLink","VidFast","VixSrc","VidRock 1","VidRift","Mapple"]);
+assert.equal(new Set(WEB_SOURCE_NAMES).size,8);
+assert.equal(DOCUMENTED_WEB_SOURCE_NAMES.length,8);
+assert.equal(new Set(DOCUMENTED_WEB_SOURCE_NAMES).size,8);
 assert.ok(DOCUMENTED_WEB_SOURCE_NAMES.every((name)=>WEB_SOURCE_NAMES.includes(name)));
 for(const name of DOCUMENTED_WEB_SOURCE_NAMES) {
   const film = embedFor(name,{id:'tmdb:movie:533535',tmdb:'533535',imdb:'tt12345678',type:'movie'});
@@ -64,6 +65,9 @@ assert.equal(validEmbedTemplate('javascript:alert({id})'),false);
 assert.equal(validEmbedTemplate('http://127.0.0.1:8000/movie/{id}'),false);
 assert.equal(validEmbedTemplate('https://example.test/embed/{id}'),true);
 assert.equal(embedFor('EmbedMaster',{id:'tt12345678',type:'movie'}).url,'https://embedmaster.link/movie/tt12345678');
+assert.equal(embedFor('Videasy',{id:'tmdb:movie:10378',type:'movie'}).url,'https://player.videasy.to/movie/10378');
+assert.ok(!WEB_SOURCE_NAMES.includes('MultiEmbed'));
+assert.equal(catalog.exports.readyWebSources({id:'tmdb:movie:10378',type:'movie'}).length,8);
 assert.equal(embedFor('PrimeSrc',{id:'tt12345678',type:'series',season:2,episode:4}).url,'https://primesrc.me/embed/tv?imdb=tt12345678&season=2&episode=4');
 assert.equal(embedFor('VidCore 1',{id:'tt12345678',type:'movie'}).url,null);
 assert.equal(embedFor('VidSrc 1',{id:'tt12345678',type:'series',season:1}).url,null);
@@ -136,4 +140,4 @@ fs.writeFileSync(path.join(target,"package.json"), JSON.stringify({name:"harbor"
 assert.throws(()=>run());
 assert.equal(fs.readFileSync(picker,'utf8'),before);
 fs.rmSync(temp,{recursive:true,force:true});
-console.log('PASS: TypeScript syntax, 57 hosts, 42 preconfigured URL adapters, anime dub/sub, PrimeSrc TMDB fallback, Instant Play routing and manual addon selection, apply/verify/idempotence/rollback, safe failure.');
+console.log('PASS: TypeScript syntax, 8 curated web providers, exact-ID URL adapters, anime dub/sub, PrimeSrc TMDB fallback, Instant Play routing and manual addon selection, apply/verify/idempotence/rollback, safe failure.');
