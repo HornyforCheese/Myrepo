@@ -13,14 +13,16 @@ This is the source patch/workflow workbench for the existing **Mutiny Media 1.0.
 * Local static tests and a 570-case (10 titles × 57 providers) live Windows QA checklist.
 * A Windows reconstruction workflow that restores the full customized source, checks it, stages runtime dependencies, and builds an NSIS installer. It uploads the complete source separately from the installer.
 
-## New desktop changes awaiting the combined installer
+## Current desktop release
 
 * [Local video and magnet streaming buttons](qa/windows-media-buttons.md).
 * [Groq and Gemini free-tier choices and separate API keys](qa/windows-ai-providers.md).
 * Silent “Ahoy, mateys!” welcome screen.
 * [Community theme text and CSS wordmark branding](qa/windows-community-theme-branding.md).
 
-These source changes are separate commits. The download links below currently refer to the previous automatic-sources build until the new installer is verified and published.
+These changes are included in the verified [Windows 1.0.1 desktop-updates release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1-desktop-updates).
+
+[Download the Windows installer directly](https://github.com/HornyforCheese/Myrepo/releases/download/windows-v1.0.1-desktop-updates/MutinyMedia-1.0.1-windows-x64-setup.exe). Quit Mutiny Media completely, including its tray icon, before installing because this build retains app version 1.0.1.
 
 ## Reproduce the Windows installer
 
@@ -50,11 +52,12 @@ Do not rename legacy protocol, cache keys or third-party licence attribution wit
 - Static source-deck tests: passed locally.
 - Three branding validation passes: passed locally.
 - Exact 1.0.1 reconstruction and guarded player/branding integration: passed locally.
-- Full Windows release compile and NSIS packaging: [passed](https://github.com/HornyforCheese/Myrepo/actions/runs/43453557318) for source commit `20b3a48881681f74df9dcf6dec1d615cd2e40f27`.
+- Full Windows release compile and NSIS packaging: [passed](https://github.com/HornyforCheese/Myrepo/actions/runs/43499763471) for source commit `3736ec074084541a7e50f07e0cb95e30903a94ae`.
 - 570 real web-provider checks: not performed.
-- [Download Windows installer artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43453557318/artifacts/14055830787): extract the ZIP, then run `Mutiny Media_1.0.1_x64-setup.exe`.
-- [Complete customized source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43453557318/artifacts/14053806584).
-- [GitHub testing release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1-automatic-sources): includes the direct `.exe` download and SHA256SUMS.txt. Windows GUI and live playback remain for user testing.
+- [Download the current Windows installer](https://github.com/HornyforCheese/Myrepo/releases/download/windows-v1.0.1-desktop-updates/MutinyMedia-1.0.1-windows-x64-setup.exe). SHA-256: `55c5579493a507d3cc3cec82b04589ba7fcf593e6c17377c6b56b221ea74bac0`.
+- [Complete customized source artifact](https://github.com/HornyforCheese/Myrepo/actions/runs/43499763471/artifacts/14073602529).
+- [GitHub testing release](https://github.com/HornyforCheese/Myrepo/releases/tag/windows-v1.0.1-desktop-updates): includes the direct `.exe` and `SHA256SUMS.txt`. Windows GUI and live playback remain for user testing.
+- [Combined desktop-updates verification report](qa/windows-desktop-updates.md).
 - [Native build verification report](qa/windows-native-build-report.md).
 - [Player tab visibility fix and regression evidence](qa/windows-player-tabs-fix.md): fresh title playback shows the source deck even with Instant Play enabled.
 
