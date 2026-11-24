@@ -1,4 +1,3 @@
-import { WebSources } from "./web-sources";
 import { DesktopMediaActions } from "./desktop-media-actions";
 import { startMutinyBranding } from "./brand-runtime";
 import { useOnboarding } from "@/lib/onboarding";
@@ -51,7 +50,6 @@ export function MutinyDesktopActions({
       <FirstLaunchWelcome available={available && onboarded} />
       {available && (
         <div className="mutiny-quick-actions fixed bottom-4 end-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap justify-end gap-2">
-          <WebSources />
           <DesktopMediaActions />
           <button type="button" className={actionStyle} onClick={onSettings}>
             <Settings size={16} aria-hidden="true" /> Settings

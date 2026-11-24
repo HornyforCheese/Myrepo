@@ -27,6 +27,7 @@ const assets = [
   'src/lib/mutiny/source-deck-catalog.ts',
   'src/lib/mutiny/source-deck.tsx',
   'src/lib/mutiny/web-media-ids.ts',
+  'src/lib/mutiny/desktop-actions.tsx',
 ];
 for (const asset of assets) {
   const raw = fs.readFileSync(path.join(kit, asset),'utf8');
@@ -34,6 +35,13 @@ for (const asset of assets) {
   const fatal = (output.diagnostics??[]).filter(d=>d.category===ts.DiagnosticCategory.Error);
   assert.equal(fatal.length,0,`Syntax errors in ${asset}: ${fatal.map(d=>ts.flattenDiagnosticMessageText(d.messageText,' ')).join('; ')}`);
 }
+const desktopActions = fs.readFileSync(path.join(kit, 'src/lib/mutiny/desktop-actions.tsx'), 'utf8');
+assert.doesNotMatch(desktopActions, /<WebSources\s*\/>/);
+assert.doesNotMatch(desktopActions, /import\s+\{\s*WebSources\s*\}/);
+assert.match(desktopActions, /<DesktopMediaActions\s*\/>/);
+const completion = fs.readFileSync(path.join(kit, 'tools/complete-windows-source.mjs'), 'utf8');
+assert.match(completion, /keep Movies, Shows and Anime adjacent/);
+assert.match(completion, /Movies, Shows and Anime remain adjacent/);
 const raw=fs.readFileSync(path.join(kit,assets[0]),'utf8');
 const js=ts.transpileModule(raw,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const catalog = { exports: {} };

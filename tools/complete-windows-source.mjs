@@ -54,10 +54,80 @@ export function readActiveStremioAuthKey()`,
 ]]);
 patch('src/lib/mutiny/desktop-actions.tsx', 'from "@/lib/mutiny/live-web"', [['from "@/lib/live-web"', 'from "@/lib/mutiny/live-web"']]);
 patch('src/lib/mutiny/desktop-actions.tsx', 'import { DesktopMediaActions }', [
-  ['import { WebSources } from "./web-sources";', 'import { WebSources } from "./web-sources";\nimport { DesktopMediaActions } from "./desktop-media-actions";'],
-  ['          <WebSources />', '          <WebSources />\n          <DesktopMediaActions />'],
+  ['import { WebSources } from "./web-sources";', 'import { DesktopMediaActions } from "./desktop-media-actions";'],
+  ['          <WebSources />', '          <DesktopMediaActions />'],
   ['fixed bottom-4 end-4 z-50 flex flex-wrap', 'fixed bottom-4 end-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap'],
 ]);
+
+patch('src/chrome/nav-items.tsx', '// Mutiny: keep Movies, Shows and Anime adjacent.', [[
+  `  {
+    id: "kids",
+    label: "nav.kids",
+    render: (active) => (
+      <Popcorn size={26} strokeWidth={2.2} className={active ? "" : "opacity-70"} />
+    ),
+    view: "kids",
+  },
+  {
+    id: "anime",
+    label: "nav.anime",
+    render: (active, hovered) => (
+      <NavLottie data={lotAnime} hovered={hovered} fallback={<AnimeIcon active={active} />} />
+    ),
+    view: "anime",
+    parentalKey: "anime",
+  },`,
+  `  // Mutiny: keep Movies, Shows and Anime adjacent.
+  {
+    id: "anime",
+    label: "nav.anime",
+    render: (active, hovered) => (
+      <NavLottie data={lotAnime} hovered={hovered} fallback={<AnimeIcon active={active} />} />
+    ),
+    view: "anime",
+    parentalKey: "anime",
+  },
+  {
+    id: "kids",
+    label: "nav.kids",
+    render: (active) => (
+      <Popcorn size={26} strokeWidth={2.2} className={active ? "" : "opacity-70"} />
+    ),
+    view: "kids",
+  },`,
+]]);
+
+patch('src/views/big-picture/bp-top-bar.tsx', '// Mutiny: Movies, Shows and Anime remain adjacent.', [[
+  `  {
+    kind: "anime",
+    label: "Anime",
+    icon: (a) => <AnimeIcon active={a} />,
+    hiddenByAnime: true,
+    parentalKey: "anime",
+  },
+  { kind: "shows", label: "Shows", icon: (a) => <TvIcon active={a} />, parentalKey: "shows" },
+  {
+    kind: "movies",
+    label: "Movies",
+    icon: (a) => <MoviesIcon active={a} />,
+    parentalKey: "movies",
+  },`,
+  `  // Mutiny: Movies, Shows and Anime remain adjacent.
+  {
+    kind: "movies",
+    label: "Movies",
+    icon: (a) => <MoviesIcon active={a} />,
+    parentalKey: "movies",
+  },
+  { kind: "shows", label: "Shows", icon: (a) => <TvIcon active={a} />, parentalKey: "shows" },
+  {
+    kind: "anime",
+    label: "Anime",
+    icon: (a) => <AnimeIcon active={a} />,
+    hiddenByAnime: true,
+    parentalKey: "anime",
+  },`,
+]]);
 
 patch('src-tauri/src/browser.rs', '// Remote add-on pages never open verification popups automatically.', [[
   '                .initialization_script(&init_script);',
