@@ -469,6 +469,7 @@ export type Settings = {
   aiSearchProvider: "openrouter" | "groq" | "gemini";
   aiGroqKey: string;
   aiGeminiKey: string;
+  aiAvatarAnimation: boolean;
   jinaKey: string;
   aiWebSearch: boolean;
   aiWebSource: "jina" | "keenable";

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./pirate-avatar.css";
 
 export function PirateAvatar({
@@ -11,13 +11,22 @@ export function PirateAvatar({
   enabled: boolean;
 }) {
   const [blink, setBlink] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const [inViewport, setInViewport] = useState(false);
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) =>
+      setInViewport(entries.some((entry) => entry.isIntersecting)),
+    );
+    if (root.current) observer.observe(root.current);
+    return () => observer.disconnect();
+  }, []);
   const [foreground, setForeground] = useState(!document.hidden);
   useEffect(() => {
     const change = () => setForeground(!document.hidden);
     document.addEventListener("visibilitychange", change);
     return () => document.removeEventListener("visibilitychange", change);
   }, []);
-  const active = visible && foreground && enabled;
+  const active = visible && foreground && inViewport && enabled;
   useEffect(() => {
     if (!active) {
       setBlink(false);
@@ -41,6 +50,7 @@ export function PirateAvatar({
   }, [active]);
   return (
     <div
+      ref={root}
       className="mutiny-pirate"
       data-state={active ? state : "idle"}
       role="img"

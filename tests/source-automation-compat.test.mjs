@@ -72,18 +72,19 @@ test('iframe protection remains default and normal-frame compatibility requires 
   assert.match(sandbox.getText(tree),/webIframeSandbox\(compatibilityConsent, provider, current.url\)/);
   assert.match(source,/\[compatibilityConsent, setCompatibilityConsent\] = useState<string \| null>\(null\)/);
   assert.match(source,/setCompatibilityConsent\(null\)/);
-  assert.match(source,/Compatibility mode for \{provider\}/);
+  assert.match(source,/Compatibility playback is enabled for \{provider\}/);
 });
 
-test('normal-frame opt-in cannot transfer to another provider, title, or invalid URL',()=>{
+test('validated HTTPS players use compatibility frames while invalid URLs retain restrictions',()=>{
   const a='https://embedmaster.link/movie/tt1254207';
   const b='https://embedmaster.link/movie/tt1727587';
   const consent=catalog.webCompatibilityKey('EmbedMaster',a);
-  assert.equal(typeof catalog.webIframeSandbox(null,'EmbedMaster',a),'string');
+  assert.equal(catalog.webIframeSandbox(null,'EmbedMaster',a),undefined);
   assert.equal(catalog.webIframeSandbox(consent,'EmbedMaster',a),undefined);
-  assert.equal(typeof catalog.webIframeSandbox(consent,'EmbedMaster',b),'string');
-  assert.equal(typeof catalog.webIframeSandbox(consent,'VidFast',a),'string');
+  assert.equal(catalog.webIframeSandbox(consent,'EmbedMaster',b),undefined);
+  assert.equal(catalog.webIframeSandbox(consent,'VidFast',a),undefined);
   assert.equal(typeof catalog.webIframeSandbox(null,'EmbedMaster',null),'string');
+  assert.equal(typeof catalog.webIframeSandbox(null,'EmbedMaster','http://127.0.0.1/'),'string');
   assert.equal(catalog.webCompatibilityKey('EmbedMaster','http://127.0.0.1/'),null);
 });
 

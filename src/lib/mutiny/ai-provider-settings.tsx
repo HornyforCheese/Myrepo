@@ -32,20 +32,8 @@ export function AiProviderSettings() {
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
-          defaultChecked={(() => {
-            try {
-              return localStorage.getItem("mutiny.ai.avatar.animation") !== "false";
-            } catch {
-              return true;
-            }
-          })()}
-          onChange={(event) => {
-            try {
-              localStorage.setItem("mutiny.ai.avatar.animation", String(event.target.checked));
-            } catch {
-              setSaved("Animation preference could not be saved");
-            }
-          }}
+          checked={settings.aiAvatarAnimation}
+          onChange={(event) => update({ aiAvatarAnimation: event.target.checked })}
         />
         Animate Ask AI pirate avatar
       </label>

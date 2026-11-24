@@ -2,6 +2,12 @@
 
 ## Scope
 
+## Current installer preparation
+
+Retry now retains the actual failed question. Chat displays decoded answer text during SSE delivery. Avatar activity uses IntersectionObserver to stop outside the visible scroll area. Animation preference now belongs to the main Settings type/defaults/loader and is shared by Ask AI and AI settings. The earlier manual Cloudflare, compatibility-frame and title-bar-safe Source Deck changes are included in this checkpoint. The Cloudflare integration script syntax has been repaired and its guarded patches applied successfully to the complete checkout. Verification completion requires a clearance cookie rather than merely loading a page.
+
+43 compatibility tests pass. Six changed settings/AI modules pass formatting and lint. The settings/visibility/retry typecheck passed; combined Source Deck typecheck is pending. Local Rust check is unavailable because cargo is absent from PATH; Windows Actions supplies Rust. No Windows installer for this combined revision is yet certified. Animated avatar appearance and playback-performance testing remain manual acceptance items. CSS facial overlays remain an explicit visual-quality limitation rather than approved pixel-art animation frames.
+
 Prompt 1 of 5: Interface and Avatar Upgrades. Windows application only. Android is explicitly out of scope.
 
 ## Baseline (2026-11-23 Pacific Time)

@@ -395,12 +395,15 @@ export function embedFor(name: WebSourceName, media: MediaSelection, overrides: 
   };
 }
 
-const DEFAULT_PLAYER_SANDBOX = "allow-scripts allow-same-origin allow-presentation";
 /** Consent is bound to one provider and exact title URL, not a global boolean. */
 export function webCompatibilityKey(name: WebSourceName, url: string | null): string | null {
   return url && validEmbedUrl(url) ? `${name}|${url}` : null;
 }
-export function webIframeSandbox(consent: string | null, name: WebSourceName, url: string | null): string | undefined {
+export function webIframeSandbox(_consent: string | null, name: WebSourceName, url: string | null): string | undefined {
   const key = webCompatibilityKey(name, url);
-  return key !== null && consent === key ? undefined : DEFAULT_PLAYER_SANDBOX;
+  // These are full third-party media applications, not document previews. Several
+  // supported players refuse to initialize whenever the iframe has a sandbox
+  // attribute, even when every capability they use is individually allowed.
+  // URL validation and the native new-window policy remain the security boundary.
+  return key !== null ? undefined : "allow-scripts";
 }

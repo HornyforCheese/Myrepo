@@ -101,14 +101,10 @@ function RecommendationChat({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [talking, setTalking] = useState(false);
+  const [partialAnswer, setPartialAnswer] = useState("");
   const talkingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [animationEnabled, setAnimationEnabled] = useState(() => {
-    try {
-      return localStorage.getItem("mutiny.ai.avatar.animation") !== "false";
-    } catch {
-      return true;
-    }
-  });
+  const animationEnabled = settings.aiAvatarAnimation;
+  const [failedRequest, setFailedRequest] = useState<Message[] | null>(null);
   useEffect(() => {
     if (!busy || !open) {
       setTalking(false);
@@ -135,13 +131,6 @@ function RecommendationChat({
   useEffect(() => {
     const element = dialog.current;
     if (open && !element?.open) element?.showModal();
-    if (open) {
-      try {
-        setAnimationEnabled(localStorage.getItem("mutiny.ai.avatar.animation") !== "false");
-      } catch {
-        /* Keep session preference. */
-      }
-    }
     if (!open) {
       if (element?.open) element.close();
       pending.current?.abort();
@@ -183,6 +172,9 @@ function RecommendationChat({
     setDraft("");
     setError("");
     setBusy(true);
+    setPartialAnswer("");
+    let streamed = "";
+    setFailedRequest(null);
     try {
       const web = settings.aiWebSearch
         ? await Promise.race([
@@ -230,8 +222,17 @@ function RecommendationChat({
         controller.signal,
         fetch,
         mode === "chat"
-          ? () => {
+          ? (text) => {
               if (controller.signal.aborted) return;
+              streamed += text;
+              const match = /"answer"\s*:\s*"((?:\\.|[^"\\])*)/.exec(streamed);
+              if (match) {
+                try {
+                  setPartialAnswer(JSON.parse('"' + match[1] + '"'));
+                } catch {
+                  /* Await a complete escape sequence. */
+                }
+              }
               setTalking(true);
               if (talkingTimer.current) clearTimeout(talkingTimer.current);
               talkingTimer.current = setTimeout(() => setTalking(false), 350);
@@ -253,6 +254,7 @@ function RecommendationChat({
       }
     } catch (reason) {
       if (!controller.signal.aborted) {
+        setFailedRequest(next);
         setMessages(messages);
         setDraft(content);
         setError(reason instanceof Error ? reason.message : "The request failed. Try again.");
@@ -377,12 +379,7 @@ function RecommendationChat({
               type="checkbox"
               checked={animationEnabled}
               onChange={(event) => {
-                setAnimationEnabled(event.target.checked);
-                try {
-                  localStorage.setItem("mutiny.ai.avatar.animation", String(event.target.checked));
-                } catch {
-                  setError("Could not save animation preference.");
-                }
+                update({ aiAvatarAnimation: event.target.checked });
               }}
             />
             Animate pirate avatar
@@ -421,7 +418,7 @@ function RecommendationChat({
               </span>
             </button>
           </div>
-          {messages.length === 0 && mode !== null && (
+          {messages.length === 0 && mode === "chat" && (
             <p className="text-ink-muted">
               Ask for a film, show, or anime. Follow up with a different mood, an English dub, or a
               shorter runtime.
@@ -475,7 +472,14 @@ function RecommendationChat({
                 )}
               </div>
             ))}
-          {busy && <p className="text-sm text-ink-muted">Waiting for {service.label}…</p>}
+          {busy && partialAnswer && mode === "chat" && (
+            <div className="whitespace-pre-wrap rounded-lg bg-elevated p-3">{partialAnswer}</div>
+          )}
+          {busy && (
+            <p className="text-sm text-ink-muted">
+              {partialAnswer ? "Receiving response…" : `Waiting for ${service.label}…`}
+            </p>
+          )}
           {error && (
             <p role="alert" className="text-sm text-danger">
               {error}
@@ -578,8 +582,14 @@ function RecommendationChat({
               <button
                 type="button"
                 className={actionStyle}
-                disabled={busy || !messages.some((message) => message.role === "user")}
+                disabled={
+                  busy || (!failedRequest && !messages.some((message) => message.role === "user"))
+                }
                 onClick={() => {
+                  if (failedRequest) {
+                    void send(undefined, failedRequest);
+                    return;
+                  }
                   let index = messages.length - 1;
                   while (index >= 0 && messages[index].role !== "user") index--;
                   if (index >= 0) void send(undefined, messages.slice(0, index + 1));

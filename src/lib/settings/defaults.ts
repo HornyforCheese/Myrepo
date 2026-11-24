@@ -383,6 +383,7 @@ export const DEFAULT: Settings = {
   aiSearchProvider: "openrouter",
   aiGroqKey: "",
   aiGeminiKey: "",
+  aiAvatarAnimation: true,
   jinaKey: "",
   aiWebSearch: false,
   aiWebSource: "jina",

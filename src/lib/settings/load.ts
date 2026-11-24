@@ -308,6 +308,7 @@ function parseStoredSettings(raw: string | null): { settings: Settings; cacheabl
       parsed.gameArtworkCoverIcon = DEFAULT.gameArtworkCoverIcon;
     if (parsed.gameAgeRatingAgency !== "ESRB" && parsed.gameAgeRatingAgency !== "PEGI")
       parsed.gameAgeRatingAgency = DEFAULT.gameAgeRatingAgency;
+    if (typeof parsed.aiAvatarAnimation !== "boolean") parsed.aiAvatarAnimation = true;
     // Preserve the selected service and keep each provider's credentials independent.
     if (!["openrouter", "groq", "gemini"].includes(parsed.aiSearchProvider as string))
       parsed.aiSearchProvider = "openrouter";

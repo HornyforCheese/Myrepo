@@ -136,6 +136,117 @@ patch('src-tauri/src/browser.rs', '// Remote add-on pages never open verificatio
                 .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny);`,
 ]]);
 
+patch('src-tauri/src/cf_solver.rs', '// MUTINY_MANUAL_CF_COMMANDS', [
+  ['use std::time::{Duration, Instant};', 'use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};'],
+  [`pub fn cf_invalidate(host: &str) {
+    cf_cache().lock().unwrap().remove(host);
+}`,
+  `pub fn cf_invalidate(host: &str) {
+    cf_cache().lock().unwrap().remove(host);
+}
+
+// MUTINY_MANUAL_CF_COMMANDS
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingChallenge {
+    host: String,
+    url: String,
+    detected_at: u64,
+}
+
+fn pending_challenges() -> &'static Mutex<HashMap<String, PendingChallenge>> {
+    static PENDING_CHALLENGES: OnceLock<Mutex<HashMap<String, PendingChallenge>>> = OnceLock::new();
+    PENDING_CHALLENGES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn cf_note_challenge(url: &str) {
+    let Ok(parsed) = Url::parse(url) else { return; };
+    let Some(host) = parsed.host_str().map(str::to_ascii_lowercase) else { return; };
+    let detected_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+    pending_challenges().lock().unwrap().insert(host.clone(), PendingChallenge {
+        host, url: url.to_string(), detected_at,
+    });
+}
+
+#[tauri::command]
+pub fn cf_pending_challenges() -> Vec<PendingChallenge> {
+    let mut values: Vec<_> = pending_challenges().lock().unwrap().values().cloned().collect();
+    values.sort_by(|a, b| b.detected_at.cmp(&a.detected_at));
+    values
+}
+
+#[tauri::command]
+pub fn cf_dismiss_challenge(url: String) -> Result<(), String> {
+    let host = host_of(&url).ok_or_else(|| "challenge URL has no host".to_string())?;
+    pending_challenges().lock().unwrap().remove(&host.to_ascii_lowercase());
+    Ok(())
+}
+
+fn validate_manual_url(url: &str) -> Result<String, String> {
+    let parsed = Url::parse(url).map_err(|_| "enter a valid HTTPS provider URL".to_string())?;
+    if parsed.scheme() != "https" || !parsed.username().is_empty() || parsed.password().is_some() || parsed.port().is_some() {
+        return Err("only public HTTPS provider URLs without credentials or custom ports are allowed".into());
+    }
+    let host = parsed.host_str().ok_or_else(|| "challenge URL has no host".to_string())?.to_ascii_lowercase();
+    if host == "localhost" || host.ends_with(".local") || host.ends_with(".internal") || host.parse::<std::net::IpAddr>().is_ok() || !host.contains('.') {
+        return Err("local and IP-address provider URLs are not allowed".into());
+    }
+    Ok(host)
+}
+
+#[tauri::command]
+pub async fn cf_solve_manual(app: AppHandle, url: String) -> Result<String, String> {
+    let host = validate_manual_url(&url)?;
+    cf_fetch(app, url).await?;
+    if cf_cached(&host).is_none() { return Err("The page loaded but no Cloudflare clearance was received. Retry verification or use another provider.".into()); }
+    pending_challenges().lock().unwrap().remove(&host);
+    Ok(host)
+}`],
+]);
+
+patch('src-tauri/src/http_fetch.rs', '// Mutiny records Cloudflare challenges; only the settings action may open the solver.', [
+  [`            eprintln!("[cf] challenge detected ({}) for {}", status, args.url);
+            if let Ok(solved) = crate::cf_solver::cf_fetch(app, args.url.clone()).await {
+                return Ok(HarborFetchResponse {
+                    status: 200,
+                    ok: true,
+                    body: solved,
+                    content_type: None,
+                    headers: HashMap::new(),
+                    url: None,
+                });
+            }`,
+  `            // Mutiny records Cloudflare challenges; only the settings action may open the solver.
+            eprintln!("[cf] challenge detected ({}) for {}; awaiting manual verification", status, args.url);
+            crate::cf_solver::cf_note_challenge(&args.url);`],
+]);
+
+patch('src-tauri/src/capstan.rs', '// CloudStream challenges are queued for explicit user action in Streaming Sources settings.', [
+  [`    tokio::time::timeout(CHALLENGE_CEILING, crate::cf_solver::cf_fetch(app, url))
+        .await
+        .map_err(|_| format!("challenge for {host} timed out"))??;
+    crate::cf_solver::cf_cached(&host)
+        .ok_or_else(|| format!("{host} loaded but handed back no clearance cookie"))`,
+  `    // CloudStream challenges are queued for explicit user action in Streaming Sources settings.
+    crate::cf_solver::cf_note_challenge(&url);
+    let _ = app;
+    Err(format!("manual Cloudflare verification required for {host}; open Settings > Streaming sources > Cloudflare"))`],
+]);
+
+patch('src-tauri/src/lib.rs', 'cf_solver::cf_pending_challenges,', [
+  ['            cf_solver::cf_report,', `            cf_solver::cf_report,
+            cf_solver::cf_pending_challenges,
+            cf_solver::cf_dismiss_challenge,
+            cf_solver::cf_solve_manual,`],
+]);
+
+patch('src/views/settings/streaming-sources-panel.tsx', 'import { CloudflareManualTab }', [
+  ['import { HomeServersTab } from "./streaming-sources-panel/home-servers-tab";', 'import { HomeServersTab } from "./streaming-sources-panel/home-servers-tab";\nimport { CloudflareManualTab } from "@/lib/mutiny/cloudflare-manual-tab";'],
+  ['type Tab = "services" | "home-servers" | "filters" | "sorting" | "picker";', 'type Tab = "services" | "home-servers" | "filters" | "sorting" | "picker" | "cloudflare";'],
+  ['    { id: "picker" as const, label: t("Picker") },', '    { id: "picker" as const, label: t("Picker") },\n    { id: "cloudflare" as const, label: t("Cloudflare") },'],
+  ['        {tab === "picker" && <PickerTab />}', '        {tab === "picker" && <PickerTab />}\n        {tab === "cloudflare" && <CloudflareManualTab />}'],
+]);
+
 patch('scripts/fetch-binaries.mjs', '// Windows runner compatibility: tar.exe handles ZIP archives without PowerShell/.NET overloads.', [[
   `    } else if (process.platform === "win32") {
       execFileSync(
@@ -170,7 +281,7 @@ patch('src/lib/addons.ts', 'const combined = await combinedAccountAddons();', [
   ['export async function gatherCatalogAddons(authKey: string | null): Promise<Addon[]> {', 'export async function gatherCatalogAddons(authKey: string | null): Promise<Addon[]> {\n  const { combinedAccountAddons } = await import("@/lib/mutiny/combined-addons");\n  const combined = await combinedAccountAddons();'],
   ['return [...stremio, ...localFull.filter((a): a is Addon => a != null)];', 'return [...stremio, ...localFull.filter((a): a is Addon => a != null), ...combined]\n    .filter((addon, index, all) => all.findIndex(other => other.transportUrl === addon.transportUrl) === index);'],
 ]);
-for (const relative of ['src/lib/mutiny/live-web.ts', 'src/lib/mutiny/combined-addons.ts', 'src/themes/midnight/midnight-preset.ts', 'src/assets/ai-logos/keenable.png', 'src/lib/mutiny/openrouter-error.ts', 'src/lib/mutiny/theme-branding.ts', 'src/lib/mutiny/ai-services.ts', 'src/lib/mutiny/use-ai-models.ts', 'src/lib/mutiny/ai-provider-settings.tsx', 'src/lib/mutiny/local-video.ts', 'src/lib/mutiny/desktop-media-actions.tsx', 'src/lib/mutiny/interface-polish.css']) {
+for (const relative of ['src/lib/mutiny/live-web.ts', 'src/lib/mutiny/combined-addons.ts', 'src/themes/midnight/midnight-preset.ts', 'src/assets/ai-logos/keenable.png', 'src/lib/mutiny/openrouter-error.ts', 'src/lib/mutiny/theme-branding.ts', 'src/lib/mutiny/ai-services.ts', 'src/lib/mutiny/use-ai-models.ts', 'src/lib/mutiny/ai-provider-settings.tsx', 'src/lib/mutiny/local-video.ts', 'src/lib/mutiny/desktop-media-actions.tsx', 'src/lib/mutiny/cloudflare-manual-tab.tsx', 'src/lib/mutiny/interface-polish.css']) {
   const file = path.join(root, relative);
   const data = fs.readFileSync(path.join(kit, relative));
   if (fs.existsSync(file) && !sameSourceContent(relative, fs.readFileSync(file), data)) throw Error(`Refusing to overwrite customized module: ${relative}`);

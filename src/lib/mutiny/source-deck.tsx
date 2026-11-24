@@ -12,7 +12,6 @@ import {
   embedFor,
   sourceConfigured,
   readyWebSources,
-  webCompatibilityKey,
   webIframeSandbox,
   validEmbedTemplate,
   type WebSourceName,
@@ -128,10 +127,10 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
 
   return (
     <main className="absolute inset-0 z-[60] overflow-y-auto bg-canvas text-ink" aria-label="Mutiny Media source deck">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-8 lg:px-12">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 pb-5 pt-14 sm:px-8 lg:px-12">
+        <div className="flex flex-wrap items-center justify-between gap-3 pr-36 sm:pr-40">
           <div className="flex items-center gap-3 text-xs tracking-wide text-ink-muted">
-            <button type="button" onClick={() => exitPickerToDetail(meta)} aria-label="Back to title" className="rounded-xl border border-edge bg-elevated px-3 py-2 text-ink hover:bg-surface">
+            <button type="button" data-tauri-drag-region="false" onPointerDown={(event) => event.stopPropagation()} onClick={() => exitPickerToDetail(meta)} aria-label="Back to title" className="relative z-10 rounded-xl border border-edge bg-elevated px-3 py-2 text-ink hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
               <ChevronLeft size={18} aria-hidden="true" />
             </button>
             <img src="/mutiny-mark.png" className="size-7 rounded-md object-contain" alt="" aria-hidden="true"/><span className="font-semibold text-ink">MUTINY MEDIA</span><span>/</span><span>Player</span><span>/</span><span>Source Deck</span>
@@ -206,12 +205,7 @@ export function MutinySourceDeck({ meta, episode, addonPicker }: SourceDeckProps
                     <span className="text-ink-subtle">Fallback is enabled when the preferred audio is unavailable.</span>
                   </div>
                 )}
-                {current.url && !current.externalOnly && (
-                  <label className="mt-3 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-ink-muted">
-                    <input type="checkbox" checked={allowUnrestrictedEmbed} onChange={(event) => { setPlaying(false); setCompatibilityConsent(event.target.checked ? webCompatibilityKey(provider, current.url) : null); }} />
-                    Compatibility mode for {provider}: use a normal iframe if this host rejects a sandbox. The host can run scripts without iframe sandbox restrictions; I understand the risk.
-                  </label>
-                )}
+                {current.url && !current.externalOnly && <p className="mt-3 rounded-xl border border-edge bg-elevated px-3 py-2 text-xs text-ink-muted">Compatibility playback is enabled for {provider}. Provider popups are blocked by Mutiny Media's native window policy.</p>}
                 {editing && <div className="mt-3 rounded-xl border border-edge bg-canvas p-3">
                   <label htmlFor="mutiny-embed-template" className="block text-xs font-semibold">Embed URL template (HTTPS)</label>
                   <input id="mutiny-embed-template" type="text" spellCheck={false} placeholder="https://example.com/embed/movie/{imdb}" value={templateDraft} onChange={(e) => setTemplateDraft(e.target.value)}
