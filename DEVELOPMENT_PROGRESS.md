@@ -51,6 +51,16 @@ The authoritative master has now been received in pirate.zip and extracted uncha
 
 ## Modified Files
 
+## Prompt 1 implementation verification
+
+- Added `pirate-avatar.tsx` and `pirate-avatar.css`: immutable idle master, low-frequency blinking, subtle thinking motion with the original hand-on-chin pose, and three talking mouth positions. Facial motion uses small composited overlays; visual acceptance on Windows remains pending.
+- Talking is driven by actual SSE text deltas, with a 350 ms inactivity timeout. Thinking resumes between chunks. Stop, close, completion and failure clear the active state. Hidden documents pause all avatar activity; reduced-motion preferences disable CSS movement.
+- Animation preference is available in Ask AI and AI provider settings and persists locally. Pixelated scaling is used. No playback APIs are called by animation code.
+- Streaming transport handles split UTF-8/SSE chunks, provider errors and abort signals; existing non-streaming callers remain compatible.
+- Final checks: 43 compatibility tests PASS; player regression suite PASS; complete-source TypeScript check PASS with a 6 GB Node heap; changed-file formatting/lint PASS (four modules). Existing Vite plugin deprecation warnings remain unrelated to this task.
+- Windows workflow stages the avatar master, component, styles, AI transport and settings modules. Windows build and interactive visual acceptance remain pending; this document does not certify those checks.
+- Additional modified files: `.github/workflows/reconstruct-windows-1.0.1.yml`, `src/lib/mutiny/ai-services.ts`, `src/lib/mutiny/ai-provider-settings.tsx`, `src/lib/mutiny/desktop-actions.tsx`, `tests/ai-services-compat.test.mjs`.
+
 Latest verification: AI provider compatibility passes; `git diff --check` passes. The player regression runner reaches child-process integration checks but fails to spawn the managed Node executable with EPERM. Retry response now reruns the last user turn without duplicating subsequent assistant output. Titles Only accepts an empty conversational answer while resolving the returned titles. Full animation implementation and Windows validation remain incomplete; this is a partial recoverable checkpoint, not Prompt 1 acceptance.
 
 - `DEVELOPMENT_PROGRESS.md` — tracking document required by Prompt 1.

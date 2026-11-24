@@ -17,6 +17,7 @@ import { liveWebContext } from "@/lib/mutiny/live-web";
 import { openUrl } from "@/lib/window";
 import { useSettings } from "@/lib/settings";
 import "./interface-polish.css";
+import { PirateAvatar } from "./pirate-avatar";
 
 type Message = {
   role: "user" | "assistant";
@@ -99,6 +100,27 @@ function RecommendationChat({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [talking, setTalking] = useState(false);
+  const talkingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [animationEnabled, setAnimationEnabled] = useState(() => {
+    try {
+      return localStorage.getItem("mutiny.ai.avatar.animation") !== "false";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    if (!busy || !open) {
+      setTalking(false);
+      if (talkingTimer.current) clearTimeout(talkingTimer.current);
+    }
+  }, [busy, open]);
+  useEffect(
+    () => () => {
+      if (talkingTimer.current) clearTimeout(talkingTimer.current);
+    },
+    [],
+  );
   const [mode, setMode] = useState<"titles" | "chat" | null>(null);
   const [editingKey, setEditingKey] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -113,6 +135,13 @@ function RecommendationChat({
   useEffect(() => {
     const element = dialog.current;
     if (open && !element?.open) element?.showModal();
+    if (open) {
+      try {
+        setAnimationEnabled(localStorage.getItem("mutiny.ai.avatar.animation") !== "false");
+      } catch {
+        /* Keep session preference. */
+      }
+    }
     if (!open) {
       if (element?.open) element.close();
       pending.current?.abort();
@@ -199,6 +228,15 @@ function RecommendationChat({
           ],
         },
         controller.signal,
+        fetch,
+        mode === "chat"
+          ? () => {
+              if (controller.signal.aborted) return;
+              setTalking(true);
+              if (talkingTimer.current) clearTimeout(talkingTimer.current);
+              talkingTimer.current = setTimeout(() => setTalking(false), 350);
+            }
+          : undefined,
       );
       const parsed = parseChatAnswer(answer);
       const matches = await resolveAiSuggestions(parsed.suggestions);
@@ -327,16 +365,28 @@ function RecommendationChat({
           </button>
         )}
         <div ref={scroll} role="log" aria-live="polite" className="min-h-36 overflow-y-auto p-4">
-          {mode === "chat" && (
-            <img
-              src="/ai-avatar/pixel_pirate_with_charcoal_glove.png"
-              alt="Mutiny Media pirate assistant"
-              width={128}
-              height={96}
-              className="mx-auto mb-4 h-24 w-32 object-contain"
-              style={{ imageRendering: "pixelated" }}
+          {mode !== null && (
+            <PirateAvatar
+              state={busy ? (talking ? "talking" : "thinking") : "idle"}
+              visible={open}
+              enabled={animationEnabled}
             />
           )}
+          <label className="mb-3 flex items-center gap-2 text-xs text-ink-muted">
+            <input
+              type="checkbox"
+              checked={animationEnabled}
+              onChange={(event) => {
+                setAnimationEnabled(event.target.checked);
+                try {
+                  localStorage.setItem("mutiny.ai.avatar.animation", String(event.target.checked));
+                } catch {
+                  setError("Could not save animation preference.");
+                }
+              }}
+            />
+            Animate pirate avatar
+          </label>
           <div className="mb-4 grid grid-cols-2 gap-3" aria-label="Ask AI mode">
             <button
               type="button"

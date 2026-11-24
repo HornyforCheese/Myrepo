@@ -17,6 +17,18 @@ const models = load('src/lib/ai-models.ts', {'./mutiny/ai-services':services});
 const credentials = {aiSearchKey:'or-fixture',aiGroqKey:'groq-fixture',aiGeminiKey:'gemini-fixture'};
 const reply = content => Response.json({choices:[{message:{content}}]});
 
+test('streamed replies preserve split SSE chunks and emit only actual text deltas',async()=>{
+  const chunks=['data: {"choices":[{"delta":{"content":"Hel', 'lo"}}]}\r\n\r\ndata: {"choices":[{"delta":{"content":" world"}}]}\n\ndata: [DONE]\n\n'];
+  const encoder=new TextEncoder();
+  const deltas=[];
+  const result=await services.aiCompletion('openrouter','fixture','model',{},undefined,async(_url,init)=>{
+    assert.equal(JSON.parse(init.body).stream,true);
+    return new Response(new ReadableStream({start(controller){for(const chunk of chunks)controller.enqueue(encoder.encode(chunk));controller.close();}}),{headers:{'content-type':'text/event-stream'}});
+  },text=>deltas.push(text));
+  assert.equal(result,'Hello world');
+  assert.deepEqual(deltas,['Hello',' world']);
+});
+
 test('every AI route uses only its own key and exact HTTPS endpoint',async()=>{
   for (const provider of ['openrouter','groq','gemini']) {
     const settings = {...credentials,aiSearchProvider:provider};

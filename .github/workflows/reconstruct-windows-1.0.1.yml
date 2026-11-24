@@ -98,6 +98,10 @@ jobs:
           Copy-Item 'src/lib/mutiny/source-deck.tsx' 'windows-src/src/lib/mutiny/source-deck.tsx' -Force
           Copy-Item 'src/lib/mutiny/web-media-ids.ts' 'windows-src/src/lib/mutiny/web-media-ids.ts' -Force
           Copy-Item 'src/lib/mutiny/desktop-actions.tsx' 'windows-src/src/lib/mutiny/desktop-actions.tsx' -Force
+          Copy-Item 'src/lib/mutiny/pirate-avatar.tsx' 'windows-src/src/lib/mutiny/pirate-avatar.tsx' -Force
+          Copy-Item 'src/lib/mutiny/pirate-avatar.css' 'windows-src/src/lib/mutiny/pirate-avatar.css' -Force
+          Copy-Item 'src/lib/mutiny/ai-services.ts' 'windows-src/src/lib/mutiny/ai-services.ts' -Force
+          Copy-Item 'src/lib/mutiny/ai-provider-settings.tsx' 'windows-src/src/lib/mutiny/ai-provider-settings.tsx' -Force
           New-Item -ItemType Directory -Force -Path 'windows-src/public/ai-avatar' | Out-Null
           Copy-Item 'public/ai-avatar/pixel_pirate_with_charcoal_glove.png' 'windows-src/public/ai-avatar/pixel_pirate_with_charcoal_glove.png' -Force
           node tools/complete-windows-source.mjs 'windows-src'
