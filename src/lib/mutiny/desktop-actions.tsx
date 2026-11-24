@@ -94,6 +94,7 @@ function RecommendationChat({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"titles" | "chat" | null>(null);
   const [editingKey, setEditingKey] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
@@ -133,12 +134,12 @@ function RecommendationChat({
     setError("");
   }
 
-  async function send(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const content = draft.trim();
+  async function send(event?: FormEvent<HTMLFormElement>, retry?: Message[]) {
+    event?.preventDefault();
+    const content = retry ? retry[retry.length - 1]?.content : draft.trim();
     if (!content || !key || !model || pending.current) return;
 
-    const next: Message[] = [...messages, { role: "user", content }];
+    const next: Message[] = retry ?? [...messages, { role: "user", content }];
     const controller = new AbortController();
     pending.current = controller;
     setMessages(next);
@@ -164,7 +165,7 @@ function RecommendationChat({
       const answer = await aiCompletion(settings.aiSearchProvider, key, model.id, {
           max_tokens: 1200,
           messages: [
-            { role: "system", content: prompt },
+            { role: "system", content: mode === "titles" ? prompt + ' Return only title results. Include documentaries when requested. Set answer to an empty string.' : prompt },
             ...next.slice(-17).map(({ role, content }) => ({ role, content })),
             ...(web?.context
               ? [
@@ -285,13 +286,18 @@ function RecommendationChat({
           Refresh free models
         </button>)}
         <div ref={scroll} role="log" aria-live="polite" className="min-h-36 overflow-y-auto p-4">
-          {messages.length === 0 && (
+          {mode === "chat" && <img src="/ai-avatar/pixel_pirate_with_charcoal_glove.png" alt="Mutiny Media pirate assistant" width={128} height={96} className="mx-auto mb-4 h-24 w-32 object-contain" style={{ imageRendering: "pixelated" }} />}
+          <div className="mb-4 grid grid-cols-2 gap-3" aria-label="Ask AI mode">
+            <button type="button" disabled={busy} aria-pressed={mode === "titles"} onClick={() => { setMode("titles"); setMessages([]); setError(""); }} className={`rounded-xl border p-4 text-left ${mode === "titles" ? "border-accent bg-accent/10" : "border-edge bg-elevated"}`}><strong className="block">Titles Only</strong><span className="text-xs text-ink-muted">Find movies, television, anime and documentaries.</span></button>
+            <button type="button" disabled={busy} aria-pressed={mode === "chat"} onClick={() => { setMode("chat"); setMessages([]); setError(""); }} className={`rounded-xl border p-4 text-left ${mode === "chat" ? "border-accent bg-accent/10" : "border-edge bg-elevated"}`}><strong className="block">Chat</strong><span className="text-xs text-ink-muted">Discuss recommendations and refine your choices.</span></button>
+          </div>
+          {messages.length === 0 && mode !== null && (
             <p className="text-ink-muted">
               Ask for a film, show, or anime. Follow up with a different mood, an English dub, or a
               shorter runtime.
             </p>
           )}
-          {messages.map((message, index) => (
+          {messages.filter(message => mode !== "titles" || message.role === "assistant").map((message, index) => (
             <div
               key={index}
               className={`mb-3 whitespace-pre-wrap break-words rounded-lg p-3 ${message.role === "user" ? "bg-accent/15" : "bg-elevated"}`}
@@ -299,7 +305,9 @@ function RecommendationChat({
               <p className="mb-1 text-xs font-semibold">
                 {message.role === "user" ? "You" : "Mutiny Media"}
               </p>
-              {message.content}
+              {mode !== "titles" && message.content}
+              {mode === "chat" && message.role === "assistant" && <button type="button" className="ml-2 text-xs underline" onClick={() => { void navigator.clipboard.writeText(message.content).catch(() => setError("Could not copy response.")); }}>Copy response</button>}
+              {mode === "titles" && !message.matches?.length && <p className="text-sm text-ink-muted">No matching titles found. Try a more specific description.</p>}
               {!!message.matches?.length && (
                 <AiResultList results={message.matches} onClose={closeChat} />
               )}
@@ -369,9 +377,9 @@ function RecommendationChat({
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 maxLength={2000}
-                disabled={!model || busy}
+                disabled={!model || busy || mode === null}
                 aria-label="Message"
-                placeholder="Ask for recommendations…"
+                placeholder={mode === "titles" ? "Describe the title or mood you want…" : "Ask for recommendations…"}
                 className="min-w-36 flex-1 rounded-lg border border-edge bg-elevated px-3 py-2 text-ink"
               />
               <button
@@ -381,6 +389,7 @@ function RecommendationChat({
               >
                 Send
               </button>
+              {busy && <button type="button" className={actionStyle} onClick={() => { pending.current?.abort(); pending.current = null; setBusy(false); }}>Stop generation</button>}
               <button
                 type="button"
                 className={actionStyle}
@@ -393,6 +402,11 @@ function RecommendationChat({
               >
                 New chat
               </button>
+              <button type="button" className={actionStyle} disabled={busy || !messages.some(message => message.role === "user")} onClick={() => {
+                let index = messages.length - 1;
+                while (index >= 0 && messages[index].role !== "user") index--;
+                if (index >= 0) void send(undefined, messages.slice(0, index + 1));
+              }}>Retry response</button>
             </form>
           )}
         </footer>
@@ -405,7 +419,7 @@ function parseChatAnswer(answer: string): { text: string; suggestions: AiSuggest
   const raw = answer.trim().replace(/^```(?:json)?\s*|\s*```$/gi, "");
   try {
     const payload = JSON.parse(raw) as { answer?: unknown; results?: unknown } | null;
-    if (typeof payload?.answer !== "string" || !payload.answer.trim()) {
+    if (typeof payload?.answer !== "string") {
       return { text: raw, suggestions: [] };
     }
     const suggestions: AiSuggestion[] = [];
