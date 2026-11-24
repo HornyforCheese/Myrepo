@@ -1,0 +1,49 @@
+name: Configure Mutiny update signing
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mutiny-update-signing-bootstrap
+  cancel-in-progress: false
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Create signing identity without exposing private material
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.cheese }}
+          GH_REPO: HornyforCheese/Myrepo
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo 'The cheese repository secret is missing or empty.'; exit 1; }
+          gh api "repos/$GH_REPO/actions/secrets/public-key" --jq '.key_id' >/dev/null
+          names=$(gh secret list --repo "$GH_REPO" --json name --jq '.[].name')
+          private_exists=false
+          public_exists=false
+          if echo "$names" | grep -qx TAURI_SIGNING_PRIVATE_KEY; then private_exists=true; fi
+          if echo "$names" | grep -qx TAURI_SIGNING_PUBLIC_KEY; then public_exists=true; fi
+          if "$private_exists" && "$public_exists"; then
+            echo 'Existing signing identity preserved. No key rotation performed.'
+            exit 0
+          fi
+          if "$private_exists" || "$public_exists"; then
+            echo 'Incomplete signing identity detected. Refusing to overwrite an existing key.'
+            exit 1
+          fi
+          umask 077
+          keydir=$(mktemp -d "$RUNNER_TEMP/mutiny-signing.XXXXXX")
+          trap 'rm -f "$keydir/update.key" "$keydir/update.key.pub" "$keydir/signer.log"; rmdir "$keydir"' EXIT
+          npm exec --yes --package=@tauri-apps/cli@2.8.4 -- tauri signer generate --ci --password '' --write-keys "$keydir/update.key" >"$keydir/signer.log" 2>&1 || { echo 'Signing key generation failed; private diagnostic output withheld.'; exit 1; }
+          test -s "$keydir/update.key"
+          test -s "$keydir/update.key.pub"
+          gh secret set TAURI_SIGNING_PRIVATE_KEY --repo "$GH_REPO" < "$keydir/update.key"
+          gh secret set TAURI_SIGNING_PUBLIC_KEY --repo "$GH_REPO" < "$keydir/update.key.pub"
+          echo 'Mutiny signing identity stored in repository Actions secrets.'
+          echo 'Public verification key (safe to embed in the application):'
+          cat "$keydir/update.key.pub"
