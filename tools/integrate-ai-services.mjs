@@ -77,7 +77,8 @@ export function integrateAiServices(root) {
     const target = path.join(root, file);
     const old = fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n');
     if (old === source) continue;
-    if (createHash('sha256').update(old).digest('hex') !== sha256) throw Error(`Unexpected AI source revision: ${file}`);
+    const actual = createHash('sha256').update(old).digest('hex');
+    if (actual !== sha256) throw Error(`Unexpected AI source revision: ${file} (${actual})`);
     writes.push([target, source]);
   }
   // Existing AI entry-point visibility must include accounts with only a Gemini key.
