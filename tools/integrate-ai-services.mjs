@@ -66,7 +66,7 @@ const replacements = [
   },
   {
     "file": "src/lib/mutiny/desktop-actions.tsx",
-    "sha256": "9401b63d7adc6f84631bb5fd857cec54a86b09f0e7de3a99e40fd6c9d5d01013"
+    "sha256": "9b34e745934bd741ed8b6a1e746165ab64f60782ede4222b4c3ece4c3da93637"
   }
 ];
 /** Overlay files are pinned: fail before writing if a different revision is present. */
