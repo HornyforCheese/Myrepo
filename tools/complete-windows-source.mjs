@@ -53,12 +53,6 @@ patch('src/lib/auth.tsx', 'export function readPrimaryStremioSession()', [[
 export function readActiveStremioAuthKey()`,
 ]]);
 patch('src/lib/mutiny/desktop-actions.tsx', 'from "@/lib/mutiny/live-web"', [['from "@/lib/live-web"', 'from "@/lib/mutiny/live-web"']]);
-patch('src/lib/mutiny/desktop-actions.tsx', 'import { DesktopMediaActions }', [
-  ['import { WebSources } from "./web-sources";', 'import { DesktopMediaActions } from "./desktop-media-actions";'],
-  ['          <WebSources />', '          <DesktopMediaActions />'],
-  ['fixed bottom-4 end-4 z-50 flex flex-wrap', 'fixed bottom-4 end-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap'],
-]);
-
 patch('src/chrome/nav-items.tsx', '// Mutiny: keep Movies, Shows and Anime adjacent.', [[
   `  {
     id: "kids",
