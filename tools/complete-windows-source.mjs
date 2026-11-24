@@ -52,7 +52,6 @@ patch('src/lib/auth.tsx', 'export function readPrimaryStremioSession()', [[
 
 export function readActiveStremioAuthKey()`,
 ]]);
-patch('src/lib/mutiny/desktop-actions.tsx', 'from "@/lib/mutiny/live-web"', [['from "@/lib/live-web"', 'from "@/lib/mutiny/live-web"']]);
 patch('src/chrome/nav-items.tsx', '// Mutiny: keep Movies, Shows and Anime adjacent.', [[
   `  {
     id: "kids",
