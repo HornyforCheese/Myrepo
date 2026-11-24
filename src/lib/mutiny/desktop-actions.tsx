@@ -4,7 +4,12 @@ import { useOnboarding } from "@/lib/onboarding";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { MessageCircle, Settings } from "lucide-react";
 import { DEFAULT_AI_MODEL, aiKey } from "@/lib/ai-models";
-import { AI_SERVICES, aiCompletion, defaultServiceModel, type AiService } from "@/lib/mutiny/ai-services";
+import {
+  AI_SERVICES,
+  aiCompletion,
+  defaultServiceModel,
+  type AiService,
+} from "@/lib/mutiny/ai-services";
 import { useAiModels } from "@/lib/mutiny/use-ai-models";
 import { AiResultList } from "@/components/search/ai-search/ai-result-list";
 import { resolveAiSuggestions, type AiResult, type AiSuggestion } from "@/lib/ai-search";
@@ -101,7 +106,8 @@ function RecommendationChat({
   const pending = useRef<AbortController | null>(null);
   const service = AI_SERVICES[settings.aiSearchProvider];
   const key = aiKey(settings);
-  const modelId = settings.aiSearchModel || defaultServiceModel(settings.aiSearchProvider, DEFAULT_AI_MODEL);
+  const modelId =
+    settings.aiSearchModel || defaultServiceModel(settings.aiSearchProvider, DEFAULT_AI_MODEL);
   const model = models.find((entry) => entry.id === modelId);
 
   useEffect(() => {
@@ -109,7 +115,9 @@ function RecommendationChat({
     if (open && !element?.open) element?.showModal();
     if (!open) {
       if (element?.open) element.close();
-      pending.current?.abort(); pending.current = null; setBusy(false);
+      pending.current?.abort();
+      pending.current = null;
+      setBusy(false);
     }
   }, [open]);
 
@@ -162,10 +170,21 @@ function RecommendationChat({
           ])
         : null;
       if (controller.signal.aborted) return;
-      const answer = await aiCompletion(settings.aiSearchProvider, key, model.id, {
+      const answer = await aiCompletion(
+        settings.aiSearchProvider,
+        key,
+        model.id,
+        {
           max_tokens: 1200,
           messages: [
-            { role: "system", content: mode === "titles" ? prompt + ' Return only title results. Include documentaries when requested. Set answer to an empty string.' : prompt },
+            {
+              role: "system",
+              content:
+                mode === "titles"
+                  ? prompt +
+                    " Return only title results. Include documentaries when requested. Set answer to an empty string."
+                  : prompt,
+            },
             ...next.slice(-17).map(({ role, content }) => ({ role, content })),
             ...(web?.context
               ? [
@@ -178,7 +197,9 @@ function RecommendationChat({
                 ]
               : []),
           ],
-      }, controller.signal);
+        },
+        controller.signal,
+      );
       const parsed = parseChatAnswer(answer);
       const matches = await resolveAiSuggestions(parsed.suggestions);
       if (!controller.signal.aborted) {
@@ -220,13 +241,28 @@ function RecommendationChat({
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-edge p-4">
           <div>
             <h2 className="text-lg font-semibold">Ask Mutiny Media</h2>
-            <label className="mb-2 flex flex-col gap-1 text-sm text-ink-muted">AI provider
-              <select aria-label="AI provider" value={settings.aiSearchProvider} disabled={busy} onChange={event => {
-                const provider = event.target.value as AiService;
-                update({ aiSearchProvider: provider, aiSearchModel: defaultServiceModel(provider, DEFAULT_AI_MODEL) });
-                setEditingKey(false); setError("");
-              }} className="h-11 rounded-lg border border-edge bg-elevated px-2 text-ink">
-                {Object.entries(AI_SERVICES).map(([id, config]) => <option key={id} value={id}>{config.label}</option>)}
+            <label className="mb-2 flex flex-col gap-1 text-sm text-ink-muted">
+              AI provider
+              <select
+                aria-label="AI provider"
+                value={settings.aiSearchProvider}
+                disabled={busy}
+                onChange={(event) => {
+                  const provider = event.target.value as AiService;
+                  update({
+                    aiSearchProvider: provider,
+                    aiSearchModel: defaultServiceModel(provider, DEFAULT_AI_MODEL),
+                  });
+                  setEditingKey(false);
+                  setError("");
+                }}
+                className="h-11 rounded-lg border border-edge bg-elevated px-2 text-ink"
+              >
+                {Object.entries(AI_SERVICES).map(([id, config]) => (
+                  <option key={id} value={id}>
+                    {config.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm text-ink-muted">
@@ -237,7 +273,10 @@ function RecommendationChat({
                 disabled={busy || status !== "ready"}
                 onChange={(event) => {
                   if (models.some((entry) => entry.id === event.target.value))
-                    update({ aiSearchModel: event.target.value, aiSearchProvider: settings.aiSearchProvider });
+                    update({
+                      aiSearchModel: event.target.value,
+                      aiSearchProvider: settings.aiSearchProvider,
+                    });
                 }}
                 className="h-11 max-w-full rounded-lg border border-edge bg-elevated px-2 text-ink"
               >
@@ -277,19 +316,60 @@ function RecommendationChat({
             model.
           </p>
         )}
-        {settings.aiSearchProvider === "openrouter" && (<button
-          type="button"
-          className={actionStyle}
-          onClick={refresh}
-          disabled={busy || status === "loading"}
-        >
-          Refresh free models
-        </button>)}
+        {settings.aiSearchProvider === "openrouter" && (
+          <button
+            type="button"
+            className={actionStyle}
+            onClick={refresh}
+            disabled={busy || status === "loading"}
+          >
+            Refresh free models
+          </button>
+        )}
         <div ref={scroll} role="log" aria-live="polite" className="min-h-36 overflow-y-auto p-4">
-          {mode === "chat" && <img src="/ai-avatar/pixel_pirate_with_charcoal_glove.png" alt="Mutiny Media pirate assistant" width={128} height={96} className="mx-auto mb-4 h-24 w-32 object-contain" style={{ imageRendering: "pixelated" }} />}
+          {mode === "chat" && (
+            <img
+              src="/ai-avatar/pixel_pirate_with_charcoal_glove.png"
+              alt="Mutiny Media pirate assistant"
+              width={128}
+              height={96}
+              className="mx-auto mb-4 h-24 w-32 object-contain"
+              style={{ imageRendering: "pixelated" }}
+            />
+          )}
           <div className="mb-4 grid grid-cols-2 gap-3" aria-label="Ask AI mode">
-            <button type="button" disabled={busy} aria-pressed={mode === "titles"} onClick={() => { setMode("titles"); setMessages([]); setError(""); }} className={`rounded-xl border p-4 text-left ${mode === "titles" ? "border-accent bg-accent/10" : "border-edge bg-elevated"}`}><strong className="block">Titles Only</strong><span className="text-xs text-ink-muted">Find movies, television, anime and documentaries.</span></button>
-            <button type="button" disabled={busy} aria-pressed={mode === "chat"} onClick={() => { setMode("chat"); setMessages([]); setError(""); }} className={`rounded-xl border p-4 text-left ${mode === "chat" ? "border-accent bg-accent/10" : "border-edge bg-elevated"}`}><strong className="block">Chat</strong><span className="text-xs text-ink-muted">Discuss recommendations and refine your choices.</span></button>
+            <button
+              type="button"
+              disabled={busy}
+              aria-pressed={mode === "titles"}
+              onClick={() => {
+                setMode("titles");
+                setMessages([]);
+                setError("");
+              }}
+              className={`rounded-xl border p-4 text-left ${mode === "titles" ? "border-accent bg-accent/10" : "border-edge bg-elevated"}`}
+            >
+              <strong className="block">Titles Only</strong>
+              <span className="text-xs text-ink-muted">
+                Find movies, television, anime and documentaries.
+              </span>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              aria-pressed={mode === "chat"}
+              onClick={() => {
+                setMode("chat");
+                setMessages([]);
+                setError("");
+              }}
+              className={`rounded-xl border p-4 text-left ${mode === "chat" ? "border-accent bg-accent/10" : "border-edge bg-elevated"}`}
+            >
+              <strong className="block">Chat</strong>
+              <span className="text-xs text-ink-muted">
+                Discuss recommendations and refine your choices.
+              </span>
+            </button>
           </div>
           {messages.length === 0 && mode !== null && (
             <p className="text-ink-muted">
@@ -297,36 +377,54 @@ function RecommendationChat({
               shorter runtime.
             </p>
           )}
-          {messages.filter(message => mode !== "titles" || message.role === "assistant").map((message, index) => (
-            <div
-              key={index}
-              className={`mb-3 whitespace-pre-wrap break-words rounded-lg p-3 ${message.role === "user" ? "bg-accent/15" : "bg-elevated"}`}
-            >
-              <p className="mb-1 text-xs font-semibold">
-                {message.role === "user" ? "You" : "Mutiny Media"}
-              </p>
-              {mode !== "titles" && message.content}
-              {mode === "chat" && message.role === "assistant" && <button type="button" className="ml-2 text-xs underline" onClick={() => { void navigator.clipboard.writeText(message.content).catch(() => setError("Could not copy response.")); }}>Copy response</button>}
-              {mode === "titles" && !message.matches?.length && <p className="text-sm text-ink-muted">No matching titles found. Try a more specific description.</p>}
-              {!!message.matches?.length && (
-                <AiResultList results={message.matches} onClose={closeChat} />
-              )}
-              {!!message.sources?.length && (
-                <div className="mt-2 flex flex-wrap gap-2 whitespace-normal">
-                  {message.sources.map((source, i) => (
-                    <button
-                      type="button"
-                      key={source.url + i}
-                      className="text-sm underline"
-                      onClick={() => openUrl(source.url)}
-                    >
-                      [{i + 1}] {source.title}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+          {messages
+            .filter((message) => mode !== "titles" || message.role === "assistant")
+            .map((message, index) => (
+              <div
+                key={index}
+                className={`mb-3 whitespace-pre-wrap break-words rounded-lg p-3 ${message.role === "user" ? "bg-accent/15" : "bg-elevated"}`}
+              >
+                <p className="mb-1 text-xs font-semibold">
+                  {message.role === "user" ? "You" : "Mutiny Media"}
+                </p>
+                {mode !== "titles" && message.content}
+                {mode === "chat" && message.role === "assistant" && (
+                  <button
+                    type="button"
+                    className="ml-2 text-xs underline"
+                    onClick={() => {
+                      void navigator.clipboard
+                        .writeText(message.content)
+                        .catch(() => setError("Could not copy response."));
+                    }}
+                  >
+                    Copy response
+                  </button>
+                )}
+                {mode === "titles" && !message.matches?.length && (
+                  <p className="text-sm text-ink-muted">
+                    No matching titles found. Try a more specific description.
+                  </p>
+                )}
+                {!!message.matches?.length && (
+                  <AiResultList results={message.matches} onClose={closeChat} />
+                )}
+                {!!message.sources?.length && (
+                  <div className="mt-2 flex flex-wrap gap-2 whitespace-normal">
+                    {message.sources.map((source, i) => (
+                      <button
+                        type="button"
+                        key={source.url + i}
+                        className="text-sm underline"
+                        onClick={() => openUrl(source.url)}
+                      >
+                        [{i + 1}] {source.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           {busy && <p className="text-sm text-ink-muted">Waiting for {service.label}…</p>}
           {error && (
             <p role="alert" className="text-sm text-danger">
@@ -335,7 +433,16 @@ function RecommendationChat({
           )}
         </div>
         <footer className="border-t border-edge p-4">
-          <p className="mb-3 text-xs text-ink-muted">Free-tier quotas apply; paid accounts may be billed. <button type="button" className="underline" onClick={() => openUrl(service.keys)}>Get a {service.label} key</button> · <button type="button" className="underline" onClick={onSettings}>AI settings</button></p>
+          <p className="mb-3 text-xs text-ink-muted">
+            Free-tier quotas apply; paid accounts may be billed.{" "}
+            <button type="button" className="underline" onClick={() => openUrl(service.keys)}>
+              Get a {service.label} key
+            </button>{" "}
+            ·{" "}
+            <button type="button" className="underline" onClick={onSettings}>
+              AI settings
+            </button>
+          </p>
           {open && (!key || editingKey) ? (
             <form className="flex flex-wrap items-end gap-2" onSubmit={saveKey}>
               <label className="flex min-w-36 flex-1 flex-col gap-1 text-sm">
@@ -379,7 +486,11 @@ function RecommendationChat({
                 maxLength={2000}
                 disabled={!model || busy || mode === null}
                 aria-label="Message"
-                placeholder={mode === "titles" ? "Describe the title or mood you want…" : "Ask for recommendations…"}
+                placeholder={
+                  mode === "titles"
+                    ? "Describe the title or mood you want…"
+                    : "Ask for recommendations…"
+                }
                 className="min-w-36 flex-1 rounded-lg border border-edge bg-elevated px-3 py-2 text-ink"
               />
               <button
@@ -389,7 +500,19 @@ function RecommendationChat({
               >
                 Send
               </button>
-              {busy && <button type="button" className={actionStyle} onClick={() => { pending.current?.abort(); pending.current = null; setBusy(false); }}>Stop generation</button>}
+              {busy && (
+                <button
+                  type="button"
+                  className={actionStyle}
+                  onClick={() => {
+                    pending.current?.abort();
+                    pending.current = null;
+                    setBusy(false);
+                  }}
+                >
+                  Stop generation
+                </button>
+              )}
               <button
                 type="button"
                 className={actionStyle}
@@ -402,11 +525,18 @@ function RecommendationChat({
               >
                 New chat
               </button>
-              <button type="button" className={actionStyle} disabled={busy || !messages.some(message => message.role === "user")} onClick={() => {
-                let index = messages.length - 1;
-                while (index >= 0 && messages[index].role !== "user") index--;
-                if (index >= 0) void send(undefined, messages.slice(0, index + 1));
-              }}>Retry response</button>
+              <button
+                type="button"
+                className={actionStyle}
+                disabled={busy || !messages.some((message) => message.role === "user")}
+                onClick={() => {
+                  let index = messages.length - 1;
+                  while (index >= 0 && messages[index].role !== "user") index--;
+                  if (index >= 0) void send(undefined, messages.slice(0, index + 1));
+                }}
+              >
+                Retry response
+              </button>
             </form>
           )}
         </footer>
