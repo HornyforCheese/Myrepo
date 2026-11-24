@@ -11,6 +11,7 @@ import { resolveAiSuggestions, type AiResult, type AiSuggestion } from "@/lib/ai
 import { liveWebContext } from "@/lib/mutiny/live-web";
 import { openUrl } from "@/lib/window";
 import { useSettings } from "@/lib/settings";
+import "./interface-polish.css";
 
 type Message = {
   role: "user" | "assistant";

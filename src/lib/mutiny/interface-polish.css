@@ -1,0 +1,93 @@
+/* Mutiny Media cohesive interface polish. Each numbered rule is independently testable. */
+
+/* 01 — richer app background without replacing theme tokens */
+:root { --mutiny-glow: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+body { background-image: radial-gradient(circle at 15% -10%, var(--mutiny-glow), transparent 34%), radial-gradient(circle at 100% 20%, color-mix(in srgb, var(--color-raised) 40%, transparent), transparent 32%); background-attachment: fixed; }
+
+/* 02 — comfortable global text rendering */
+body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+
+/* 03 — branded selection */
+::selection { background: color-mix(in srgb, var(--color-accent) 38%, transparent); color: var(--color-ink); }
+
+/* 04 — consistent accessible keyboard focus */
+:where(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+
+/* 05 — refined scrollbars */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-edge)) transparent; }
+
+/* 06 — Movies, Shows and Anime read as one navigation family */
+:where([data-bp-tab="movies"], [data-bp-tab="shows"], [data-bp-tab="anime"]) { position: relative; isolation: isolate; }
+
+/* 07 — home media tabs gain a restrained accent surface */
+:where([data-bp-tab="movies"], [data-bp-tab="shows"], [data-bp-tab="anime"]):hover { background: color-mix(in srgb, var(--color-accent) 13%, var(--color-elevated)); }
+
+/* 08 — active media tab has a crisp accent indicator */
+:where([data-bp-tab="movies"], [data-bp-tab="shows"], [data-bp-tab="anime"])[data-bp-tab-on="true"]::after { content: ""; position: absolute; inset-inline: 24%; bottom: 5px; height: 2px; border-radius: 999px; background: var(--color-accent); box-shadow: 0 0 12px var(--color-accent); }
+
+/* 09 — quick actions become a unified floating dock */
+.mutiny-quick-actions { padding: 6px; border: 1px solid color-mix(in srgb, var(--color-edge) 78%, transparent); border-radius: 16px; background: color-mix(in srgb, var(--color-canvas) 82%, transparent); box-shadow: 0 18px 48px rgba(0,0,0,.32); backdrop-filter: blur(18px) saturate(1.2); }
+
+/* 10 — dock buttons share deliberate geometry */
+.mutiny-quick-action { min-height: 42px; padding-inline: 14px; border-radius: 11px; gap: 8px; transition: transform 150ms ease, background-color 150ms ease, border-color 150ms ease; }
+
+/* 11 — dock hover feedback */
+.mutiny-quick-action:hover { transform: translateY(-2px); background: color-mix(in srgb, var(--color-accent) 12%, var(--color-elevated)); border-color: color-mix(in srgb, var(--color-accent) 44%, var(--color-edge)); }
+
+/* 12 — dock pressed feedback */
+.mutiny-quick-action:active { transform: translateY(0) scale(.98); }
+
+/* 13 — dialogs use a calmer page dimmer */
+dialog::backdrop { background: rgba(2,5,8,.72); backdrop-filter: blur(6px); }
+
+/* 14 — dialogs receive stronger depth separation */
+dialog { border-color: color-mix(in srgb, var(--color-edge) 78%, var(--color-accent)); box-shadow: 0 28px 90px rgba(0,0,0,.54); }
+
+/* 15 — form controls are easier to scan */
+:where(input, select, textarea) { transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease; }
+
+/* 16 — focused form controls gain a subtle halo */
+:where(input, select, textarea):focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 16%, transparent); }
+
+/* 17 — disabled controls communicate state without disappearing */
+:where(button, input, select, textarea):disabled { opacity: .52; filter: saturate(.55); }
+
+/* 18 — cards lift consistently on precise pointers */
+@media (hover:hover) { article { transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease; } article:hover { transform: translateY(-3px); box-shadow: 0 16px 38px rgba(0,0,0,.26); border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-edge)); } }
+
+/* 19 — artwork motion stays inside its card */
+article { overflow: clip; }
+
+/* 20 — artwork gets a subtle quality lift on hover */
+article img { transition: transform 240ms ease, filter 240ms ease; }
+@media (hover:hover) { article:hover img { transform: scale(1.018); filter: saturate(1.06) contrast(1.02); } }
+
+/* 21 — section headings wrap intentionally */
+:where(h1, h2, h3) { text-wrap: balance; letter-spacing: -.015em; }
+
+/* 22 — paragraphs avoid overly long desktop lines */
+main p { text-wrap: pretty; }
+
+/* 23 — compact status chips align cleanly */
+:where([role="status"], [class*="badge"], [class*="chip"]) { font-variant-numeric: tabular-nums; }
+
+/* 24 — source deck receives a distinct playback surface */
+.mutiny-source-deck { border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-edge)); box-shadow: 0 22px 62px rgba(0,0,0,.34); }
+
+/* 25 — source choices clearly expose hover intent */
+.mutiny-source-deck button:hover { border-color: color-mix(in srgb, var(--color-accent) 48%, var(--color-edge)); }
+
+/* 26 — links are identifiable without excessive decoration */
+main a:not([class]) { color: var(--color-accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+/* 27 — coarse pointers get dependable targets */
+@media (pointer:coarse) { :where(button, [role="button"], input, select) { min-height: 44px; } }
+
+/* 28 — narrow screens keep the four-action dock usable */
+@media (max-width:720px) { .mutiny-quick-actions { inset-inline: 10px !important; bottom: 10px !important; justify-content: center; } .mutiny-quick-action { flex: 1 1 calc(50% - 6px); justify-content: center; } }
+
+/* 29 — high contrast users retain structural edges */
+@media (prefers-contrast:more) { :where(dialog, article, .mutiny-quick-actions) { border-width: 2px; } }
+
+/* 30 — motion-sensitive users receive an immediate interface */
+@media (prefers-reduced-motion:reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }

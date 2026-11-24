@@ -39,6 +39,11 @@ const desktopActions = fs.readFileSync(path.join(kit, 'src/lib/mutiny/desktop-ac
 assert.doesNotMatch(desktopActions, /<WebSources\s*\/>/);
 assert.doesNotMatch(desktopActions, /import\s+\{\s*WebSources\s*\}/);
 assert.match(desktopActions, /<DesktopMediaActions\s*\/>/);
+assert.match(desktopActions, /interface-polish\.css/);
+const polish = fs.readFileSync(path.join(kit, 'src/lib/mutiny/interface-polish.css'), 'utf8');
+assert.equal((polish.match(/\/\* \d{2} —/g) ?? []).length, 30);
+assert.match(polish, /data-bp-tab="anime"/);
+assert.match(polish, /prefers-reduced-motion/);
 const completion = fs.readFileSync(path.join(kit, 'tools/complete-windows-source.mjs'), 'utf8');
 assert.match(completion, /keep Movies, Shows and Anime adjacent/);
 assert.match(completion, /Movies, Shows and Anime remain adjacent/);
