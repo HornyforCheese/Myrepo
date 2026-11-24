@@ -207,12 +207,34 @@ jobs:
       - name: Build Windows 1.0.1 NSIS installer
         working-directory: windows-src
         shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         run: |
           if (Test-Path 'src-tauri/tauri.windows.conf.json') {
             pnpm tauri build --config src-tauri/tauri.windows.conf.json --bundles nsis
           } else {
             pnpm tauri build --bundles nsis
           }
+
+      - name: Package Windows update ZIP
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem 'windows-src/src-tauri/target/release/bundle/nsis' -Filter '*.exe' -File)
+          if ($installers.Count -ne 1) { throw 'Expected exactly one built update executable' }
+          New-Item -ItemType Directory -Force -Path 'update-package' | Out-Null
+          Copy-Item $installers[0].FullName 'update-package/MutinyMedia-update.exe'
+          $hash = (Get-FileHash 'update-package/MutinyMedia-update.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  MutinyMedia-update.exe" | Set-Content 'update-package/SHA256SUMS.txt'
+          'Close Mutiny Media, then run MutinyMedia-update.exe to update the existing installation. Keep the existing installation path. App settings and accounts are stored separately. This is an update package containing an executable, not a portable file-replacement updater.' | Set-Content 'update-package/UPDATE.txt'
+          Compress-Archive -Path 'update-package/*' -DestinationPath 'MutinyMedia-Windows-update.zip' -Force
+
+      - name: Upload Windows update ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutiny-media-windows-update-zip
+          path: MutinyMedia-Windows-update.zip
+          if-no-files-found: error
 
       - name: Upload rebuilt Windows installer
         uses: actions/upload-artifact@v4
